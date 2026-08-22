@@ -12,12 +12,17 @@ import 'fake-indexeddb/auto';
 import type { QueueEntry } from '@domain/clinic.ts';
 import {
   dayTotals,
+  expiredTombstones,
   formatMoney,
+  isDeleted,
+  liveEntries,
   nextStatus,
   nextToken,
   parseFee,
   sortQueue,
+  touch,
 } from '@domain/clinic.ts';
+import { mergeRow, purgeTombstones, QUEUE_CONTESTED } from '../server/merge.mjs';
 import * as db from '@storage/db.ts';
 
 let n = 0;
@@ -29,6 +34,7 @@ const entry = (over: Partial<QueueEntry> = {}): QueueEntry => ({
   status: 'waiting',
   payment: 'unpaid',
   createdAt: '2026-08-22T09:00:00.000Z',
+  updatedAt: '2026-08-22T09:00:00.000Z',
   ...over,
 });
 
@@ -139,7 +145,100 @@ describe('storage', () => {
       expect(keys).not.toContain(forbidden);
     }
     expect(keys.sort()).toEqual(
-      ['createdAt', 'date', 'feeMinor', 'id', 'name', 'patientId', 'payment', 'status', 'token'].sort(),
+      ['createdAt', 'updatedAt', 'date', 'feeMinor', 'id', 'name', 'patientId', 'payment', 'status', 'token'].sort(),
     );
+  });
+});
+
+describe('a removed row', () => {
+  it('is a tombstone, not a hole', async () => {
+    const row = entry({ token: 5 });
+    await db.saveQueueEntry(row);
+    await db.deleteQueueEntry(row.id);
+
+    // Still on disk -- that is the point. A hard delete looks exactly like
+    // "this row has not reached me yet", so the next stale sync re-adds it.
+    const stored = (await db.queueForDate('2026-08-22')).find((e) => e.id === row.id);
+    expect(stored).toBeDefined();
+    expect(isDeleted(stored!)).toBe(true);
+
+    // But nobody sees it, and it is not in the day's money.
+    expect(liveEntries([stored!])).toHaveLength(0);
+    expect(sortQueue([stored!])).toHaveLength(0);
+    expect(dayTotals([{ ...stored!, feeMinor: 150000, payment: 'paid' }], '2026-08-22')
+      .collectedMinor).toBe(0);
+  });
+
+  it('keeps its token, so the numbering after it does not shift', async () => {
+    const rows = [entry({ token: 1 }), touch(entry({ token: 2 }), 'other')];
+    const removed = { ...rows[1]!, deletedAt: '2026-08-22T09:10:00.000Z' };
+    expect(nextToken([rows[0]!, removed], '2026-08-22')).toBe(3);
+  });
+
+  it('is really gone once no device could still be holding the original', () => {
+    const old = { deletedAt: '2026-01-01T00:00:00.000Z' };
+    const recent = { deletedAt: new Date().toISOString() };
+    const now = Date.parse('2026-08-22T00:00:00.000Z');
+    expect(expiredTombstones([old, recent], now)).toBe(1);
+    expect(purgeTombstones([old, recent], 30, now)).toHaveLength(1);
+  });
+});
+
+/**
+ * The merge itself, without a server in the way. These are the cases that a
+ * live probe of the first implementation got wrong.
+ */
+describe('merging two stations', () => {
+  const at = (t: string) => `2026-08-22T${t}:00.000Z`;
+
+  it('resolves payment and status independently of who wrote last', () => {
+    const reception = {
+      id: 'q1', payment: 'paid', paymentAt: at('09:02'),
+      status: 'waiting', updatedAt: at('09:02'),
+    };
+    const doctor = {
+      id: 'q1', payment: 'unpaid',
+      status: 'done', statusAt: at('09:05'), updatedAt: at('09:05'),
+    };
+    const merged = mergeRow(reception, doctor, QUEUE_CONTESTED);
+    expect(merged.payment).toBe('paid');
+    expect(merged.status).toBe('done');
+    // Symmetric: which copy arrives first must not change the answer.
+    const other = mergeRow(doctor, reception, QUEUE_CONTESTED);
+    expect(other.payment).toBe('paid');
+    expect(other.status).toBe('done');
+  });
+
+  it('lets a later payment correct an earlier one', () => {
+    const wrong = { id: 'q1', payment: 'paid', paymentAt: at('09:02'), updatedAt: at('09:02') };
+    const fixed = { id: 'q1', payment: 'unpaid', paymentAt: at('09:20'), updatedAt: at('09:20') };
+    expect(mergeRow(wrong, fixed, QUEUE_CONTESTED).payment).toBe('unpaid');
+  });
+
+  it('lets a deletion beat an edit made without knowing about it', () => {
+    const deleted = { id: 'q1', name: 'X', deletedAt: at('10:01'), updatedAt: at('10:01') };
+    const stale = { id: 'q1', name: 'X', status: 'done', updatedAt: at('10:00') };
+    expect(mergeRow(stale, deleted, QUEUE_CONTESTED).deletedAt).toBe(at('10:01'));
+    expect(mergeRow(deleted, stale, QUEUE_CONTESTED).deletedAt).toBe(at('10:01'));
+  });
+
+  it('takes whichever side exists when the other has never seen the row', () => {
+    const row = { id: 'q1', updatedAt: at('09:00') };
+    expect(mergeRow(undefined, row, QUEUE_CONTESTED)).toBe(row);
+    expect(mergeRow(row, undefined, QUEUE_CONTESTED)).toBe(row);
+  });
+});
+
+describe('touch', () => {
+  it('stamps which contested field moved, and only that one', () => {
+    const base = entry();
+    const paid = touch(base, 'payment', '2026-08-22T09:02:00.000Z');
+    expect(paid.paymentAt).toBe('2026-08-22T09:02:00.000Z');
+    expect(paid.statusAt).toBeUndefined();
+    expect(paid.updatedAt).toBe('2026-08-22T09:02:00.000Z');
+
+    const seen = touch(base, 'status', '2026-08-22T09:05:00.000Z');
+    expect(seen.statusAt).toBe('2026-08-22T09:05:00.000Z');
+    expect(seen.paymentAt).toBeUndefined();
   });
 });

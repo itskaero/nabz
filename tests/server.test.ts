@@ -9,6 +9,9 @@
  *
  * Also asserts what a Railway deployment is: `serve` mode has no data endpoint
  * at all, so a hosted instance holds nothing.
+ *
+ * And it asserts the pairing code, which is what stopped this endpoint being
+ * readable by every phone on the clinic wifi.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -20,6 +23,15 @@ const PORT = 8791;
 const BASE = `http://127.0.0.1:${PORT}`;
 let child: ChildProcess;
 let dataDir: string;
+let code: string;
+
+/** POST the clinic layer as a properly paired device would. */
+const sync = (body: unknown, query = '') =>
+  fetch(`${BASE}/api/clinic${query}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-nabz-pairing': code },
+    body: JSON.stringify(body),
+  });
 
 const waitForServer = async () => {
   for (let i = 0; i < 60; i += 1) {
@@ -48,6 +60,7 @@ beforeAll(async () => {
     stdio: 'ignore',
   });
   await waitForServer();
+  code = JSON.parse(await readFile(join(dataDir, 'pairing.json'), 'utf8')).code;
 }, 30000);
 
 afterAll(async () => {
@@ -62,10 +75,7 @@ describe('clinic mode', () => {
   });
 
   it('round-trips patients and queue rows', async () => {
-    const res = await fetch(`${BASE}/api/clinic`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
+    const res = await sync({
         patients: [{ id: 'p1', name: 'Ayesha Khan', sex: 'F', createdAt: '2026-08-22T09:00:00Z' }],
         queue: [
           {
@@ -77,9 +87,9 @@ describe('clinic mode', () => {
             payment: 'unpaid',
             feeMinor: 150000,
             createdAt: '2026-08-22T09:00:00Z',
+            updatedAt: '2026-08-22T09:00:00Z',
           },
         ],
-      }),
     });
     const merged = await res.json();
     expect(merged.patients).toHaveLength(1);
@@ -87,10 +97,7 @@ describe('clinic mode', () => {
   });
 
   it('DROPS clinical content rather than storing it', async () => {
-    await fetch(`${BASE}/api/clinic`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
+    await sync({
         patients: [
           {
             id: 'p2',
@@ -110,11 +117,11 @@ describe('clinic mode', () => {
             status: 'waiting',
             payment: 'unpaid',
             createdAt: '2026-08-22T09:05:00Z',
+            updatedAt: '2026-08-22T09:05:00Z',
             problems: ['Fever'],
             advice: [{ kind: 3, text: 'rest' }],
           },
         ],
-      }),
     });
 
     const onDisk = JSON.parse(await readFile(join(dataDir, 'clinic.json'), 'utf8'));
@@ -133,7 +140,7 @@ describe('clinic mode', () => {
   it('rejects a payload that is not JSON', async () => {
     const res = await fetch(`${BASE}/api/clinic`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-nabz-pairing': code },
       body: 'not json',
     });
     expect(res.status).toBe(400);
@@ -144,6 +151,148 @@ describe('clinic mode', () => {
     // Either blocked outright, or normalised back into the SPA. Never the file.
     const text = await res.text();
     expect(text).not.toContain('"devDependencies"');
+  });
+});
+
+/**
+ * The four defects a live probe of the first sync implementation demonstrated.
+ * Each of these failed before the merge was written; they are here so the
+ * failures cannot come back quietly.
+ */
+describe('two stations disagreeing', () => {
+  it('will not hand the queue to a device that has not been paired', async () => {
+    const anonymous = await fetch(`${BASE}/api/clinic`);
+    expect(anonymous.status).toBe(401);
+
+    const guessed = await fetch(`${BASE}/api/clinic`, {
+      headers: { 'x-nabz-pairing': '000000' },
+    });
+    expect(guessed.status).toBe(401);
+
+    const paired = await fetch(`${BASE}/api/clinic`, {
+      headers: { 'x-nabz-pairing': code },
+    });
+    expect(paired.status).toBe(200);
+  });
+
+  it('keeps the payment AND the status when reception and the doctor collide', async () => {
+    // 09:00 reception queues Ayesha, unpaid.
+    const base = {
+      id: 'race1',
+      date: '2026-08-22',
+      token: 9,
+      name: 'Ayesha Khan',
+      status: 'waiting',
+      payment: 'unpaid',
+      feeMinor: 150000,
+      createdAt: '2026-08-22T09:00:00.000Z',
+      updatedAt: '2026-08-22T09:00:00.000Z',
+    };
+    await sync({ patients: [], queue: [base] });
+
+    // 09:02 reception takes the money.
+    await sync({
+      patients: [],
+      queue: [
+        {
+          ...base,
+          payment: 'paid',
+          paymentAt: '2026-08-22T09:02:00.000Z',
+          updatedAt: '2026-08-22T09:02:00.000Z',
+        },
+      ],
+    });
+
+    // 09:05 the doctor -- whose tablet synced BEFORE the payment, so still
+    // holds `unpaid` -- marks her done and syncs.
+    const after = await (
+      await sync({
+        patients: [],
+        queue: [
+          {
+            ...base,
+            status: 'done',
+            doneAt: '2026-08-22T09:05:00.000Z',
+            statusAt: '2026-08-22T09:05:00.000Z',
+            updatedAt: '2026-08-22T09:05:00.000Z',
+          },
+        ],
+      })
+    ).json();
+
+    const row = after.queue.find((q: { id: string }) => q.id === 'race1');
+    // Reception owns the money, the doctor owns the room, and the day's
+    // takings must not silently disagree with the cash drawer.
+    expect(row.payment).toBe('paid');
+    expect(row.status).toBe('done');
+    expect(row.feeMinor).toBe(150000);
+  });
+
+  it('keeps a removed row removed when a stale device syncs it back', async () => {
+    const base = {
+      id: 'ghost1',
+      date: '2026-08-22',
+      token: 10,
+      name: 'Added by mistake',
+      status: 'waiting',
+      payment: 'unpaid',
+      createdAt: '2026-08-22T10:00:00.000Z',
+      updatedAt: '2026-08-22T10:00:00.000Z',
+    };
+    await sync({ patients: [], queue: [base] });
+
+    // Reception removes it. A soft delete, because a hard one is
+    // indistinguishable from "this row has not reached me yet".
+    await sync({
+      patients: [],
+      queue: [
+        { ...base, deletedAt: '2026-08-22T10:01:00.000Z', updatedAt: '2026-08-22T10:01:00.000Z' },
+      ],
+    });
+
+    // The doctor's tablet still holds the live copy and syncs it.
+    const after = await (await sync({ patients: [], queue: [base] })).json();
+    const row = after.queue.find((q: { id: string }) => q.id === 'ghost1');
+    expect(row.deletedAt).toBe('2026-08-22T10:01:00.000Z');
+  });
+
+  it('sends only what changed since the caller last synced', async () => {
+    const cut = '2026-08-22T12:00:00.000Z';
+    await sync({
+      patients: [],
+      queue: [
+        {
+          id: 'old1',
+          date: '2026-08-22',
+          token: 20,
+          name: 'Seen this morning',
+          status: 'done',
+          payment: 'paid',
+          createdAt: '2026-08-22T08:00:00.000Z',
+          updatedAt: '2026-08-22T08:00:00.000Z',
+        },
+        {
+          id: 'new1',
+          date: '2026-08-22',
+          token: 21,
+          name: 'Just arrived',
+          status: 'waiting',
+          payment: 'unpaid',
+          createdAt: '2026-08-22T13:00:00.000Z',
+          updatedAt: '2026-08-22T13:00:00.000Z',
+        },
+      ],
+    });
+
+    const delta = await (
+      await sync({ patients: [], queue: [] }, `?since=${encodeURIComponent(cut)}`)
+    ).json();
+    const ids = delta.queue.map((q: { id: string }) => q.id);
+    expect(ids).toContain('new1');
+    expect(ids).not.toContain('old1');
+    // The watermark comes back from the station's clock, not the device's --
+    // a fast local clock would otherwise skip other people's edits.
+    expect(typeof delta.serverTime).toBe('string');
   });
 });
 

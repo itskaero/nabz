@@ -16,7 +16,11 @@ traces/
 
 # clinic-mode data (a clinic runs this on its own machine)
 .clinic-data/
+.clinic-probe/
 .env
+
+# incremental typecheck cache: a local build artifact, not a source file
+tsconfig.tsbuildinfo
 
 # Fetched assets, NOT committed on purpose.
 #

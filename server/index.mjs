@@ -32,6 +32,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { networkInterfaces } from 'node:os';
 import { spawn } from 'node:child_process';
+import { randomInt } from 'node:crypto';
+import { mergeCollection, purgeTombstones, changedSince, QUEUE_CONTESTED } from './merge.mjs';
 
 /**
  * Where this file lives -- when it lives anywhere.
@@ -124,10 +126,13 @@ const TYPES = {
  * dropped rather than persisted -- a whitelist, so a future client bug cannot
  * start posting prescriptions to a machine that promises not to hold them.
  */
-const PATIENT_FIELDS = ['id', 'name', 'dob', 'sex', 'phone', 'fileNo', 'createdAt', 'updatedAt'];
+const PATIENT_FIELDS = [
+  'id', 'name', 'dob', 'sex', 'phone', 'fileNo', 'createdAt', 'updatedAt', 'deletedAt',
+];
 const QUEUE_FIELDS = [
   'id', 'date', 'token', 'name', 'age', 'sex', 'patientId',
   'status', 'payment', 'feeMinor', 'createdAt', 'seenAt', 'doneAt', 'prescriptionId',
+  'updatedAt', 'paymentAt', 'statusAt', 'deletedAt',
 ];
 
 const pick = (obj, fields) => {
@@ -151,22 +156,31 @@ async function saveState(state) {
   await writeFile(join(DATA, 'clinic.json'), JSON.stringify(state), 'utf8');
 }
 
-/** Last write wins per id. Small clinic, one queue, no need for anything cleverer. */
-function mergeById(existing, incoming, fields) {
-  const byId = new Map(existing.map((r) => [r.id, r]));
-  for (const raw of incoming ?? []) {
-    if (!raw || typeof raw.id !== 'string') continue;
-    const clean = pick(raw, fields);
-    const prev = byId.get(clean.id);
-    if (!prev) byId.set(clean.id, clean);
-    else {
-      const a = prev.updatedAt ?? prev.doneAt ?? prev.seenAt ?? prev.createdAt ?? '';
-      const b = clean.updatedAt ?? clean.doneAt ?? clean.seenAt ?? clean.createdAt ?? '';
-      byId.set(clean.id, b >= a ? clean : prev);
+/**
+ * The pairing code.
+ *
+ * Not a password and not encryption -- the LAN traffic is plain HTTP and this
+ * does nothing about that. What it stops is the ordinary case: any phone on the
+ * clinic wifi being able to fetch the whole patient list by guessing a URL.
+ * Generated once, printed on startup, typed into each doctor's device the first
+ * time it connects.
+ */
+async function pairingCode() {
+  const file = join(DATA, 'pairing.json');
+  if (existsSync(file)) {
+    try {
+      return JSON.parse(await readFile(file, 'utf8')).code;
+    } catch {
+      /* regenerate below */
     }
   }
-  return [...byId.values()];
+  const code = String(randomInt(100000, 1000000));
+  await mkdir(DATA, { recursive: true });
+  await writeFile(file, JSON.stringify({ code, createdAt: new Date().toISOString() }), 'utf8');
+  return code;
 }
+
+let PAIRING = null;
 
 function send(res, status, body, type = 'application/json; charset=utf-8') {
   res.writeHead(status, {
@@ -238,22 +252,44 @@ const server = createServer(async (req, res) => {
         error: 'this server serves the app only and stores nothing',
       });
     }
+
+    // Nothing about the queue is readable without the code the station printed.
+    if (req.headers['x-nabz-pairing'] !== PAIRING) {
+      return send(res, 401, {
+        error: 'pair this device first — the code is shown on the clinic station',
+      });
+    }
+
+    // `since` makes a sync carry the day's changes rather than the whole
+    // history, which matters once a clinic has thousands of past visits.
+    const since = url.searchParams.get('since') ?? '';
+    const shape = (state) => ({
+      patients: changedSince(state.patients, since),
+      queue: changedSince(state.queue, since),
+      updatedAt: state.updatedAt,
+      serverTime: new Date().toISOString(),
+    });
+
     if (req.method === 'GET') {
-      return send(res, 200, await loadState());
+      return send(res, 200, shape(await loadState()));
     }
     if (req.method === 'POST') {
       try {
         const body = JSON.parse(await readBody(req));
         const state = await loadState();
+        const pickPatient = (r) => pick(r, PATIENT_FIELDS);
+        const pickQueue = (r) => pick(r, QUEUE_FIELDS);
         const next = {
           // Whitelisted on the way in. Anything clinical in the payload is
           // dropped here rather than written to disk.
-          patients: mergeById(state.patients, body.patients, PATIENT_FIELDS),
-          queue: mergeById(state.queue, body.queue, QUEUE_FIELDS),
+          patients: purgeTombstones(mergeCollection(state.patients, body.patients, pickPatient)),
+          queue: purgeTombstones(
+            mergeCollection(state.queue, body.queue, pickQueue, QUEUE_CONTESTED),
+          ),
           updatedAt: new Date().toISOString(),
         };
         await saveState(next);
-        return send(res, 200, next);
+        return send(res, 200, shape(next));
       } catch (err) {
         return send(res, 400, { error: err instanceof Error ? err.message : 'bad request' });
       }
@@ -277,15 +313,20 @@ if (MODE === 'clinic' && HOST === '0.0.0.0' && !ALLOW_PUBLIC && process.env.RAIL
   process.exit(1);
 }
 
-server.listen(PORT, HOST, () => {
+// Resolved with `.then` rather than top-level await: Node's single-executable
+// format needs a CommonJS entry, and CommonJS has no top-level await.
+const ready = MODE === 'clinic' ? pairingCode().then((code) => { PAIRING = code; }) : Promise.resolve();
+
+ready.then(() => server.listen(PORT, HOST, () => {
   if (PACKAGED) return announceStation();
   console.log(`nabz ${MODE} mode on http://${HOST}:${PORT}`);
   if (MODE === 'clinic') {
     console.log(`clinic layer (patients + queue only) stored in ${DATA}`);
+    console.log(`pairing code: ${PAIRING}`);
   } else {
     console.log('serving the app only - no patient data touches this process');
   }
-});
+}));
 
 /**
  * What the .exe prints when someone double-clicks it.
@@ -313,6 +354,8 @@ function announceStation() {
   console.log('  This machine holds the queue: names, ages, tokens, payment.');
   console.log('  It does NOT hold prescriptions, examinations or growth records');
   console.log("  - those stay on the doctor's own device.");
+  console.log('');
+  console.log('  Pairing code for a new device:  ' + PAIRING);
   console.log('');
   console.log('  Queue data: ' + DATA);
   console.log('  Close this window to stop.');

@@ -30,7 +30,6 @@ import { HistoryPanel } from './components/HistoryPanel.tsx';
 import { PatientPicker } from './components/PatientPicker.tsx';
 import { RoleGateLock } from './components/RoleGateLock.tsx';
 import { canAccess, hasPin } from '@domain/roles.ts';
-import { syncClinicLayer, detectSyncMode } from '@storage/clinicSync.ts';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
 const ClinicPanel = lazy(() =>
@@ -90,8 +89,6 @@ export function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [nagBackup, setNagBackup] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
-  const [shared, setShared] = useState(false);
-  const [syncNote, setSyncNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (fontsLoaded) return;
@@ -124,28 +121,6 @@ export function App() {
       setNagBackup(days > appDefaults.backupReminderDays);
     })();
   }, [view]);
-
-  // Does the origin we were served from offer a shared queue? A static host
-  // (Railway) says no, and the queue simply stays on this device.
-  useEffect(() => {
-    const ac = new AbortController();
-    void detectSyncMode(ac.signal).then((mode) => setShared(mode === 'clinic'));
-    return () => ac.abort();
-  }, []);
-
-  const doSync = useCallback(async () => {
-    setSyncNote('Syncing the queue…');
-    try {
-      const merged = await syncClinicLayer();
-      setSyncNote(
-        merged
-          ? `Queue synced · ${merged.queue.length} visits, ${merged.patients.length} patients`
-          : 'This server does not share a queue.',
-      );
-    } catch (err) {
-      setSyncNote(err instanceof Error ? err.message : 'Sync failed.');
-    }
-  }, []);
 
   const counts = useMemo(
     () => ({
@@ -208,41 +183,38 @@ export function App() {
           <small>on this device only</small>
         </div>
         <div className="spacer" />
-        {profile.clinic.enabled && (
+        <nav className="topbar-nav">
+          {profile.clinic.enabled && (
+            <button
+              className="icon-btn"
+              aria-pressed={view === 'clinic'}
+              onClick={() => setView(view === 'clinic' ? 'write' : 'clinic')}
+            >
+              Queue
+            </button>
+          )}
           <button
             className="icon-btn"
-            aria-pressed={view === 'clinic'}
-            onClick={() => setView(view === 'clinic' ? 'write' : 'clinic')}
+            aria-pressed={view === 'growth'}
+            onClick={() => setView(view === 'growth' ? 'write' : 'growth')}
           >
-            Queue
+            Growth
           </button>
-        )}
-        {shared && profile.clinic.enabled && (
-          <button className="icon-btn" onClick={doSync} title="Share the queue with the other station">
-            Sync
+          <button
+            className="icon-btn"
+            aria-pressed={view === 'history'}
+            onClick={() => setView(view === 'history' ? 'write' : 'history')}
+          >
+            History
           </button>
-        )}
-        <button
-          className="icon-btn"
-          aria-pressed={view === 'growth'}
-          onClick={() => setView(view === 'growth' ? 'write' : 'growth')}
-        >
-          Growth
-        </button>
-        <button
-          className="icon-btn"
-          aria-pressed={view === 'history'}
-          onClick={() => setView(view === 'history' ? 'write' : 'history')}
-        >
-          History
-        </button>
-        <button
-          className="icon-btn"
-          aria-pressed={view === 'settings'}
-          onClick={() => setView(view === 'settings' ? 'write' : 'settings')}
-        >
-          Settings
-        </button>
+          <button
+            className="icon-btn"
+            aria-pressed={view === 'settings'}
+            onClick={() => setView(view === 'settings' ? 'write' : 'settings')}
+          >
+            Settings
+          </button>
+        </nav>
       </header>
 
       {/* Persistent, above the working area, on every view (DESIGN.md 11). */}
@@ -296,17 +268,6 @@ export function App() {
         the doctor is told rather than left to notice that a chip went missing.
         See data/provider.ts.
       */}
-      {/*
-        Only the clinic layer crosses the wire: patients and queue rows. The
-        server whitelists the same fields independently, so a bug here cannot
-        write a prescription to a shared machine. See storage/clinicSync.ts.
-      */}
-      {syncNote && (
-        <div className="banner banner-backup" role="status">
-          <span>{syncNote}</span>
-          <button onClick={() => setSyncNote(null)}>Dismiss</button>
-        </div>
-      )}
 
       {contentRejected.length > 0 && (
         <div className="banner banner-backup" role="status">

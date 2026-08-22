@@ -17,6 +17,8 @@ import {
   importBackup,
 } from '@storage/backup.ts';
 import { LegacyGrowthResolver } from './LegacyGrowthResolver.tsx';
+import { ClinicPairing } from '../clinic/ClinicPairing.tsx';
+import { detectSyncMode } from '@storage/clinicSync.ts';
 import { parseFee } from '@domain/clinic.ts';
 import { applyPatch } from '@domain/patch.ts';
 import { hasPin, openGate, setPin } from '@domain/roles.ts';
@@ -40,6 +42,16 @@ const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
 ];
 
 export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) {
+  // Does the origin this app came from run a clinic station? A static host
+  // (Railway, or a file the doctor installed) says no, and there is nothing to
+  // pair with -- so the pairing box does not appear at all.
+  const [sharedOrigin, setSharedOrigin] = useState(false);
+  useEffect(() => {
+    const ac = new AbortController();
+    void detectSyncMode(ac.signal).then((mode) => setSharedOrigin(mode === 'clinic'));
+    return () => ac.abort();
+  }, []);
+
   const { profile, setProfile, pack, contentRejected } = useStore();
   const [passphrase, setPassphrase] = useState('');
   const [status, setStatus] = useState<string | null>(null);
@@ -327,6 +339,12 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
               />
             </div>
           </div>
+        )}
+        {profile.clinic.enabled && sharedOrigin && (
+          <>
+            <h3 style={{ marginTop: 18 }}>Pair with the clinic station</h3>
+            <ClinicPairing />
+          </>
         )}
       </section>
 

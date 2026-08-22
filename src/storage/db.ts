@@ -379,7 +379,24 @@ export async function getQueueEntry(id: string): Promise<QueueEntry | undefined>
   return (await db()).get('queue', id);
 }
 
+/**
+ * Soft delete. The row becomes a tombstone rather than vanishing.
+ *
+ * A hard delete does not survive syncing: the other station still holds the
+ * row, and its next sync simply re-adds it -- so a visit nobody made reappears
+ * in the queue. The tombstone is what tells the other side it was removed on
+ * purpose. `server/merge.mjs` purges them after 30 days.
+ */
 export async function deleteQueueEntry(id: string): Promise<void> {
+  const database = await db();
+  const row = await database.get('queue', id);
+  if (!row) return;
+  const at = new Date().toISOString();
+  await database.put('queue', { ...row, deletedAt: at, updatedAt: at });
+}
+
+/** For tests and local tidy-up. Bypasses the tombstone, so it does not sync. */
+export async function hardDeleteQueueEntry(id: string): Promise<void> {
   await (await db()).delete('queue', id);
 }
 

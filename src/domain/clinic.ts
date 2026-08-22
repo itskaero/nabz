@@ -51,6 +51,30 @@ export interface QueueEntry {
   doneAt?: string;
   /** set once a script has been written for this visit */
   prescriptionId?: string;
+
+  // --- fields that exist so two stations can disagree safely ---------------
+
+  /** any change at all. Drives which copy of a row is the base when merging. */
+  updatedAt: string;
+  /**
+   * When `payment` or `feeMinor` last changed. Reception owns money.
+   *
+   * A row-level last-write-wins loses real data here: reception marks a visit
+   * PAID at 09:00, the doctor -- whose tablet synced before that -- marks it
+   * DONE at 09:05, and the doctor's sync overwrites the payment with the stale
+   * `unpaid` it still holds. The day's takings then quietly disagree with the
+   * cash drawer. Timestamping the two contested fields separately is what lets
+   * a merge keep both edits.
+   */
+  paymentAt?: string;
+  /** When `status` last changed. The doctor owns the room. */
+  statusAt?: string;
+  /**
+   * Soft delete. A row removed at reception must STAY removed -- without a
+   * tombstone the doctor's stale copy simply re-adds it on the next sync, and
+   * a visit nobody made reappears in the queue.
+   */
+  deletedAt?: string;
 }
 
 export interface ClinicSettings {
@@ -65,8 +89,37 @@ export const defaultClinicSettings: ClinicSettings = {
   currency: 'PKR',
 };
 
+/** How long a deleted row is kept as a tombstone before it is really gone. */
+export const TOMBSTONE_DAYS = 30;
+
+/** Stamp a change. Pass which contested field moved so a merge can tell. */
+export function touch(
+  entry: QueueEntry,
+  changed: 'payment' | 'status' | 'other' = 'other',
+  at = new Date().toISOString(),
+): QueueEntry {
+  const next: QueueEntry = { ...entry, updatedAt: at };
+  if (changed === 'payment') next.paymentAt = at;
+  if (changed === 'status') next.statusAt = at;
+  return next;
+}
+
+export function isDeleted(entry: { deletedAt?: string }): boolean {
+  return typeof entry.deletedAt === 'string' && entry.deletedAt !== '';
+}
+
+/** Tombstones old enough that nobody's stale copy could still resurrect them. */
+export function expiredTombstones(
+  rows: Array<{ deletedAt?: string }>,
+  now = Date.now(),
+): number {
+  const cutoff = now - TOMBSTONE_DAYS * 86400000;
+  return rows.filter((r) => isDeleted(r) && Date.parse(r.deletedAt!) < cutoff).length;
+}
+
 /** Tokens restart each day, because that is what a paper token book does. */
 export function nextToken(entries: QueueEntry[], date: string): number {
+  // Deleted rows still hold their token, so numbers never get reused mid-day.
   const today = entries.filter((e) => e.date === date);
   return today.reduce((max, e) => Math.max(max, e.token), 0) + 1;
 }
@@ -79,9 +132,14 @@ export function nextStatus(status: QueueStatus): QueueStatus {
   return QUEUE_ORDER[Math.min(at + 1, QUEUE_ORDER.length - 1)]!;
 }
 
+/** Rows a human should see: tombstones are storage, not queue entries. */
+export function liveEntries(entries: QueueEntry[]): QueueEntry[] {
+  return entries.filter((e) => !isDeleted(e));
+}
+
 export function sortQueue(entries: QueueEntry[]): QueueEntry[] {
   const rank: Record<QueueStatus, number> = { 'with-doctor': 0, waiting: 1, done: 2 };
-  return [...entries].sort(
+  return liveEntries(entries).sort(
     (a, b) => rank[a.status] - rank[b.status] || a.token - b.token,
   );
 }
@@ -104,7 +162,7 @@ export interface DayTotals {
  * figure that gets believed.
  */
 export function dayTotals(entries: QueueEntry[], date: string): DayTotals {
-  const today = entries.filter((e) => e.date === date);
+  const today = liveEntries(entries).filter((e) => e.date === date);
   let collectedMinor = 0;
   let outstandingMinor = 0;
   let waived = 0;

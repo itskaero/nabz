@@ -25,6 +25,67 @@ export interface ClinicSyncState {
   patients: PatientRecord[];
   queue: QueueEntry[];
   updatedAt: string | null;
+  /** the station's clock, so the next sync can ask for changes since then */
+  serverTime?: string;
+}
+
+/**
+ * The pairing code and the sync watermark.
+ *
+ * localStorage rather than IndexedDB on purpose: these are per-DEVICE facts,
+ * not clinical records, and they must survive without being caught up in the
+ * encrypted backup that carries patient data.
+ */
+const PAIRING_KEY = 'nabz.pairing';
+const SINCE_KEY = 'nabz.lastSync';
+
+export function pairedCode(): string | null {
+  try {
+    return localStorage.getItem(PAIRING_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setPairedCode(code: string): void {
+  try {
+    localStorage.setItem(PAIRING_KEY, code.trim());
+  } catch {
+    /* private mode: the device simply will not stay paired */
+  }
+}
+
+export function forgetPairing(): void {
+  try {
+    localStorage.removeItem(PAIRING_KEY);
+    localStorage.removeItem(SINCE_KEY);
+  } catch {
+    /* nothing to forget */
+  }
+}
+
+function lastSync(): string {
+  try {
+    return localStorage.getItem(SINCE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function rememberSync(at: string | undefined): void {
+  if (!at) return;
+  try {
+    localStorage.setItem(SINCE_KEY, at);
+  } catch {
+    /* falls back to a full sync next time, which is correct if slower */
+  }
+}
+
+export class PairingRequired extends Error {
+  constructor() {
+    super('This device is not paired with the clinic station yet.');
+    this.name = 'PairingRequired';
+  }
 }
 
 export type SyncMode = 'serve' | 'clinic';
@@ -48,13 +109,21 @@ export async function detectSyncMode(signal?: AbortSignal): Promise<SyncMode> {
   }
 }
 
-/** Everything in the clinic layer on this device, and nothing else. */
-export async function localClinicState(): Promise<ClinicSyncState> {
+/**
+ * What this device has changed since `since`, and nothing else.
+ *
+ * Sending the whole history every time is fine at twenty patients and wasteful
+ * at five thousand, so a sync carries the day's edits rather than the archive.
+ * An empty `since` means a first sync and sends everything, which is correct.
+ */
+export async function localClinicState(since = ''): Promise<ClinicSyncState> {
   const [patients, dates] = await Promise.all([db.allPatients(), db.queueDates()]);
   const queues = await Promise.all(dates.map((d) => db.queueForDate(d)));
+  const changed = <T extends { updatedAt?: string; createdAt?: string }>(rows: T[]) =>
+    since ? rows.filter((r) => (r.updatedAt ?? r.createdAt ?? '') > since) : rows;
   return {
-    patients,
-    queue: queues.flat(),
+    patients: changed(patients),
+    queue: changed(queues.flat()),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -70,16 +139,27 @@ export async function syncClinicLayer(): Promise<ClinicSyncState | null> {
   const mode = await detectSyncMode();
   if (mode !== 'clinic') return null;
 
-  const local = await localClinicState();
-  const res = await fetch('/api/clinic', {
+  const code = pairedCode();
+  if (!code) throw new PairingRequired();
+
+  const since = lastSync();
+  const local = await localClinicState(since);
+  const res = await fetch(`/api/clinic?since=${encodeURIComponent(since)}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-nabz-pairing': code },
     body: JSON.stringify({ patients: local.patients, queue: local.queue }),
   });
+  if (res.status === 401) {
+    forgetPairing();
+    throw new PairingRequired();
+  }
   if (!res.ok) throw new Error(`sync failed: ${res.status}`);
   const merged = (await res.json()) as ClinicSyncState;
 
   for (const patient of merged.patients) await db.savePatient(patient);
   for (const entry of merged.queue) await db.saveQueueEntry(entry);
+  // Watermark from the STATION's clock, not this device's -- two machines'
+  // clocks disagree, and a fast local clock would skip other people's edits.
+  rememberSync(merged.serverTime);
   return merged;
 }

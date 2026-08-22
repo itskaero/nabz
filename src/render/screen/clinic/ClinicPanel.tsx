@@ -22,7 +22,15 @@ import {
   nextToken,
   parseFee,
   sortQueue,
+  touch,
 } from '@domain/clinic.ts';
+import {
+  detectSyncMode,
+  PairingRequired,
+  pairedCode,
+  syncClinicLayer,
+} from '@storage/clinicSync.ts';
+import { ClinicPairing } from './ClinicPairing.tsx';
 import type { Sex } from '@domain/prescription.ts';
 import * as db from '@storage/db.ts';
 import { newId, useStore } from '../store.tsx';
@@ -35,6 +43,18 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
   const [date] = useState(today);
   const [entries, setEntries] = useState<QueueEntry[]>([]);
   const [confirming, setConfirming] = useState<QueueEntry | null>(null);
+  const [removing, setRemoving] = useState<QueueEntry | null>(null);
+
+  /*
+    Everything about sharing lives on THIS screen, because the queue is the only
+    thing that is ever shared. Keeping a Sync button in the app's header made it
+    look like the prescriptions might be going somewhere too -- and it pushed the
+    header past the width of a phone, which is how the mis-tap risk gets worse.
+  */
+  const [sharedOrigin, setSharedOrigin] = useState(false);
+  const [paired, setPaired] = useState(() => pairedCode());
+  const [syncNote, setSyncNote] = useState<string | null>(null);
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -46,11 +66,70 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
   }, [date]);
   useEffect(refresh, [refresh]);
 
+  useEffect(() => {
+    const ac = new AbortController();
+    void detectSyncMode(ac.signal).then((mode) => setSharedOrigin(mode === 'clinic'));
+    return () => ac.abort();
+  }, []);
+
+  const sync = useCallback(
+    async (loud: boolean) => {
+      try {
+        const merged = await syncClinicLayer();
+        if (!merged) return false;
+        setSyncedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        if (loud) {
+          setSyncNote(
+            `Queue synced - ${merged.queue.length} changed visits, ` +
+              `${merged.patients.length} patients`,
+          );
+        }
+        return true;
+      } catch (err) {
+        // Not being paired yet is a step that has not happened, not a failure,
+        // so the pairing box appears instead of an error.
+        if (err instanceof PairingRequired) {
+          setPaired(null);
+          return false;
+        }
+        // A station that is off is an ordinary state in a clinic. Say so only
+        // when someone actually asked for a sync.
+        if (loud) setSyncNote(err instanceof Error ? err.message : 'Sync failed.');
+        return false;
+      }
+    },
+    [],
+  );
+
+  /**
+   * Keep the queue live while it is on screen.
+   *
+   * A queue the doctor has to remember to refresh is a queue that is wrong. Ten
+   * seconds is frequent enough that a patient added at reception appears before
+   * anyone notices the gap, and light enough that a sync now carries only what
+   * changed. Stops when the view is closed or the tab is hidden.
+   */
+  useEffect(() => {
+    if (!sharedOrigin || !paired) return;
+    let stop = false;
+    const tick = async () => {
+      if (stop || document.hidden) return;
+      if (await sync(false)) refresh();
+    };
+    void tick();
+    const timer = setInterval(tick, 10000);
+    return () => {
+      stop = true;
+      clearInterval(timer);
+    };
+  }, [refresh, sync, sharedOrigin, paired]);
+
   const totals = useMemo(() => dayTotals(entries, date), [entries, date]);
   const ordered = useMemo(() => sortQueue(entries), [entries]);
 
   const add = async () => {
     if (!name.trim()) return;
+    const now = new Date().toISOString();
     const entry: QueueEntry = {
       id: newId(),
       date,
@@ -63,7 +142,8 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
       ...(parseFee(fee || String((clinic.defaultFeeMinor ?? 0) / 100)) !== undefined
         ? { feeMinor: parseFee(fee) ?? clinic.defaultFeeMinor }
         : {}),
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
     await db.saveQueueEntry(entry);
     setName('');
@@ -73,8 +153,24 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
     refresh();
   };
 
-  const update = async (entry: QueueEntry, patch: Partial<QueueEntry>) => {
-    await db.saveQueueEntry({ ...entry, ...patch });
+  /**
+   * Every write stamps WHICH contested field moved. Reception owns payment, the
+   * doctor owns status, and the merge resolves those two independently -- so a
+   * doctor marking a visit done can no longer overwrite a payment they had not
+   * yet seen. See server/merge.mjs.
+   */
+  const update = async (
+    entry: QueueEntry,
+    patch: Partial<QueueEntry>,
+    changed: 'payment' | 'status' | 'other' = 'other',
+  ) => {
+    await db.saveQueueEntry(touch({ ...entry, ...patch }, changed));
+    refresh();
+  };
+
+  const remove = async (entry: QueueEntry) => {
+    await db.deleteQueueEntry(entry.id);
+    setRemoving(null);
     refresh();
   };
 
@@ -92,7 +188,7 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
       const record = await db.getPatient(entry.patientId);
       if (record) identifyPatient(record);
     }
-    await update(entry, { status: 'with-doctor', seenAt: new Date().toISOString() });
+    await update(entry, { status: 'with-doctor', seenAt: new Date().toISOString() }, 'status');
     setConfirming(null);
     onOpenScript();
   };
@@ -101,6 +197,18 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
 
   return (
     <div className="body">
+      {sharedOrigin && !paired && (
+        <section className="card">
+          <h2>Pair with the clinic station</h2>
+          <ClinicPairing
+            onPaired={() => {
+              setPaired(pairedCode());
+              void sync(true).then((ok) => ok && refresh());
+            }}
+          />
+        </section>
+      )}
+
       <section className="card">
         <h2>Add to the queue</h2>
         <div className="queue-add">
@@ -165,6 +273,26 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
           A running total for the day, not a financial record — no receipts, no
           invoices, nothing to file.
         </p>
+        {sharedOrigin && paired && (
+          <div className="sync-line">
+            <span className="hint" style={{ margin: 0 }}>
+              {syncedAt
+                ? `Shared with the station · last checked ${syncedAt}`
+                : 'Sharing the queue with the station…'}
+            </span>
+            <button className="btn quiet" onClick={() => void sync(true).then(refresh)}>
+              Sync now
+            </button>
+          </div>
+        )}
+        {syncNote && (
+          <p className="hint" role="status">
+            {syncNote}{' '}
+            <button className="linky" onClick={() => setSyncNote(null)}>
+              dismiss
+            </button>
+          </p>
+        )}
       </section>
 
       <div className="rows">
@@ -186,7 +314,9 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
               className="pay-select"
               aria-label={`Payment for ${entry.name}`}
               value={entry.payment}
-              onChange={(e) => update(entry, { payment: e.target.value as PaymentStatus })}
+              onChange={(e) =>
+                update(entry, { payment: e.target.value as PaymentStatus }, 'payment')
+              }
             >
               <option value="unpaid">unpaid</option>
               <option value="paid">paid</option>
@@ -196,12 +326,16 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
             <button
               className="btn quiet"
               onClick={() =>
-                update(entry, {
-                  status: nextStatus(entry.status),
-                  ...(nextStatus(entry.status) === 'done'
-                    ? { doneAt: new Date().toISOString() }
-                    : {}),
-                })
+                update(
+                  entry,
+                  {
+                    status: nextStatus(entry.status),
+                    ...(nextStatus(entry.status) === 'done'
+                      ? { doneAt: new Date().toISOString() }
+                      : {}),
+                  },
+                  'status',
+                )
               }
             >
               {entry.status === 'waiting'
@@ -214,6 +348,23 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
             <button className="btn ghost" onClick={() => setConfirming(entry)}>
               Open script
             </button>
+
+            {/*
+              Removing a row is a soft delete: the other station has to LEARN
+              about it, and a hard delete is indistinguishable from "this row
+              has not reached me yet", so the next stale sync would put it back.
+              Only rows nobody has been seen for can be removed -- once a
+              consultation has started, the day's record stands.
+            */}
+            {entry.status === 'waiting' && (
+              <button
+                className="btn quiet"
+                aria-label={`Remove ${entry.name} from the queue`}
+                onClick={() => setRemoving(entry)}
+              >
+                Remove
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -254,6 +405,33 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
               </button>
               <button className="btn" onClick={() => openScript(confirming)}>
                 Yes, open the script
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {removing && (
+        <div className="scrim" role="dialog" aria-modal="true">
+          <div className="sheet-modal">
+            <h3>Remove token {removing.token} from the queue?</h3>
+            <p className="hint">
+              {removing.name} disappears from today's list and from the day's
+              total. Token numbers are not reused, so the numbering after this
+              one does not shift.
+            </p>
+            <div className="actionbar" style={{ padding: 0, borderTop: 'none' }}>
+              <button className="btn quiet" onClick={() => setRemoving(null)}>
+                Keep them
+              </button>
+              {/*
+                The red lives HERE and nowhere else. A red Remove on every
+                waiting row would put fifteen red things on a busy morning's
+                screen, and DESIGN.md 3 spends red on danger precisely so that
+                it still means something when it appears.
+              */}
+              <button className="btn quiet danger" onClick={() => remove(removing)}>
+                Remove
               </button>
             </div>
           </div>

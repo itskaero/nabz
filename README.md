@@ -45,6 +45,31 @@ The server whitelists those fields independently of the client, so a client bug
 cannot write a prescription onto a shared machine. `tests/server.test.ts` posts
 clinical content at a live server and asserts the disk never sees it.
 
+### Two stations disagreeing
+
+The station prints a **six-digit pairing code** on startup; a doctor's device
+types it once, in the queue view. Without it the endpoint answers 401, so a
+phone on the clinic wifi cannot fetch the patient list by guessing a URL. It is
+not encryption -- the LAN traffic is plain HTTP -- and it is not meant to be.
+
+Rows carry `updatedAt`, plus separate stamps for the two fields two people
+genuinely edit at once: **reception owns the money, the doctor owns the room.**
+Merging those independently is what stops this, which a live probe of the first
+implementation reproduced every time:
+
+```
+09:00  reception queues Ayesha and takes payment   -> paid
+09:05  doctor (synced before that) marks her done
+09:06  doctor syncs  -> payment silently reverts to unpaid
+```
+
+Deletions are tombstones for 30 days, because a hard delete is indistinguishable
+from "that row has not reached me yet" and the next stale sync simply re-adds a
+visit nobody made. Syncs are incremental (`?since=`) and the queue view polls
+every ten seconds while it is open, so a patient added at reception appears on
+the doctor's tablet without anyone pressing anything. The four scenarios are in
+`tests/server.test.ts` under *two stations disagreeing*.
+
 ### The clinic station (.exe)
 
 ```bash
