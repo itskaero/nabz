@@ -1,0 +1,33 @@
+node_modules/
+dist/
+dev-dist/
+*.local
+.DS_Store
+.vite/
+artifacts/
+
+# Playwright MCP writes screenshots and traces into the cwd
+*.png
+!public/*.png
+traces/
+
+# Playwright MCP session output
+.playwright-mcp/
+
+# clinic-mode data (a clinic runs this on its own machine)
+.clinic-data/
+.env
+
+# Fetched assets, NOT committed on purpose.
+#
+# The growth tables come from WHO's and CDC's published LMS files and the fonts
+# are OFL binaries from Google Fonts. Both are pulled by `npm run assets` so
+# every value in the app is traceable to its publisher rather than to a copy
+# someone pasted into a repo years ago. Committing them would quietly break that.
+public/fonts/*.ttf
+public/fonts/MANIFEST.json
+public/fonts/OFL.txt
+src/data/growth/tables/
+
+# scratch
+.probe/

@@ -1,0 +1,14 @@
+# Railway needs the growth tables and the fonts fetched before the build, since
+# neither is committed -- they come from WHO/CDC and Google Fonts at build time
+# so every value stays traceable to its publisher rather than to a copy in git.
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build:deploy"]
+
+[start]
+cmd = "npm start"

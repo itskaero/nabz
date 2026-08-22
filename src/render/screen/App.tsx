@@ -1,0 +1,545 @@
+/**
+ * The shell (DESIGN.md 11): top bar, allergy banner, section tabs tagged with
+ * the language each one prints in, scrolling body, bottom action bar.
+ *
+ * The language tags on the tabs are not decoration. They are the whole product
+ * model made visible: this is not a "bilingual app", it is an app where each
+ * section speaks to whoever reads it (PRODUCT.md 6). A doctor who can see that
+ * Medications is EN·UR and Advice is UR·EN understands the document before
+ * printing it.
+ */
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { languageFor } from '@config/doctorProfile.ts';
+import type { SectionId } from '@config/appDefaults.ts';
+import { appDefaults } from '@config/appDefaults.ts';
+import { isBlank } from '@domain/prescription.ts';
+import { findingCount } from '@domain/exam.ts';
+import { buildDocument } from '@render/pdf/layout.ts';
+import { renderPdfBlob, sharePrescription } from '@render/pdf/renderPdf.ts';
+import { loadFonts, fontsReady } from '@render/text/engine.ts';
+import * as db from '@storage/db.ts';
+import { useStore } from './store.tsx';
+import { ListSection } from './sections/ListSection.tsx';
+import { ExamSection } from './sections/ExamSection.tsx';
+import { MedicationsSection } from './sections/MedicationsSection.tsx';
+import { AdviceSection } from './sections/AdviceSection.tsx';
+import { PreviewSheet } from './components/PreviewSheet.tsx';
+import { GrowthPanel } from './components/GrowthPanel.tsx';
+import { SettingsPanel } from './components/SettingsPanel.tsx';
+import { HistoryPanel } from './components/HistoryPanel.tsx';
+import { PatientPicker } from './components/PatientPicker.tsx';
+import { RoleGateLock } from './components/RoleGateLock.tsx';
+import { canAccess, hasPin } from '@domain/roles.ts';
+import { syncClinicLayer, detectSyncMode } from '@storage/clinicSync.ts';
+
+/** Lazy: an authoring/ops surface should not weigh on opening a script. */
+const ClinicPanel = lazy(() =>
+  import('./clinic/ClinicPanel.tsx').then((m) => ({ default: m.ClinicPanel })),
+);
+
+/**
+ * The pack builder is lazy. It is an authoring tool used occasionally by one
+ * person; the clinical app is used all day by someone in a hurry, and should
+ * not carry the editor's weight to open a script.
+ */
+const PackBuilder = lazy(() =>
+  import('./builder/PackBuilder.tsx').then((m) => ({ default: m.PackBuilder })),
+);
+
+type View = 'write' | 'preview' | 'history' | 'settings' | 'growth' | 'builder' | 'clinic';
+
+const TAB_ORDER: SectionId[] = [
+  'problems',
+  'examination',
+  'diagnosis',
+  'medications',
+  'advice',
+];
+
+const TAB_LABEL: Record<SectionId, string> = {
+  problems: 'Problems',
+  examination: 'Exam',
+  diagnosis: 'Diagnosis',
+  medications: 'Medicines',
+  advice: 'Advice',
+};
+
+const SHORT: Record<string, string> = { en: 'EN', 'ur-PK': 'UR' };
+
+/**
+ * Whether this device can hand a file to another app. Decides the button's
+ * wording only -- the action falls back to a download either way.
+ */
+function canShareFiles(): boolean {
+  const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean };
+  if (typeof nav.share !== 'function' || typeof nav.canShare !== 'function') return false;
+  try {
+    return nav.canShare({ files: [new File([''], 'x.pdf', { type: 'application/pdf' })] });
+  } catch {
+    return false;
+  }
+}
+
+export function App() {
+  const store = useStore();
+  const { rx, profile, pack, phrases, contentRejected, dirty, save, startNew } = store;
+  const [view, setView] = useState<View>('write');
+  const [tab, setTab] = useState<SectionId>('problems');
+  const [fontsLoaded, setFontsLoaded] = useState(fontsReady());
+  const [fontError, setFontError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [nagBackup, setNagBackup] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+  const [shared, setShared] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (fontsLoaded) return;
+    void loadFonts(async (file) => {
+      const res = await fetch(`/fonts/${file}`);
+      if (!res.ok) throw new Error(`could not load /fonts/${file} (${res.status})`);
+      return res.arrayBuffer();
+    })
+      .then(() => {
+        setFontsLoaded(true);
+        setFontError(null);
+      })
+      .catch((err: unknown) => {
+        // Say what went wrong. Writing the script still works; only the
+        // preview and the PDF need the shaper, and a doctor is owed the reason
+        // rather than a button that quietly stays greyed out.
+        setFontsLoaded(false);
+        setFontError(err instanceof Error ? err.message : String(err));
+      });
+  }, [fontsLoaded]);
+
+  // The backup nag is deliberately repeated rather than dismissed forever.
+  useEffect(() => {
+    void (async () => {
+      const [last, count] = await Promise.all([db.lastBackupAt(), db.prescriptionCount()]);
+      if (count === 0) return;
+      const days = last
+        ? (Date.now() - Date.parse(last)) / 86400000
+        : Number.POSITIVE_INFINITY;
+      setNagBackup(days > appDefaults.backupReminderDays);
+    })();
+  }, [view]);
+
+  // Does the origin we were served from offer a shared queue? A static host
+  // (Railway) says no, and the queue simply stays on this device.
+  useEffect(() => {
+    const ac = new AbortController();
+    void detectSyncMode(ac.signal).then((mode) => setShared(mode === 'clinic'));
+    return () => ac.abort();
+  }, []);
+
+  const doSync = useCallback(async () => {
+    setSyncNote('Syncing the queue…');
+    try {
+      const merged = await syncClinicLayer();
+      setSyncNote(
+        merged
+          ? `Queue synced · ${merged.queue.length} visits, ${merged.patients.length} patients`
+          : 'This server does not share a queue.',
+      );
+    } catch (err) {
+      setSyncNote(err instanceof Error ? err.message : 'Sync failed.');
+    }
+  }, []);
+
+  const counts = useMemo(
+    () => ({
+      problems: rx.problems.length,
+      examination: rx.examination.reduce((n, s) => n + findingCount(s), 0),
+      diagnosis: rx.diagnosis.length,
+      medications: rx.medications.length,
+      advice: rx.advice.length,
+    }),
+    [rx],
+  );
+
+  /**
+   * A PIN set on a shared machine hides the clinical side until someone unlocks
+   * it. The queue and payments stay reachable, because that is the receptionist's
+   * job and they should not need the doctor to do it.
+   */
+  const locked =
+    hasPin(profile.roleGate) && !unlocked && !canAccess('receptionist', view);
+
+  const model = useMemo(() => {
+    if (view !== 'preview' || !fontsLoaded) return null;
+    return buildDocument({ rx, profile, pack, packs: phrases, defaults: appDefaults });
+  }, [view, fontsLoaded, rx, profile, pack, phrases]);
+
+  const doSave = useCallback(async () => {
+    setBusy('Saving…');
+    try {
+      await save();
+    } finally {
+      setBusy(null);
+    }
+  }, [save]);
+
+  const deliverPdf = useCallback(async () => {
+    if (!model) return;
+    setBusy('Building PDF…');
+    try {
+      const blob = await renderPdfBlob(model);
+      // Share sheet where the device has one -- that is how a script reaches a
+      // parent's WhatsApp without us ever touching WhatsApp. Download otherwise.
+      const how = await sharePrescription(model, blob);
+      if (how === 'downloaded') setBusy(null);
+    } finally {
+      setBusy(null);
+    }
+  }, [model]);
+
+  return (
+    /*
+      The doctor's surface is mobile-first at ~390px (DESIGN.md 11). The
+      reception station is a desk scanning twenty rows, so the clinic view is
+      allowed the width -- the constraint was never about taste, it was about
+      one-handed use that does not apply here.
+    */
+    <div className="app" data-wide={view === 'clinic' || view === 'builder'}>
+      <header className="topbar">
+        <div className="brand">
+          Nabz
+          <small>on this device only</small>
+        </div>
+        <div className="spacer" />
+        {profile.clinic.enabled && (
+          <button
+            className="icon-btn"
+            aria-pressed={view === 'clinic'}
+            onClick={() => setView(view === 'clinic' ? 'write' : 'clinic')}
+          >
+            Queue
+          </button>
+        )}
+        {shared && profile.clinic.enabled && (
+          <button className="icon-btn" onClick={doSync} title="Share the queue with the other station">
+            Sync
+          </button>
+        )}
+        <button
+          className="icon-btn"
+          aria-pressed={view === 'growth'}
+          onClick={() => setView(view === 'growth' ? 'write' : 'growth')}
+        >
+          Growth
+        </button>
+        <button
+          className="icon-btn"
+          aria-pressed={view === 'history'}
+          onClick={() => setView(view === 'history' ? 'write' : 'history')}
+        >
+          History
+        </button>
+        <button
+          className="icon-btn"
+          aria-pressed={view === 'settings'}
+          onClick={() => setView(view === 'settings' ? 'write' : 'settings')}
+        >
+          Settings
+        </button>
+      </header>
+
+      {/* Persistent, above the working area, on every view (DESIGN.md 11). */}
+      {rx.patient.allergies?.trim() && (
+        <div className="banner banner-allergy" role="alert">
+          <span>ALLERGY — {rx.patient.allergies}</span>
+        </div>
+      )}
+
+      {nagBackup && (
+        <div className="banner banner-backup">
+          <span>
+            Records live only on this device. It has been a while since your last
+            backup.
+          </span>
+          <button onClick={() => setView('settings')}>Export now</button>
+        </div>
+      )}
+
+      {!fontsLoaded && !fontError && (
+        <div className="banner banner-backup">
+          <span>Loading the Urdu typeface… the preview needs it to be exact.</span>
+        </div>
+      )}
+
+      {/*
+        Amber, not red, and role="status", not "alert". Red is danger only
+        (DESIGN.md 3) and the allergy banner owns it; a typesetting failure is
+        serious but it is not a clinical hazard, and there must be exactly one
+        thing on this screen that shouts.
+      */}
+      {fontError && (
+        <div className="banner banner-backup" role="status">
+          <span>
+            The typesetting engine did not load, so preview and print are
+            unavailable. You can still write and save this script. ({fontError})
+          </span>
+          <button
+            onClick={() => {
+              setFontError(null);
+              setFontsLoaded(false);
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/*
+        An edited pack that fails validation is IGNORED, not patched up, and
+        the doctor is told rather than left to notice that a chip went missing.
+        See data/provider.ts.
+      */}
+      {/*
+        Only the clinic layer crosses the wire: patients and queue rows. The
+        server whitelists the same fields independently, so a bug here cannot
+        write a prescription to a shared machine. See storage/clinicSync.ts.
+      */}
+      {syncNote && (
+        <div className="banner banner-backup" role="status">
+          <span>{syncNote}</span>
+          <button onClick={() => setSyncNote(null)}>Dismiss</button>
+        </div>
+      )}
+
+      {contentRejected.length > 0 && (
+        <div className="banner banner-backup" role="status">
+          <span>
+            Your edited content did not load and the built-in packs are being
+            used instead: {contentRejected[0]}
+            {contentRejected.length > 1 ? ` (+${contentRejected.length - 1} more)` : ''}
+          </span>
+          <button onClick={() => setView('builder')}>Open builder</button>
+        </div>
+      )}
+
+      {locked && (
+        <RoleGateLock
+          onUnlock={() => {
+            setUnlocked(true);
+          }}
+        />
+      )}
+
+      {!locked && view === 'write' && (
+        <>
+          <PatientBar />
+          <nav className="tabs" role="tablist">
+            {TAB_ORDER.map((id) => {
+              const lang = languageFor(profile, id);
+              const tag = lang.secondary
+                ? `${SHORT[lang.primary]}·${SHORT[lang.secondary]}`
+                : SHORT[lang.primary];
+              return (
+                <button
+                  key={id}
+                  role="tab"
+                  className="tab"
+                  aria-selected={tab === id}
+                  onClick={() => setTab(id)}
+                >
+                  <strong>
+                    {TAB_LABEL[id]}
+                    {counts[id] > 0 && <span className="badge">{counts[id]}</span>}
+                  </strong>
+                  <span>{tag}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="body">
+            {tab === 'problems' && (
+              <ListSection
+                field="problems"
+                title="Presenting complaints"
+                placeholder="e.g. Fever for 3 days"
+                note="Free text. Suggestions come from what you have written before."
+              />
+            )}
+            {tab === 'examination' && <ExamSection />}
+            {tab === 'diagnosis' && (
+              <ListSection
+                field="diagnosis"
+                title="Diagnosis"
+                placeholder="e.g. Community-acquired pneumonia"
+                strong
+                note="Free text on purpose — diagnosis is judgement, not a list to pick from."
+              />
+            )}
+            {tab === 'medications' && <MedicationsSection />}
+            {tab === 'advice' && <AdviceSection />}
+          </div>
+        </>
+      )}
+
+      {!locked && view === 'preview' && (
+        <>
+          {model ? (
+            <PreviewSheet model={model} />
+          ) : (
+            <div className="body">
+              <p className="empty">Preparing the document…</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {!locked && view === 'builder' && (
+        <Suspense
+          fallback={
+            <div className="body">
+              <p className="empty">Opening the pack builder…</p>
+            </div>
+          }
+        >
+          <PackBuilder onDone={() => setView('write')} />
+        </Suspense>
+      )}
+
+      {view === 'clinic' && (
+        <Suspense
+          fallback={
+            <div className="body">
+              <p className="empty">Opening the queue…</p>
+            </div>
+          }
+        >
+          <ClinicPanel onOpenScript={() => setView('write')} />
+        </Suspense>
+      )}
+
+      {!locked && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
+      {view === 'settings' && <SettingsPanel onOpenBuilder={() => setView('builder')} />}
+      {!locked && view === 'growth' && (
+        <div className="body">
+          <GrowthPanel />
+        </div>
+      )}
+
+      <footer className="actionbar">
+        {view === 'write' && (
+          <>
+            <button className="btn quiet" onClick={startNew}>
+              New
+            </button>
+            <button className="btn ghost" onClick={doSave} disabled={isBlank(rx) || !!busy}>
+              {busy ?? (dirty ? 'Save on this device' : 'Saved')}
+            </button>
+            <button
+              className="btn"
+              onClick={() => setView('preview')}
+              disabled={isBlank(rx) || !fontsLoaded}
+            >
+              Preview &amp; print
+            </button>
+          </>
+        )}
+        {view === 'preview' && (
+          <>
+            <button className="btn quiet" onClick={() => setView('write')}>
+              Back
+            </button>
+            <button className="btn ghost" onClick={doSave} disabled={!!busy}>
+              {busy ?? 'Save on this device'}
+            </button>
+            <button className="btn" onClick={deliverPdf} disabled={!model || !!busy}>
+              {busy ?? (canShareFiles() ? 'Send / print' : 'Download PDF')}
+            </button>
+          </>
+        )}
+        {(view === 'history' || view === 'settings' || view === 'growth' || view === 'builder' || view === 'clinic') && (
+          <button className="btn quiet" onClick={() => setView('write')}>
+            Back to the script
+          </button>
+        )}
+      </footer>
+    </div>
+  );
+}
+
+function PatientBar() {
+  const { rx, setPatient, patient: identified, clearPatient } = useStore();
+  const [picking, setPicking] = useState(false);
+  const p = rx.patient;
+  return (
+    <div className="patient">
+      {/*
+        Identifying the patient is optional and stays optional. It buys growth
+        tracking and a visible history; skipping it costs nothing on the script.
+      */}
+      <div className="identity-row">
+        {identified ? (
+          <>
+            <span className="pill good">linked · {identified.name}</span>
+            <button className="linkish" onClick={clearPatient}>
+              unlink
+            </button>
+          </>
+        ) : (
+          <button className="linkish" onClick={() => setPicking(true)}>
+            link to a patient record
+          </button>
+        )}
+      </div>
+      {picking && <PatientPicker onClose={() => setPicking(false)} />}
+      <div className="grid">
+        <div className="field f-name">
+          <label>Patient</label>
+          <input
+            value={p.name}
+            aria-label="Patient name"
+            placeholder="Name"
+            onChange={(e) => setPatient({ name: e.target.value })}
+          />
+        </div>
+        <div className="field f-age">
+          <label>Age</label>
+          <input
+            value={p.age ?? ''}
+            placeholder="3 y 2 m"
+            onChange={(e) => setPatient({ age: e.target.value })}
+          />
+        </div>
+        <div className="field f-sex">
+          <label>Sex</label>
+          <select
+            value={p.sex ?? ''}
+            onChange={(e) =>
+              setPatient({ sex: (e.target.value || undefined) as 'M' | 'F' | undefined })
+            }
+          >
+            <option value="">—</option>
+            <option value="M">Boy</option>
+            <option value="F">Girl</option>
+          </select>
+        </div>
+        <div className="field num f-weight">
+          <label>Weight kg</label>
+          <input
+            inputMode="decimal"
+            aria-label="Weight in kilograms"
+            value={p.weightKg ?? ''}
+            onChange={(e) =>
+              setPatient({ weightKg: e.target.value ? Number(e.target.value) : undefined })
+            }
+          />
+        </div>
+        <div className="field f-allergies">
+          <label>Allergies</label>
+          <input
+            value={p.allergies ?? ''}
+            placeholder="none known"
+            onChange={(e) => setPatient({ allergies: e.target.value })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

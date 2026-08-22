@@ -1,0 +1,1484 @@
+/*
+ * The design system from DESIGN.md, as CSS.
+ *
+ * Base register is "clinical light" (DESIGN.md 1.2): near-white, cool
+ * grey-green neutrals, near-zero decoration. The boldness is spent in exactly
+ * one place -- the bilingual medication row -- because that row is the only
+ * thing this app does that nothing else does. Everything else stays quiet so
+ * the row carries the eye.
+ *
+ * Colour is semantic, never paint (DESIGN.md 3): teal = action and "vetted",
+ * amber = "the doctor's own words", red = danger. Nothing else is coloured.
+ */
+
+:root {
+  --bg: #eef1f2;
+  --surface: #ffffff;
+  --ink: #14201f;
+  --ink-soft: #55635f;
+  --ink-faint: #8a9691;
+  --line: #dfe4e3;
+  --line-soft: #eceeed;
+
+  --teal: #0f766e;
+  --teal-ink: #0b5a54;
+  --teal-wash: #e6f2f0;
+
+  --alert: #b4232a;
+  --alert-wash: #fbeceb;
+
+  --unvetted: #a8722a;
+  --warn-wash: #f6eddf;
+
+  --patient-tint: #f2f7f6;
+  --sheet: #f6f8f8;
+
+  --r: 8px;
+  --r-sm: 6px;
+  --shadow: 0 1px 2px rgba(20, 32, 31, 0.06), 0 4px 10px rgba(20, 32, 31, 0.04);
+
+  --font-latin: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-urdu: 'Noto Nastaliq Urdu', serif;
+
+  --bar-h: 56px;
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/IBMPlexSans.ttf') format('truetype-variations');
+  font-weight: 100 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Nastaliq Urdu';
+  src: url('/fonts/NotoNastaliqUrdu.ttf') format('truetype-variations');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-latin);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bidi isolation for LTR tokens inside RTL text. The class exists so a drug
+   name or a dose cannot be reordered by the surrounding Urdu (DESIGN.md 6). */
+.ltr {
+  unicode-bidi: isolate;
+  direction: ltr;
+  display: inline-block;
+}
+
+.ur {
+  font-family: var(--font-urdu);
+  direction: rtl;
+  text-align: right;
+  line-height: 2.05;
+}
+
+/* ---------- app shell ---------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--bg);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-size: 16px;
+}
+
+.brand small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.icon-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  border-color: var(--ink-faint);
+}
+
+.icon-btn[aria-pressed='true'] {
+  background: var(--teal-wash);
+  border-color: var(--teal);
+  color: var(--teal-ink);
+}
+
+/* ---------- banners ---------- */
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.banner-allergy {
+  background: var(--alert-wash);
+  color: var(--alert);
+  border-left: 4px solid var(--alert);
+  font-weight: 600;
+}
+
+.banner-backup {
+  background: var(--warn-wash);
+  color: #6d4a1b;
+  border-left: 4px solid var(--unvetted);
+}
+
+.banner button {
+  margin-left: auto;
+  border: 1px solid currentColor;
+  background: transparent;
+  border-radius: var(--r-sm);
+  padding: 3px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  color: inherit;
+  white-space: nowrap;
+}
+
+/* ---------- patient bar ---------- */
+
+.patient {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 14px 10px;
+}
+
+/*
+ * Twelve columns, and every field says how many it wants.
+ *
+ * The previous `2fr 1fr 1fr` looked fine and was not: a grid item defaults to
+ * `min-width: auto`, which resolves to the input's intrinsic width, so the
+ * columns refused to shrink and the row ran 106px past a 390px screen. The Sex
+ * select sat off the edge entirely. `min-width: 0` on the item is the actual
+ * fix; the spans are what makes the result worth looking at, because three
+ * equal columns on a phone gave the patient's NAME about 120px.
+ *
+ * DESIGN.md 11: mobile-first, reference frame ~390px, one-handed at OPD speed.
+ */
+.patient .grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* Without this a grid item cannot shrink below its content. */
+  min-width: 0;
+}
+
+/* phone: name on its own line, the three short values sharing one, allergies wide */
+.patient .f-name { grid-column: span 12; }
+.patient .f-age { grid-column: span 4; }
+.patient .f-sex { grid-column: span 4; }
+.patient .f-weight { grid-column: span 4; }
+.patient .f-allergies { grid-column: span 12; }
+
+.field label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+.field input,
+.field textarea,
+.field select {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 7px 9px;
+  background: var(--surface);
+  min-width: 0;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: 2px solid var(--teal);
+  outline-offset: -1px;
+  border-color: var(--teal);
+}
+
+.field.num input {
+  font-family: var(--font-mono);
+}
+
+/* ---------- section tabs ---------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--bg);
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 6px 11px;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.tab strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* The language tag makes the audience model visible (DESIGN.md 11). */
+.tab span {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.tab[aria-selected='true'] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+.tab[aria-selected='true'] span {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.badge {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 20px;
+  background: var(--teal-wash);
+  color: var(--teal-ink);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-align: center;
+  vertical-align: 1px;
+}
+
+.tab[aria-selected='true'] .badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* ---------- body ---------- */
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 12px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+
+.card > h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.hint {
+  color: var(--ink-faint);
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.empty {
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: 10px 2px;
+}
+
+/* ---------- list entry (problems, diagnosis) ---------- */
+
+.entry-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.entry-row:last-of-type {
+  border-bottom: none;
+}
+
+.entry-row .text {
+  flex: 1;
+}
+
+.entry-row .text.strong {
+  font-weight: 600;
+}
+
+.mini {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.mini:hover {
+  background: var(--line-soft);
+  color: var(--alert);
+}
+
+.compose {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  position: relative;
+}
+
+.compose input,
+.compose textarea {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+}
+
+.compose input:focus,
+.compose textarea:focus {
+  outline: 2px solid var(--teal);
+  outline-offset: -1px;
+}
+
+.btn {
+  border: 1px solid var(--teal);
+  background: var(--teal);
+  color: #fff;
+  border-radius: var(--r-sm);
+  padding: 8px 13px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn.ghost {
+  background: var(--surface);
+  color: var(--teal-ink);
+}
+
+.btn.quiet {
+  background: var(--surface);
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+
+.btn.danger {
+  background: var(--surface);
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+/* ---------- autocomplete ---------- */
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin-top: 3px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.suggestions li {
+  list-style: none;
+}
+
+.suggestions ul {
+  margin: 0;
+  padding: 0;
+}
+
+.suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.suggestion:hover,
+.suggestion[data-active='true'] {
+  background: var(--teal-wash);
+}
+
+.suggestion .generic {
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+
+.suggestion .prov {
+  float: right;
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------- exam chips ---------- */
+
+.system {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.system > summary {
+  cursor: pointer;
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+}
+
+.system > summary::-webkit-details-marker {
+  display: none;
+}
+
+.system > summary::before {
+  content: '›';
+  color: var(--ink-faint);
+  transition: transform 0.12s;
+  display: inline-block;
+}
+
+.system[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.system .count {
+  margin-left: auto;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 12px 12px;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+/* Present and absent differ by more than colour: a leading sign and, for
+   absent, a strike. A pertinent negative must be as readable as a positive. */
+.chip[data-state='present'] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+  font-weight: 500;
+}
+
+.chip[data-state='present']::before {
+  content: '+ ';
+}
+
+.chip[data-state='absent'] {
+  border-color: var(--ink-faint);
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.chip[data-state='absent']::before {
+  content: '− ';
+  text-decoration: none;
+  display: inline-block;
+}
+
+.chip-value {
+  width: 74px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 4px 9px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---------- the hero: bilingual medication row ---------- */
+
+.med {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.med-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  flex-wrap: wrap;
+}
+
+.med-head .brand-name {
+  font-weight: 600;
+}
+
+.med-head .generic {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.med-head .strength {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--line-soft);
+  border-radius: var(--r-sm);
+  padding: 1px 6px;
+}
+
+.med-head .mini {
+  margin-left: auto;
+}
+
+/* Row-locked grid: the two tracks are one grid row, so the English and the
+   Urdu for a drug cannot drift apart (DESIGN.md 5). */
+.med-tracks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--line-soft);
+}
+
+.track {
+  padding: 9px 12px;
+  min-width: 0;
+}
+
+.track.en {
+  border-right: 1px solid var(--line-soft);
+  font-size: 13.5px;
+}
+
+.track.ur {
+  background: var(--patient-tint);
+  font-size: 15px;
+}
+
+.track .track-label {
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 3px;
+  display: block;
+}
+
+.track.ur .track-label {
+  text-align: right;
+}
+
+.incomplete {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.med-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 9px 12px 11px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.slot {
+  border: 1px solid var(--teal);
+  background: var(--teal-wash);
+  color: var(--teal-ink);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.slot[data-empty='true'] {
+  border-style: dashed;
+  border-color: var(--ink-faint);
+  background: transparent;
+  color: var(--ink-faint);
+}
+
+.slot .val {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* A cited dose is a SUGGESTION with its source shown -- never an auto-fill. */
+.cite {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 12px;
+  background: var(--patient-tint);
+  border-top: 1px solid var(--line-soft);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.cite .src {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.cite .unverified {
+  color: var(--unvetted);
+  font-weight: 600;
+}
+
+.cite button {
+  margin-left: auto;
+}
+
+/* ---------- advice tiers ---------- */
+
+.tier-picker {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tier-picker button {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-sm);
+  padding: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tier-picker button[aria-pressed='true'] {
+  border-color: var(--teal);
+  background: var(--teal-wash);
+  color: var(--teal-ink);
+  font-weight: 500;
+}
+
+.advice-item {
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  margin-bottom: 7px;
+  background: var(--surface);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* DESIGN.md 8: colour is never the only channel. Every state carries a mark,
+   a border and a word, so it survives a mono printer and a colourblind reader. */
+.advice-item[data-vouch='vetted'] {
+  border-left-color: var(--teal);
+  background: var(--patient-tint);
+}
+
+.advice-item[data-vouch='red-flag'] {
+  border-left-color: var(--alert);
+  border-color: var(--alert);
+  background: var(--alert-wash);
+}
+
+.advice-item[data-vouch='doctors-own'] {
+  border-left-color: var(--unvetted);
+  background: var(--warn-wash);
+}
+
+.advice-item .mark {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.advice-item[data-vouch='vetted'] .mark {
+  color: var(--teal);
+}
+.advice-item[data-vouch='red-flag'] .mark {
+  color: var(--alert);
+}
+.advice-item[data-vouch='doctors-own'] .mark {
+  color: var(--unvetted);
+}
+
+.advice-item .vouch-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.advice-item[data-vouch='red-flag'] .vouch-label {
+  color: var(--alert);
+}
+.advice-item[data-vouch='doctors-own'] .vouch-label {
+  color: var(--unvetted);
+}
+.advice-item[data-vouch='vetted'] .vouch-label {
+  color: var(--teal-ink);
+}
+
+.advice-item .en {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.library {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+
+.library button {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-sm);
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.library button:hover {
+  border-color: var(--teal);
+  background: var(--teal-wash);
+}
+
+.library .ur {
+  font-size: 15px;
+  margin-top: 2px;
+}
+
+.library.red button {
+  border-left: 4px solid var(--alert);
+}
+
+/* ---------- bottom action bar ---------- */
+
+.actionbar {
+  display: flex;
+  gap: 8px;
+  padding: 9px 12px;
+  padding-bottom: max(9px, env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.actionbar .btn {
+  flex: 1;
+}
+
+/* ---------- modal ---------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 32, 31, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+
+.sheet-modal {
+  background: var(--surface);
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: var(--r) var(--r) 0 0;
+  padding: 14px;
+}
+
+@media (min-width: 620px) {
+  .scrim {
+    align-items: center;
+  }
+  .sheet-modal {
+    border-radius: var(--r);
+  }
+}
+
+.sheet-modal h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.sheet-modal .sub {
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  margin: 0 0 12px;
+}
+
+.opt-group {
+  margin-bottom: 12px;
+}
+
+.opt-group > label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  display: block;
+  margin-bottom: 5px;
+}
+
+.opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.opt {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.opt[aria-pressed='true'] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+.num-row {
+  display: flex;
+  gap: 8px;
+}
+
+.num-row .field {
+  flex: 1;
+}
+
+.live-preview {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  background: var(--patient-tint);
+  margin-bottom: 12px;
+}
+
+.live-preview .en {
+  font-size: 13px;
+}
+
+.live-preview .ur {
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+/* ---------- preview sheet ---------- */
+
+.preview-wrap {
+  background: var(--sheet);
+  padding: 12px;
+  overflow: auto;
+  flex: 1;
+}
+
+.sheet-page {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(20, 32, 31, 0.14), 0 8px 24px rgba(20, 32, 31, 0.08);
+  margin: 0 auto 14px;
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.preview-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding: 0 2px 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- growth ---------- */
+
+.growth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.stat {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  background: var(--surface);
+}
+
+.stat .k {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+.stat .v {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.stat .sub {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.ref-note {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+}
+
+/* ---------- settings / history ---------- */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.row-item:hover {
+  border-color: var(--teal);
+}
+
+.row-item .who {
+  font-weight: 500;
+}
+
+.row-item .meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.row-item time {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.settings-section {
+  margin-bottom: 14px;
+}
+
+.settings-section h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mode {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 10px;
+  cursor: pointer;
+  background: var(--surface);
+  text-align: left;
+}
+
+.mode[aria-pressed='true'] {
+  border-color: var(--teal);
+  background: var(--teal-wash);
+}
+
+.mode small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+}
+
+.warn-box {
+  border: 1px solid var(--unvetted);
+  border-left-width: 4px;
+  background: var(--warn-wash);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: #6d4a1b;
+}
+
+.warn-box strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+@media (min-width: 560px) {
+  .patient .f-name { grid-column: span 6; }
+  .patient .f-age { grid-column: span 3; }
+  .patient .f-sex { grid-column: span 3; }
+  .patient .f-weight { grid-column: span 3; }
+  .patient .f-allergies { grid-column: span 9; }
+}
+
+/* desktop: the whole patient block on one line, allergies still readable */
+@media (min-width: 900px) {
+  .patient .f-name { grid-column: span 3; }
+  .patient .f-age { grid-column: span 2; }
+  .patient .f-sex { grid-column: span 2; }
+  .patient .f-weight { grid-column: span 2; }
+  .patient .f-allergies { grid-column: span 3; }
+}
+
+@media (max-width: 430px) {
+  .med-tracks {
+    grid-template-columns: 1fr;
+  }
+  .track.en {
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
+  }
+}
+
+/* ---------- pack builder ---------- */
+/*
+ * Same design system, desktop-form layout (DESIGN.md 12). Deliberately plainer
+ * than the clinical app: this is a tool for one careful person at a desk, not a
+ * surface used one-handed at OPD speed, so density beats tap targets here.
+ */
+
+.builder-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.builder-bar strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.builder-bar small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.builder-bar .spacer {
+  flex: 1;
+}
+
+.builder-status {
+  background: var(--teal-wash);
+  border-left: 3px solid var(--teal);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  color: var(--teal-ink);
+}
+
+/* Status pills reuse the §3 colour discipline: teal = safe, red = blocking. */
+.pill {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.pill.good {
+  border-color: var(--teal);
+  background: var(--teal-wash);
+  color: var(--teal-ink);
+}
+
+.pill.bad {
+  border-color: var(--alert);
+  background: var(--alert-wash);
+  color: var(--alert);
+  font-weight: 600;
+}
+
+.badge.bad {
+  background: var(--alert-wash);
+  color: var(--alert);
+}
+
+.ok-box {
+  border: 1px solid var(--teal);
+  border-left-width: 4px;
+  background: var(--patient-tint);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--teal-ink);
+}
+
+.ok-box strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.edit-row {
+  border-color: var(--teal);
+}
+
+.linkish {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* One key, then one input per locale. Grid so the columns line up down the page. */
+.vocab-row,
+.unit-row {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.vocab-row {
+  grid-template-columns: minmax(120px, 1fr) 2fr 2fr;
+}
+
+.unit-row {
+  grid-template-columns: minmax(90px, 1fr) repeat(4, 1fr);
+}
+
+.vocab-row input,
+.unit-row input {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+.vocab-key {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  overflow-wrap: anywhere;
+}
+
+.chip-editor {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.chip-editor input {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+.chip-editor input:disabled {
+  background: var(--line-soft);
+  color: var(--ink-faint);
+}
+
+.json-preview {
+  margin: 8px 0 0;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre;
+}
+
+.btn.quiet.danger {
+  color: var(--alert);
+  border-color: var(--line);
+}
+
+@media (max-width: 640px) {
+  .vocab-row,
+  .unit-row,
+  .chip-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- patient identity ---------- */
+/*
+ * Deliberately quiet. Linking a record is an accelerator, not a step in the
+ * workflow -- a doctor who ignores this line loses nothing on the script.
+ */
+.identity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  font-size: 12px;
+}
+
+/* ---------- clinic queue ---------- */
+/*
+ * Denser than the clinical surfaces on purpose: a receptionist scans a list of
+ * twenty, and every row that fits is a row they do not have to scroll for.
+ */
+.queue-add {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-left-color: var(--line);
+  border-radius: var(--r-sm);
+}
+
+/* Status by border weight and colour together -- never colour alone. */
+.queue-row[data-status='with-doctor'] {
+  border-left-color: var(--teal);
+  background: var(--patient-tint);
+}
+
+.queue-row[data-status='done'] {
+  opacity: 0.62;
+}
+
+.token {
+  min-width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--line-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pay-select {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.confirm-patient {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--teal);
+  background: var(--patient-tint);
+  border-radius: var(--r-sm);
+}
+
+@media (max-width: 640px) {
+  .queue-add {
+    grid-template-columns: 1fr 1fr;
+  }
+  .queue-add .field:first-child,
+  .queue-add > button {
+    grid-column: span 2;
+  }
+  .queue-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* A desk surface gets the width; the doctor's surface stays phone-shaped. */
+.app[data-wide='true'] {
+  max-width: 1200px;
+}
