@@ -45,6 +45,44 @@ The server whitelists those fields independently of the client, so a client bug
 cannot write a prescription onto a shared machine. `tests/server.test.ts` posts
 clinical content at a live server and asserts the disk never sees it.
 
+### The clinic station (.exe)
+
+```bash
+npm run build:exe      # -> release/nabz-clinic.exe  (~94 MB, self-contained)
+```
+
+One file. The whole built app -- HTML, JS, the HarfBuzz WASM, the Nastaliq font
+-- is embedded inside the binary as Node SEA assets, so a clinic copies it onto
+the reception PC and double-clicks it. It prints the LAN address a doctor's
+tablet should open, and writes the queue to `.clinic-data` beside itself.
+
+**Not Electron.** There is no bundled browser: the machine's own browser opens
+the app, so the PWA behaves exactly as it does anywhere else -- same service
+worker, same IndexedDB, same install prompt -- and the download is the Node
+runtime rather than Node plus Chromium.
+
+What that machine holds: the queue. What it does not hold: prescriptions,
+examinations, growth records. The server drops them even if something asks it to.
+
+### Deploying the demo
+
+`railway.json` and `nixpacks.toml` are committed, so a Railway deploy is:
+
+```bash
+railway init          # once, in this directory
+railway up
+```
+
+Railway runs `npm run build:deploy` (which fetches the WHO/CDC tables and the
+fonts first, since neither is committed) and then `npm start` -- **serve** mode,
+which has no data endpoint at all. A public demo therefore holds no patient
+data: anything a visitor types stays in their own browser, and vanishes when they
+clear it.
+
+`healthcheckPath` is `/healthz`. Set `NABZ_MODE=clinic` on a public host and it
+refuses to start, because the clinic layer holds patient identity and that
+belongs on a clinic's own machine, not one we operate.
+
 Two more checks write files, so they are not part of `npm test`:
 
 ```bash

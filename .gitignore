@@ -31,3 +31,7 @@ src/data/growth/tables/
 
 # scratch
 .probe/
+
+# packaged clinic station
+release/
+.exe-build/

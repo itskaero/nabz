@@ -306,6 +306,7 @@ npm run typecheck        # tsc only
 npm run preview          # serve the built PWA (installable, offline)
 npm start                # serve the built app only -- holds no data (Railway runs this)
 npm run start:clinic     # reception station: serves the app AND shares the queue on the LAN
+npm run build:exe        # -> release/nabz-clinic.exe, the packaged clinic station
 ```
 
 Two server modes, and the difference is the whole privacy story. `npm start`
