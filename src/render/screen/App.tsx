@@ -35,6 +35,7 @@ import { hasWebCrypto } from '@domain/secureContext.ts';
 import type { DeviceRole } from '@domain/deviceRole.ts';
 import { deviceRole, deviceAllows } from '@domain/deviceRole.ts';
 import { DeviceRolePicker } from './components/DeviceRolePicker.tsx';
+import { useBackgroundSync } from './clinic/useBackgroundSync.ts';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
 const ClinicPanel = lazy(() =>
@@ -151,6 +152,17 @@ export function App() {
       setNagBackup(days > appDefaults.backupReminderDays);
     })();
   }, [view]);
+
+  /*
+    The queue syncs wherever the doctor is looking, not only on the queue
+    screen. Polling used to live inside ClinicPanel, so a doctor writing a
+    script -- most of the day -- synced not at all, and reception's additions
+    simply did not arrive until someone opened the queue.
+  */
+  const sync = useBackgroundSync({
+    enabled: profile.clinic.enabled,
+    watching: view === 'clinic',
+  });
 
   const counts = useMemo(
     () => ({
@@ -479,7 +491,7 @@ export function App() {
             </div>
           }
         >
-          <ClinicPanel onOpenScript={() => setView('write')} />
+          <ClinicPanel onOpenScript={() => setView('write')} sync={sync} />
         </Suspense>
       )}
 

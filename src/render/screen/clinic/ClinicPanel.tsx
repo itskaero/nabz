@@ -24,22 +24,24 @@ import {
   sortQueue,
   touch,
 } from '@domain/clinic.ts';
-import {
-  detectSyncMode,
-  PairingRequired,
-  SyncMisconfigured,
-  pairedCode,
-  syncClinicLayer,
-} from '@storage/clinicSync.ts';
+import { detectSyncMode, SyncMisconfigured, pairedCode } from '@storage/clinicSync.ts';
 import { ClinicPairing } from './ClinicPairing.tsx';
+import type { BackgroundSync } from './useBackgroundSync.ts';
 import type { Sex } from '@domain/prescription.ts';
 import * as db from '@storage/db.ts';
 import { newId, useStore } from '../store.tsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
-  const { profile, startNew, setPatient, identifyPatient } = useStore();
+export function ClinicPanel({
+  onOpenScript,
+  sync,
+}: {
+  onOpenScript: () => void;
+  /** The shell owns the timer now, so it keeps running off this screen. */
+  sync: BackgroundSync;
+}) {
+  const { profile, startNew, setPatient, identifyPatient, openFromQueue } = useStore();
   const clinic = profile.clinic;
   const [date] = useState(today);
   const [entries, setEntries] = useState<QueueEntry[]>([]);
@@ -55,7 +57,6 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
   const [sharedOrigin, setSharedOrigin] = useState(false);
   const [paired, setPaired] = useState(() => pairedCode());
   const [syncNote, setSyncNote] = useState<string | null>(null);
-  const [syncedAt, setSyncedAt] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -79,57 +80,19 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
     return () => ac.abort();
   }, []);
 
-  const sync = useCallback(
-    async (loud: boolean) => {
-      try {
-        const merged = await syncClinicLayer();
-        if (!merged) return false;
-        setSyncedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        if (loud) {
-          setSyncNote(
-            `Queue synced - ${merged.queue.length} changed visits, ` +
-              `${merged.patients.length} patients`,
-          );
-        }
-        return true;
-      } catch (err) {
-        // Not being paired yet is a step that has not happened, not a failure,
-        // so the pairing box appears instead of an error.
-        if (err instanceof PairingRequired) {
-          setPaired(null);
-          return false;
-        }
-        // A station that is off is an ordinary state in a clinic. Say so only
-        // when someone actually asked for a sync.
-        if (loud) setSyncNote(err instanceof Error ? err.message : 'Sync failed.');
-        return false;
-      }
-    },
-    [],
-  );
+  /*
+    Refresh whenever the shell's timer brought something back. The panel no
+    longer owns a timer of its own -- two of them meant two requests and a queue
+    that stopped updating the moment this screen closed.
+  */
+  useEffect(refresh, [sync.tick, refresh]);
 
-  /**
-   * Keep the queue live while it is on screen.
-   *
-   * A queue the doctor has to remember to refresh is a queue that is wrong. Ten
-   * seconds is frequent enough that a patient added at reception appears before
-   * anyone notices the gap, and light enough that a sync now carries only what
-   * changed. Stops when the view is closed or the tab is hidden.
-   */
-  useEffect(() => {
-    if (!sharedOrigin || !paired) return;
-    let stop = false;
-    const tick = async () => {
-      if (stop || document.hidden) return;
-      if (await sync(false)) refresh();
-    };
-    void tick();
-    const timer = setInterval(tick, 10000);
-    return () => {
-      stop = true;
-      clearInterval(timer);
-    };
-  }, [refresh, sync, sharedOrigin, paired]);
+  const syncNow = async () => {
+    setSyncNote('Checking the station…');
+    const ok = await sync.syncNow();
+    setSyncNote(ok ? null : 'The clinic station did not answer.');
+    refresh();
+  };
 
   const totals = useMemo(() => dayTotals(entries, date), [entries, date]);
   const ordered = useMemo(() => sortQueue(entries), [entries]);
@@ -195,6 +158,9 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
       const record = await db.getPatient(entry.patientId);
       if (record) identifyPatient(record);
     }
+    // Saving the script will close this visit, so the doctor never has to say
+    // "done" twice. The status button stays for visits that end without one.
+    openFromQueue(entry.id);
     await update(entry, { status: 'with-doctor', seenAt: new Date().toISOString() }, 'status');
     setConfirming(null);
     onOpenScript();
@@ -210,7 +176,7 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
           <ClinicPairing
             onPaired={() => {
               setPaired(pairedCode());
-              void sync(true).then((ok) => ok && refresh());
+              void syncNow();
             }}
           />
         </section>
@@ -283,11 +249,13 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
         {sharedOrigin && paired && (
           <div className="sync-line">
             <span className="hint" style={{ margin: 0 }}>
-              {syncedAt
-                ? `Shared with the station · last checked ${syncedAt}`
+              {sync.syncedAt
+                ? `Shared with the station · last checked ${new Date(
+                    sync.syncedAt,
+                  ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                 : 'Sharing the queue with the station…'}
             </span>
-            <button className="btn quiet" onClick={() => void sync(true).then(refresh)}>
+            <button className="btn quiet" onClick={() => void syncNow()}>
               Sync now
             </button>
           </div>

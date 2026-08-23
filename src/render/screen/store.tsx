@@ -92,6 +92,11 @@ interface Store {
   setFollowUp: (days: number | null) => void;
 
   save: () => Promise<void>;
+  /**
+   * Which queue visit this script belongs to, when it was opened from the
+   * queue. Saving the script closes that visit -- see db.completeQueueEntry.
+   */
+  openFromQueue: (entryId: string) => void;
   startNew: () => void;
   refillFrom: (prior: Prescription) => void;
   setProfile: (profile: DoctorProfile) => void;
@@ -108,6 +113,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [content, setContent] = useState<ResolvedContent>(shippedContent);
   const [patient, setPatientRecord] = useState<PatientRecord | null>(null);
+  const [queueEntryId, setQueueEntryId] = useState<string | null>(null);
   const loadedProfile = useRef(false);
 
   const refreshContent = useCallback(async () => {
@@ -184,8 +190,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           followUp: days && days > 0 ? { in: { value: days, unit: 'day' } } : undefined,
         })),
 
+      openFromQueue: (entryId) => setQueueEntryId(entryId),
       save: async () => {
         await db.savePrescription(rx);
+        // The doctor has written the script, so the visit is over. Asking them
+        // to also tap "done" is asking for the same fact twice, and it is the
+        // tap that gets forgotten.
+        if (queueEntryId) await db.completeQueueEntry(queueEntryId, rx.id);
         // Learn from what was actually written, so the doctor's own vocabulary
         // is what autocompletes next time -- not a stock list.
         await Promise.all([
@@ -206,6 +217,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       startNew: () => {
         setRx(emptyPrescription(profile.packId, newId()));
         setPatientRecord(null);
+        // A new script is a new encounter: it must not close the previous
+        // patient's visit when it is saved.
+        setQueueEntryId(null);
         setDirty(false);
         setSavedAt(null);
       },
@@ -213,6 +227,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       refillFrom: (prior) => {
         // Clinical content only. The patient block stays blank on purpose.
         setPatientRecord(null);
+        setQueueEntryId(null);
         setRx({
           ...emptyPrescription(profile.packId, newId()),
           problems: [...prior.problems],
@@ -233,7 +248,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         void db.saveProfile(next);
       },
     };
-  }, [rx, profile, content, refreshContent, dirty, savedAt, patient, patch]);
+  }, [rx, profile, content, refreshContent, dirty, savedAt, patient, patch, queueEntryId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

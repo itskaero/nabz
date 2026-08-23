@@ -150,6 +150,57 @@ describe('storage', () => {
   });
 });
 
+describe('finishing a visit', () => {
+  it('closes the visit and links the script when the doctor saves', async () => {
+    // The status button was the only way to reach `done`, so a doctor who had
+    // already written and saved the script still had to go back and say so a
+    // second time. That is the tap that gets forgotten, and a queue still
+    // showing four people at 8pm is a queue nobody trusts.
+    const row = entry({ token: 7, status: 'with-doctor' });
+    await db.saveQueueEntry(row);
+    await db.completeQueueEntry(row.id, 'rx-123');
+
+    const after = (await db.queueForDate('2026-08-22')).find((e) => e.id === row.id)!;
+    expect(after.status).toBe('done');
+    expect(after.prescriptionId).toBe('rx-123');
+    expect(after.doneAt).toBeTruthy();
+  });
+
+  it('stamps it as a STATUS change, so a payment cannot be clobbered', async () => {
+    // Reception owns the money and the doctor owns the room. If completing a
+    // visit stamped the row generally, the doctor's save could overwrite a
+    // payment taken while they were consulting. See server/merge.mjs.
+    const row = entry({ token: 8, status: 'with-doctor' });
+    await db.saveQueueEntry(row);
+    await db.completeQueueEntry(row.id, 'rx-124');
+
+    const after = (await db.queueForDate('2026-08-22')).find((e) => e.id === row.id)!;
+    expect(after.statusAt).toBeTruthy();
+    expect(after.paymentAt).toBeUndefined();
+  });
+
+  it('keeps the original doneAt if the visit was already closed', async () => {
+    const row = entry({ token: 9, status: 'done', doneAt: '2026-08-22T10:00:00.000Z' });
+    await db.saveQueueEntry(row);
+    await db.completeQueueEntry(row.id, 'rx-125');
+
+    const after = (await db.queueForDate('2026-08-22')).find((e) => e.id === row.id)!;
+    expect(after.doneAt).toBe('2026-08-22T10:00:00.000Z');
+  });
+
+  it('does nothing for a removed row', async () => {
+    const row = entry({ token: 10 });
+    await db.saveQueueEntry(row);
+    await db.deleteQueueEntry(row.id);
+    await db.completeQueueEntry(row.id, 'rx-126');
+
+    const after = (await db.queueForDate('2026-08-22')).find((e) => e.id === row.id)!;
+    // Saving a script must not resurrect a visit reception removed.
+    expect(after.status).not.toBe('done');
+    expect(after.prescriptionId).toBeUndefined();
+  });
+});
+
 describe('a removed row', () => {
   it('is a tombstone, not a hole', async () => {
     const row = entry({ token: 5 });

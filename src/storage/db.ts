@@ -16,6 +16,7 @@ import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
 import type { GrowthPoint, Prescription } from '@domain/prescription.ts';
 import { isReceptionDevice, ReceptionDeviceError } from '@domain/deviceRole.ts';
+import { isDeleted, touch } from '@domain/clinic.ts';
 import type { DoctorProfile } from '@config/doctorProfile.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
@@ -403,6 +404,32 @@ export async function deleteQueueEntry(id: string): Promise<void> {
   if (!row) return;
   const at = new Date().toISOString();
   await database.put('queue', { ...row, deletedAt: at, updatedAt: at });
+}
+
+/**
+ * The consultation is over: link the script and close the visit.
+ *
+ * Called when a prescription is saved for someone opened from the queue. The
+ * status button still exists for the visits that end without a script -- advice
+ * only, a patient who left, a review that needed nothing written -- but making
+ * the doctor tap "done" after they have already saved the script is asking them
+ * to say the same thing twice, and it is the tap that gets forgotten. A queue
+ * still showing four people at 8pm is a queue nobody trusts.
+ *
+ * Stamped as a STATUS change so the merge treats it as the doctor's edit and
+ * cannot clobber a payment reception took meanwhile (server/merge.mjs).
+ */
+export async function completeQueueEntry(
+  entryId: string,
+  prescriptionId: string,
+): Promise<void> {
+  const database = await db();
+  const row = await database.get('queue', entryId);
+  if (!row || isDeleted(row)) return;
+  const at = new Date().toISOString();
+  await database.put('queue', {
+    ...touch({ ...row, status: 'done', doneAt: row.doneAt ?? at, prescriptionId }, 'status', at),
+  });
 }
 
 /** For tests and local tidy-up. Bypasses the tombstone, so it does not sync. */
