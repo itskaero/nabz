@@ -23,6 +23,7 @@
       <a href="#layers">Where data lives</a>
       <a href="setup.html">Setup</a>
       <a href="builder.html">Content builder</a>
+      <a href="#download">Download</a>
     </div>
     <a class="cta" href="https://github.com/itskaero/nabz">GitHub</a>
   </div>
@@ -42,8 +43,8 @@
       server that holds a diagnosis.
     </p>
     <div class="btnrow">
-      <a class="btn solid" href="setup.html">Setup guide</a>
-      <a class="btn" href="#output">See the output</a>
+      <a class="btn solid" href="#download">Download the station</a>
+      <a class="btn" href="setup.html">Setup guide</a>
     </div>
 
     <figure class="sheet" style="margin-bottom:0">
@@ -258,6 +259,52 @@
         Editing the medicines, doses, phrases, advice and investigations the app
         offers you
       </a>
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="center">
+      <span class="eyebrow">Download</span>
+      <h2>The clinic station</h2>
+      <p class="sub">
+        One file for the reception PC. The whole app is inside it — nothing to
+        install, no runtime to set up, no database to provision.
+      </p>
+    </div>
+    <div class="dl">
+      <div>
+        <h3>nabz-clinic.exe</h3>
+        <p>
+          Windows 10 and 11, 64-bit. Double-click it and leave the window open; it
+          prints the address a doctor's device should open and a pairing code.
+        </p>
+        <a class="big" href="https://github.com/itskaero/nabz/releases/latest">
+          Download for Windows
+        </a>
+        <div class="meta">
+          95 MB · self-contained · not code-signed, so Windows will warn once<br>
+          SHA-256 <code>86f172102cf2d2325ab7bc3b54fd422f6ff1ab47e41b8f65727534c0703811ac</code>
+        </div>
+      </div>
+      <div class="side">
+        <h4>Before you run it</h4>
+        <ul>
+          <li>Allow it through the firewall on <strong>Private</strong> networks only</li>
+          <li>Reserve the PC's IP on your router — <a href="setup.html#ip">why this matters</a></li>
+          <li>Install the certificate on each doctor device — <a href="setup.html#cert">two minutes</a></li>
+        </ul>
+        <h4 style="margin-top:16px">The doctor's device</h4>
+        <ul>
+          <li>Nothing to download. It opens the station's address in a browser and
+              installs from there.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">
+      <strong>Working alone? You do not need this at all.</strong>
+      The station exists so a front desk and a consulting room can share a queue.
+      A solo doctor opens the app, fills in their details, and starts — no station,
+      no certificate, no pairing.
     </div>
   </section>
 
