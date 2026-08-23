@@ -203,10 +203,23 @@ export function App() {
     setBusy('Saving…');
     try {
       await save();
+      /*
+        A script opened from the queue ends by going back to the queue. Saving
+        already closed that visit, so leaving the doctor on a finished script
+        means the next thing they do is navigate away by hand -- and the queue
+        they need is one tap further than it should be at the busiest moment.
+
+        A script NOT from the queue stays put: a solo doctor saving mid-consult
+        has nowhere else to be sent.
+      */
+      if (store.fromQueue) {
+        startNew();
+        setView('clinic');
+      }
     } finally {
       setBusy(null);
     }
-  }, [save]);
+  }, [save, store.fromQueue, startNew]);
 
   const deliverPdf = useCallback(async () => {
     if (!model) return;

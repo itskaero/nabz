@@ -135,7 +135,9 @@ describe('clinic mode', () => {
       expect(serialised).not.toContain(leaked);
     }
     const patient = onDisk.patients.find((p: { id: string }) => p.id === 'p2');
-    expect(Object.keys(patient).sort()).toEqual(['id', 'name']);
+    // `syncedAt` is the station's own record of when it accepted the row -- its
+    // bookkeeping, not the client's content, and never sent back out.
+    expect(Object.keys(patient).sort()).toEqual(['id', 'name', 'syncedAt']);
     const entry = onDisk.queue.find((q: { id: string }) => q.id === 'q2');
     expect(Object.keys(entry)).not.toContain('problems');
     expect(Object.keys(entry)).not.toContain('advice');
@@ -260,21 +262,104 @@ describe('two stations disagreeing', () => {
     expect(row.deletedAt).toBe('2026-08-22T10:01:00.000Z');
   });
 
-  it('sends only what changed since the caller last synced', async () => {
-    const cut = '2026-08-22T12:00:00.000Z';
+  it('reaches the other station even when a device clock runs slow', async () => {
+    /*
+      The reported failure: a doctor opened a script and saved it, the row said
+      "in room" then "done" on the doctor's device, and the front desk never
+      changed at all.
+
+      Two devices, two clocks, and the station was ordering their edits by
+      whichever clock wrote them. A device running slow had its rows stored and
+      then never handed to anyone, because to the station they looked older than
+      the last question it had been asked. Every device's edits are now ordered
+      by the station's own clock.
+    */
+    const desk = await (
+      await sync({
+        patients: [],
+        queue: [
+          {
+            id: 'skew1',
+            date: '2026-08-22',
+            token: 30,
+            name: 'Ayesha Khan',
+            status: 'waiting',
+            payment: 'unpaid',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      })
+    ).json();
+    const deskWatermark = desk.serverTime;
+
+    // The doctor's device, thirty seconds behind, finishes the consultation.
+    const slow = new Date(Date.now() - 30_000).toISOString();
     await sync({
       patients: [],
       queue: [
         {
-          id: 'old1',
+          id: 'skew1',
           date: '2026-08-22',
-          token: 20,
-          name: 'Seen this morning',
+          token: 30,
+          name: 'Ayesha Khan',
           status: 'done',
-          payment: 'paid',
-          createdAt: '2026-08-22T08:00:00.000Z',
-          updatedAt: '2026-08-22T08:00:00.000Z',
+          payment: 'unpaid',
+          doneAt: slow,
+          createdAt: slow,
+          updatedAt: slow,
+          statusAt: slow,
         },
+      ],
+    });
+
+    // The front desk asks what has changed since it last looked.
+    const back = await (
+      await sync({ patients: [], queue: [] }, `?since=${encodeURIComponent(deskWatermark)}`)
+    ).json();
+    const seen = back.queue.find((q: { id: string }) => q.id === 'skew1');
+    expect(seen).toBeDefined();
+    expect(seen.status).toBe('done');
+  });
+
+  it('keeps its own bookkeeping to itself', async () => {
+    const body = await (await sync({ patients: [], queue: [] })).json();
+    // syncedAt is how the station orders edits. A client that stored it and
+    // sent it back would be feeding the station its own clock second-hand.
+    for (const row of body.queue) expect(row).not.toHaveProperty('syncedAt');
+  });
+
+  it('sends only what changed since the caller last synced', async () => {
+    /*
+      "Changed" means "the station accepted it", not "the device says it was
+      edited then". Those differ, and the difference is the whole point: a
+      device pushing a row stamped an hour ago has still just changed something
+      the other station needs to hear about.
+    */
+    const first = await (
+      await sync({
+        patients: [],
+        queue: [
+          {
+            id: 'old1',
+            date: '2026-08-22',
+            token: 20,
+            name: 'Seen this morning',
+            status: 'done',
+            payment: 'paid',
+            createdAt: '2026-08-22T08:00:00.000Z',
+            updatedAt: '2026-08-22T08:00:00.000Z',
+          },
+        ],
+      })
+    ).json();
+    const watermark = first.serverTime;
+
+    // Something arrives AFTER the caller last looked, and is deliberately
+    // stamped in the past by the writing device.
+    await sync({
+      patients: [],
+      queue: [
         {
           id: 'new1',
           date: '2026-08-22',
@@ -282,20 +367,20 @@ describe('two stations disagreeing', () => {
           name: 'Just arrived',
           status: 'waiting',
           payment: 'unpaid',
-          createdAt: '2026-08-22T13:00:00.000Z',
-          updatedAt: '2026-08-22T13:00:00.000Z',
+          createdAt: '2026-08-22T07:00:00.000Z',
+          updatedAt: '2026-08-22T07:00:00.000Z',
         },
       ],
     });
 
     const delta = await (
-      await sync({ patients: [], queue: [] }, `?since=${encodeURIComponent(cut)}`)
+      await sync({ patients: [], queue: [] }, `?since=${encodeURIComponent(watermark)}`)
     ).json();
     const ids = delta.queue.map((q: { id: string }) => q.id);
+    // Arrived since the watermark, despite claiming to be older than old1.
     expect(ids).toContain('new1');
+    // Already seen, and untouched since.
     expect(ids).not.toContain('old1');
-    // The watermark comes back from the station's clock, not the device's --
-    // a fast local clock would otherwise skip other people's edits.
     expect(typeof delta.serverTime).toBe('string');
   });
 });

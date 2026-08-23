@@ -97,6 +97,8 @@ interface Store {
    * queue. Saving the script closes that visit -- see db.completeQueueEntry.
    */
   openFromQueue: (entryId: string) => void;
+  /** true while the open script belongs to a queue visit */
+  fromQueue: boolean;
   startNew: () => void;
   refillFrom: (prior: Prescription) => void;
   setProfile: (profile: DoctorProfile) => void;
@@ -191,6 +193,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })),
 
       openFromQueue: (entryId) => setQueueEntryId(entryId),
+      fromQueue: queueEntryId !== null,
       save: async () => {
         await db.savePrescription(rx);
         // The doctor has written the script, so the visit is over. Asking them

@@ -34,7 +34,14 @@ import { createRequire } from 'node:module';
 import { networkInterfaces } from 'node:os';
 import { spawn } from 'node:child_process';
 import { randomInt } from 'node:crypto';
-import { mergeCollection, purgeTombstones, changedSince, QUEUE_CONTESTED } from './merge.mjs';
+import {
+  mergeCollection,
+  purgeTombstones,
+  changedSince,
+  stampSynced,
+  withoutSyncedAt,
+  QUEUE_CONTESTED,
+} from './merge.mjs';
 import { addressLines, stationAddresses } from './addresses.mjs';
 import { ensureCertificates } from './tls.mjs';
 
@@ -388,8 +395,9 @@ const handler = async (req, res) => {
     // history, which matters once a clinic has thousands of past visits.
     const since = url.searchParams.get('since') ?? '';
     const shape = (state) => ({
-      patients: changedSince(state.patients, since),
-      queue: changedSince(state.queue, since),
+      // syncedAt is this station's own bookkeeping and never leaves it.
+      patients: withoutSyncedAt(changedSince(state.patients, since)),
+      queue: withoutSyncedAt(changedSince(state.queue, since)),
       updatedAt: state.updatedAt,
       serverTime: new Date().toISOString(),
     });
@@ -403,14 +411,25 @@ const handler = async (req, res) => {
         const state = await loadState();
         const pickPatient = (r) => pick(r, PATIENT_FIELDS);
         const pickQueue = (r) => pick(r, QUEUE_FIELDS);
+        const at = new Date().toISOString();
         const next = {
           // Whitelisted on the way in. Anything clinical in the payload is
           // dropped here rather than written to disk.
-          patients: purgeTombstones(mergeCollection(state.patients, body.patients, pickPatient)),
-          queue: purgeTombstones(
-            mergeCollection(state.queue, body.queue, pickQueue, QUEUE_CONTESTED),
+          //
+          // Then stamped with THIS station's clock, so "what changed since"
+          // orders every device's edits on one agreed sequence rather than on
+          // whatever time their own machines happen to read.
+          patients: stampSynced(
+            purgeTombstones(mergeCollection(state.patients, body.patients, pickPatient)),
+            body.patients,
+            at,
           ),
-          updatedAt: new Date().toISOString(),
+          queue: stampSynced(
+            purgeTombstones(mergeCollection(state.queue, body.queue, pickQueue, QUEUE_CONTESTED)),
+            body.queue,
+            at,
+          ),
+          updatedAt: at,
         };
         await saveState(next);
         return send(res, 200, shape(next));

@@ -101,8 +101,37 @@ export function purgeTombstones(rows, tombstoneDays = 30, now = Date.now()) {
   return rows.filter((r) => !r.deletedAt || Date.parse(r.deletedAt) >= cutoff);
 }
 
-/** Only what changed since the caller last synced. */
+/**
+ * Only what changed since the caller last synced.
+ *
+ * Filters on `syncedAt` -- the moment THIS STATION accepted the row -- and not
+ * on `updatedAt`, which carries whichever clock the writing device happened to
+ * have. Those clocks disagree, and comparing a device's timestamp against the
+ * station's watermark silently hides rows: a doctor's tablet running thirty
+ * seconds slow had its "with doctor" and "done" stored here and then never
+ * handed to the front desk, because to the station they looked older than the
+ * last question it had been asked.
+ *
+ * `updatedAt` still decides WHICH copy of a row wins (mergeRow). It just cannot
+ * be trusted to order events across machines.
+ */
 export function changedSince(rows, since) {
   if (!since) return rows;
-  return rows.filter((r) => (r.updatedAt ?? r.createdAt ?? '') > since);
+  return rows.filter((r) => (r.syncedAt ?? r.updatedAt ?? r.createdAt ?? '') > since);
+}
+
+/**
+ * Stamp the rows this station just accepted with its own clock.
+ *
+ * One clock, one monotonic sequence, so "what changed since" means the same
+ * thing to every device regardless of what their own clocks read.
+ */
+export function stampSynced(rows, incoming, at) {
+  const touched = new Set((incoming ?? []).map((r) => r?.id).filter(Boolean));
+  return rows.map((r) => (touched.has(r.id) ? { ...r, syncedAt: at } : r));
+}
+
+/** The station's bookkeeping is not the client's business. */
+export function withoutSyncedAt(rows) {
+  return rows.map(({ syncedAt, ...rest }) => rest);
 }

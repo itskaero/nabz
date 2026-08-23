@@ -37,7 +37,23 @@ export interface ClinicSyncState {
  * encrypted backup that carries patient data.
  */
 const PAIRING_KEY = 'nabz.pairing';
-const SINCE_KEY = 'nabz.lastSync';
+
+/**
+ * TWO watermarks, and they must not be the same value.
+ *
+ * There was one, set from the station's clock and then used to filter which
+ * LOCAL rows to send -- rows stamped with this device's clock. A device running
+ * even a few seconds behind the station therefore filtered out every change it
+ * had just made, and pushed nothing, silently, until the clocks happened to
+ * cross. The doctor's "with doctor" and "done" never reached the front desk.
+ *
+ * Pulling asks the station "what changed since YOUR time X", so that watermark
+ * has to be the station's. Pushing asks "what have I changed since MY time Y",
+ * so that one has to be local. Sharing a value between them compares two
+ * clocks that were never agreed.
+ */
+const PULLED_KEY = 'nabz.lastSync';
+const PUSHED_KEY = 'nabz.lastPush';
 
 export function pairedCode(): string | null {
   try {
@@ -58,24 +74,25 @@ export function setPairedCode(code: string): void {
 export function forgetPairing(): void {
   try {
     localStorage.removeItem(PAIRING_KEY);
-    localStorage.removeItem(SINCE_KEY);
+    localStorage.removeItem(PULLED_KEY);
+    localStorage.removeItem(PUSHED_KEY);
   } catch {
     /* nothing to forget */
   }
 }
 
-function lastSync(): string {
+function mark(key: string): string {
   try {
-    return localStorage.getItem(SINCE_KEY) ?? '';
+    return localStorage.getItem(key) ?? '';
   } catch {
     return '';
   }
 }
 
-function rememberSync(at: string | undefined): void {
+function remember(key: string, at: string | undefined): void {
   if (!at) return;
   try {
-    localStorage.setItem(SINCE_KEY, at);
+    localStorage.setItem(key, at);
   } catch {
     /* falls back to a full sync next time, which is correct if slower */
   }
@@ -174,9 +191,13 @@ export async function syncClinicLayer(): Promise<ClinicSyncState | null> {
   const code = pairedCode();
   if (!code) throw new PairingRequired();
 
-  const since = lastSync();
-  const local = await localClinicState(since);
-  const res = await fetch(`/api/clinic?since=${encodeURIComponent(since)}`, {
+  const pulledFrom = mark(PULLED_KEY);
+  // Taken from THIS device's clock, before reading, so a change made during the
+  // round trip is picked up next time rather than falling in the gap.
+  const pushingAt = new Date().toISOString();
+  const local = await localClinicState(mark(PUSHED_KEY));
+
+  const res = await fetch(`/api/clinic?since=${encodeURIComponent(pulledFrom)}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-nabz-pairing': code },
     body: JSON.stringify({ patients: local.patients, queue: local.queue }),
@@ -190,8 +211,10 @@ export async function syncClinicLayer(): Promise<ClinicSyncState | null> {
 
   for (const patient of merged.patients) await db.savePatient(patient);
   for (const entry of merged.queue) await db.saveQueueEntry(entry);
-  // Watermark from the STATION's clock, not this device's -- two machines'
-  // clocks disagree, and a fast local clock would skip other people's edits.
-  rememberSync(merged.serverTime);
+
+  // Each watermark in its own clock. Asking the station for changes uses the
+  // station's time; deciding what of ours to send next uses ours.
+  remember(PULLED_KEY, merged.serverTime);
+  remember(PUSHED_KEY, pushingAt);
   return merged;
 }
