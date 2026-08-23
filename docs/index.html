@@ -6,321 +6,460 @@
 <title>Nabz — bilingual prescriptions that stay on your device</title>
 <meta name="description" content="A prescription app for Pakistani private practice. Correct patient-register Urdu, printed on paper, with every record kept on the doctor's own device.">
 <link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;600&family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#14201f; --ink-soft:#55635f; --ink-faint:#8a9691;
-    --teal:#0f766e; --teal-ink:#0b5a54; --teal-wash:#e6f2f0;
-    --line:#d8e0e0; --line-soft:#e9eeee;
-    --bg:#eef1f2; --surface:#fff; --warn-wash:#f6eddf; --alert:#b4232a;
-    --r:14px;
+    --bg:#080b10;
+    --surface:#0e131a;
+    --surface-2:#131a23;
+    --line:#1e2833;
+    --line-soft:#161e27;
+    --text:#f1f5f9;
+    --muted:#94a3b8;
+    --faint:#64748b;
+    --teal:#2dd4bf;
+    --teal-dim:#14b8a6;
+    --teal-wash:rgba(45,212,191,.12);
+    --alert:#f87171;
+    --amber:#fbbf24;
+    --r:18px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
-    margin:0; background:var(--bg); color:var(--ink);
-    font:16px/1.6 'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased;
+    margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.65 Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  .wrap{max-width:960px;margin:0 auto;padding:0 22px}
-  a{color:var(--teal-ink)}
 
-  header{background:var(--surface);border-bottom:1px solid var(--line)}
-  .bar{display:flex;align-items:center;gap:16px;padding:16px 0}
-  .bar img{height:34px;width:auto}
-  .bar nav{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap}
-  .bar nav a{color:var(--ink-soft);text-decoration:none;font-size:14.5px}
-  .bar nav a:hover{color:var(--teal-ink)}
+  /* One soft light source behind the hero. Fixed and inert so it can never
+     intercept a click or add a scrollbar. */
+  .glow{
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(760px 460px at 50% -6%, rgba(45,212,191,.16), transparent 62%),
+      radial-gradient(600px 400px at 88% 8%, rgba(56,139,253,.09), transparent 60%);
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
 
-  .hero{padding:60px 0 44px}
-  .hero h1{font-size:clamp(30px,5vw,46px);line-height:1.12;letter-spacing:-.02em;margin:0 0 16px;max-width:20ch}
-  .hero p.lead{font-size:19px;color:var(--ink-soft);max-width:60ch;margin:0 0 10px}
-  .hero .urdu{font-size:17px;color:var(--teal-ink);margin-top:18px}
-  .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
-  .pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;
-        padding:7px 14px;font-size:13.5px;color:var(--ink-soft)}
-  .pill b{color:var(--ink);font-weight:600}
+  /* ---------- floating pill nav ---------- */
+  .navshell{position:sticky;top:0;z-index:40;padding:18px 24px}
+  .nav{
+    max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:18px;
+    padding:11px 14px 11px 20px;border:1px solid var(--line);border-radius:999px;
+    background:rgba(14,19,26,.78);backdrop-filter:blur(14px);
+  }
+  .nav img{height:26px;width:auto;display:block}
+  .nav .links{margin-left:auto;display:flex;gap:26px}
+  .nav .links a{color:var(--muted);text-decoration:none;font-size:14.5px;font-weight:500}
+  .nav .links a:hover{color:var(--text)}
+  .nav .cta{
+    background:var(--teal-dim);color:#04211d;font-weight:600;font-size:14.5px;
+    padding:9px 20px;border-radius:999px;text-decoration:none;white-space:nowrap;
+  }
+  .nav .cta:hover{background:var(--teal)}
+  @media(max-width:820px){
+    .nav .links{display:none}
+    .nav{padding-left:16px}
+  }
 
-  section{padding:46px 0;border-top:1px solid var(--line-soft)}
-  h2{font-size:25px;letter-spacing:-.01em;margin:0 0 6px}
-  h2 + .sub{color:var(--ink-soft);margin:0 0 26px;max-width:62ch}
-  h3{font-size:16px;margin:0 0 6px}
+  /* ---------- hero ---------- */
+  .hero{text-align:center;padding:76px 0 0}
+  .hero h1{
+    font-size:clamp(34px,6.2vw,66px);line-height:1.05;letter-spacing:-.035em;
+    font-weight:800;margin:0 auto 22px;max-width:16ch;
+  }
+  .hero h1 .brand{color:var(--teal)}
+  .hero .lead{color:var(--muted);font-size:clamp(15.5px,2vw,19px);max-width:62ch;margin:0 auto 14px}
+  .btnrow{
+    display:inline-flex;align-items:center;gap:4px;margin-top:30px;
+    border:1px solid var(--line);border-radius:999px;padding:5px;background:rgba(14,19,26,.6);
+  }
+  .btn{
+    padding:12px 26px;border-radius:999px;text-decoration:none;font-weight:600;font-size:15px;
+    color:var(--muted);white-space:nowrap;
+  }
+  .btn:hover{color:var(--text)}
+  .btn.solid{background:var(--surface-2);color:var(--text);border:1px solid var(--line)}
+  .btn.solid:hover{background:#1a2430}
 
-  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px}
-  .card p{margin:0;color:var(--ink-soft);font-size:14.5px}
-  .card .k{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+  .eyebrow{
+    display:inline-block;background:var(--teal-wash);color:var(--teal);
+    font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+    padding:7px 16px;border-radius:999px;margin-bottom:20px;
+  }
 
-  .split{display:grid;gap:28px;grid-template-columns:1fr 1fr;align-items:center}
-  @media(max-width:760px){.split{grid-template-columns:1fr}}
-  .shot{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff;
-        box-shadow:0 18px 44px -28px rgba(20,32,31,.55)}
-  .shot img{display:block;width:100%;height:auto}
-  figcaption{font-size:13px;color:var(--ink-faint);padding:10px 14px;border-top:1px solid var(--line-soft)}
+  /* ---------- the framed screenshot ---------- */
+  .frame{
+    margin:58px auto 0;max-width:860px;border:1px solid var(--line);border-radius:var(--r);
+    background:var(--surface);overflow:hidden;
+    box-shadow:0 50px 110px -50px rgba(0,0,0,.95);
+  }
+  .frame .chrome{
+    display:flex;align-items:center;gap:8px;padding:11px 15px;
+    border-bottom:1px solid var(--line-soft);background:var(--surface-2);
+  }
+  .dot{width:10px;height:10px;border-radius:50%;background:#2b3947;flex:0 0 auto}
+  .frame .chrome span.name{
+    margin-left:8px;color:var(--faint);font-size:12.5px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  .frame img{display:block;width:100%;height:auto;background:#fff}
 
-  ol.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:14px}
-  ol.steps li{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
-              padding:18px 20px 18px 60px;position:relative}
-  ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:18px;top:17px;
-    width:26px;height:26px;border-radius:50%;background:var(--teal-wash);color:var(--teal-ink);
-    display:grid;place-items:center;font-size:13px;font-weight:600}
-  ol.steps p{margin:6px 0 0;color:var(--ink-soft);font-size:14.5px}
+  /* ---------- sections ---------- */
+  section{padding:88px 0;position:relative;z-index:1}
+  .center{text-align:center}
+  h2{font-size:clamp(26px,4.2vw,42px);line-height:1.1;letter-spacing:-.03em;font-weight:800;margin:0 0 16px}
+  .sub{color:var(--muted);font-size:17px;max-width:60ch;margin:0 auto 44px}
+  h3{font-size:20px;font-weight:700;letter-spacing:-.015em;margin:0 0 10px}
 
-  code{background:var(--line-soft);padding:2px 6px;border-radius:5px;font-size:.9em;
-       font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
-  pre{background:var(--ink);color:#dbe7e5;padding:15px 17px;border-radius:10px;overflow-x:auto;
-      font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;line-height:1.55}
-  pre code{background:none;padding:0;color:inherit}
+  .cards{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+  .card{
+    background:linear-gradient(180deg,var(--surface) 0%,#0b1016 100%);
+    border:1px solid var(--line);border-radius:22px;padding:30px;
+  }
+  .card p{color:var(--muted);margin:0;font-size:15px}
+  ul.checks{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:9px}
+  ul.checks li{position:relative;padding-left:26px;font-size:14.5px;color:var(--text)}
+  ul.checks li::before{content:"\2713";position:absolute;left:0;top:-1px;color:var(--teal);font-weight:700}
+  ul.nos li::before{content:"\2715";color:var(--alert)}
 
-  .note{background:var(--warn-wash);border-left:3px solid #b8802a;border-radius:0 10px 10px 0;
-        padding:15px 18px;margin:18px 0;font-size:14.5px}
-  .note strong{display:block;margin-bottom:3px}
-  .danger{background:#fbecec;border-left-color:var(--alert)}
+  .panel{
+    margin-top:22px;background:#070a0e;border:1px solid var(--line-soft);
+    border-radius:14px;padding:18px;font-size:13px;line-height:1.7;color:var(--muted);
+  }
+  .panel .en{display:block;color:var(--text);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px}
+  /* The real face, not a fallback. A page claiming correct Nastaliq that then
+     renders its own sample in Naskh argues against itself. */
+  .panel .ur{
+    color:var(--teal);direction:rtl;display:block;margin-top:14px;
+    font-family:'Noto Nastaliq Urdu',serif;font-size:15px;line-height:2.5;
+  }
 
-  table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--surface);
-        border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-  th,td{text-align:left;padding:12px 15px;border-bottom:1px solid var(--line-soft);vertical-align:top}
-  th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
-  tr:last-child td{border-bottom:none}
+  /* ---------- layers ---------- */
+  .layers{display:grid;gap:20px;grid-template-columns:1fr 1fr}
+  @media(max-width:780px){.layers{grid-template-columns:1fr}}
+  .layer{border:1px solid var(--line);border-radius:22px;padding:28px;background:var(--surface)}
+  .layer.clinical{border-color:rgba(45,212,191,.35);background:linear-gradient(180deg,rgba(45,212,191,.07),transparent)}
+  .layer .tag{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
 
-  .flow{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px;overflow-x:auto}
-  .flow svg{display:block;min-width:620px;width:100%;height:auto}
+  /* ---------- steps ---------- */
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:14px}
+  .steps li{
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:22px 24px 22px 66px;position:relative;
+  }
+  .steps li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:22px;top:21px;
+    width:28px;height:28px;border-radius:50%;background:var(--teal-wash);color:var(--teal);
+    display:grid;place-items:center;font-size:13px;font-weight:700;
+  }
+  .steps strong{font-size:16px}
+  .steps p{margin:6px 0 0;color:var(--muted);font-size:14.5px}
 
-  footer{border-top:1px solid var(--line);background:var(--surface);padding:30px 0;
-         color:var(--ink-faint);font-size:13.5px}
-  footer a{color:var(--ink-soft)}
+  code{
+    background:var(--surface-2);border:1px solid var(--line-soft);padding:2px 7px;border-radius:6px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.88em;color:var(--teal);
+  }
+  pre{
+    background:#070a0e;border:1px solid var(--line);color:var(--muted);padding:22px;
+    border-radius:16px;overflow-x:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:13.5px;line-height:1.75;
+  }
+  pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+  pre .c{color:var(--faint)}
+
+  .note{
+    border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.06);
+    border-radius:16px;padding:20px 22px;margin:24px 0;font-size:15px;color:var(--muted);
+  }
+  .note strong{display:block;color:var(--amber);margin-bottom:5px;font-weight:600}
+  .note.bad{border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.06)}
+  .note.bad strong{color:var(--alert)}
+
+  .flow{border:1px solid var(--line);border-radius:22px;padding:26px;background:var(--surface);overflow-x:auto}
+  .flow svg{display:block;min-width:640px;width:100%;height:auto}
+
+  footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-size:14px;position:relative;z-index:1}
+  footer a{color:var(--muted)}
+  .footrow{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .footrow img{height:22px;opacity:.75}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="wrap bar">
-    <img src="assets/logo.svg" alt="Nabz">
-    <nav>
-      <a href="#how">How it works</a>
+<div class="glow"></div>
+
+<div class="navshell">
+  <div class="nav">
+    <img src="assets/logo-dark.svg" alt="Nabz">
+    <div class="links">
+      <a href="#output">Output</a>
+      <a href="#layers">Where data lives</a>
+      <a href="#visit">A visit</a>
       <a href="#setup">Setup</a>
-      <a href="#privacy">Where data lives</a>
-      <a href="https://github.com/itskaero/nabz">GitHub</a>
-    </nav>
+    </div>
+    <a class="cta" href="https://github.com/itskaero/nabz">GitHub</a>
   </div>
-</header>
+</div>
 
 <div class="wrap">
-
   <div class="hero">
-    <h1>Prescriptions a parent can actually read.</h1>
+    <span class="eyebrow">Private practice · Pakistan</span>
+    <h1>Prescriptions a parent can <span class="brand">actually read</span>.</h1>
     <p class="lead">
       Nabz writes the clinical record in English and the patient's instructions in
       proper Nastaʿlīq Urdu — composed from structured data, never machine-translated,
-      and printed to hold up on a cheap mono laser.
+      and printed to survive a cheap mono laser.
     </p>
     <p class="lead">
-      Every record stays on the doctor's own device. There is no account, no cloud,
-      and no server that holds a diagnosis.
+      Every record stays on the doctor's own device. No account, no cloud, and no
+      server that holds a diagnosis.
     </p>
-    <p class="urdu">نبض — a pulse.</p>
-    <div class="pills">
-      <span class="pill"><b>Offline</b> by default</span>
-      <span class="pill"><b>Bilingual</b> from one record</span>
-      <span class="pill"><b>WHO &amp; CDC</b> growth charts</span>
-      <span class="pill"><b>No</b> patient data on any server</span>
+    <div class="btnrow">
+      <a class="btn" href="#setup">Setup guide</a>
+      <a class="btn solid" href="#output">See the output</a>
     </div>
+
+    <figure class="frame" style="margin-bottom:0">
+      <div class="chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="name">prescription.pdf — A4, fonts embedded</span>
+      </div>
+      <img src="assets/script.png" alt="A printed Nabz prescription: English clinical sections with Urdu patient instructions beside each medicine">
+    </figure>
   </div>
 
-  <section id="how">
-    <h2>What it produces</h2>
+  <section id="output" class="center">
+    <span class="eyebrow">The wedge</span>
+    <h2>One record. Two readers.</h2>
     <p class="sub">
-      One structured record, rendered twice. The English is the clinical note and the
-      pharmacist's check; the Urdu is what the family takes home. Neither is translated
-      from the other — each language has its own authored word order.
+      The English is the clinical note and the pharmacist's check. The Urdu is what
+      the family takes home. Neither is translated from the other — each language
+      has its own authored word order.
     </p>
-    <div class="split">
-      <figure class="shot" style="margin:0">
-        <img src="assets/script.png" alt="A printed Nabz prescription showing English clinical sections and Urdu patient instructions side by side">
-        <figcaption>Real output from the PDF renderer — not a mockup.</figcaption>
-      </figure>
-      <div class="grid" style="grid-template-columns:1fr">
-        <div class="card">
-          <div class="k">The wedge</div>
-          <h3>Urdu that reads like a person wrote it</h3>
-          <p>
-            Instructions are composed from slots, pluralised per language, with drug
-            names and doses held upright inside right-to-left text. Not "1 tab BD"
-            with the words swapped.
-          </p>
+    <div class="cards" style="text-align:left">
+      <div class="card">
+        <h3>Urdu a person would write</h3>
+        <p>
+          Composed from slots, pluralised per language, with drug names and doses
+          held upright inside right-to-left text. Not &ldquo;1 tab BD&rdquo; with
+          the words swapped.
+        </p>
+        <div class="panel">
+          <span class="en">Give 5 ml twice a day after food for 7 days</span>
+          <span class="ur">7 دن تک کھانے کے بعد دن میں دو بار 5 ملی لیٹر دیں</span>
         </div>
-        <div class="card">
-          <div class="k">Preview equals print</div>
-          <h3>One renderer, two outputs</h3>
-          <p>
-            The on-screen sheet and the PDF come from the same engine and the same
-            shaper, so what you approve is what the printer receives.
-          </p>
-        </div>
-        <div class="card">
-          <div class="k">Safety</div>
-          <h3>The library suggests; you confirm</h3>
-          <p>
-            Doses arrive with a citation attached and are never filled in silently.
-            Growth percentiles are computed once, from WHO or CDC tables, and stored
-            with the reference that produced them.
-          </p>
-        </div>
+      </div>
+      <div class="card">
+        <h3>Preview is print</h3>
+        <p>
+          The on-screen sheet and the PDF come from the same layout engine and the
+          same text shaper, at exact millimetre dimensions with fonts embedded.
+          What you approve is what the printer receives.
+        </p>
+        <ul class="checks">
+          <li>Signature block pinned to the page bottom</li>
+          <li>A medicine and its Urdu never split across pages</li>
+          <li>Minimum Urdu point size enforced</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>The library suggests. You confirm.</h3>
+        <p>
+          Doses arrive with their citation attached and are never filled in silently.
+          Growth percentiles are computed once, from WHO or CDC tables, and stored
+          with the reference that produced them.
+        </p>
+        <ul class="checks nos">
+          <li>No dose without a source</li>
+          <li>No test suggested from a diagnosis</li>
+          <li>No machine translation, anywhere</li>
+        </ul>
       </div>
     </div>
   </section>
 
-  <section id="privacy">
-    <h2>Where your data lives</h2>
-    <p class="sub">
-      Two layers, and only one of them can ever be shared. A receptionist cannot read
-      clinical content because it is not on their machine — enforced by which data
-      exists, not by a permission flag.
-    </p>
-    <table>
-      <tr><th>Layer</th><th>Holds</th><th>Lives</th></tr>
-      <tr>
-        <td><strong>Clinic</strong></td>
-        <td>Patients, today's queue, paid status, visit fee</td>
-        <td>Shared, when a clinic runs two machines</td>
-      </tr>
-      <tr>
-        <td><strong>Clinical</strong></td>
-        <td>Prescriptions, examinations, growth records, learned vocabulary</td>
-        <td>Always the doctor's own device</td>
-      </tr>
-    </table>
+  <section id="layers">
+    <div class="center">
+      <span class="eyebrow">Architecture</span>
+      <h2>Where your data lives</h2>
+      <p class="sub">
+        Two layers, and only one can ever be shared. A receptionist cannot read
+        clinical content because it is not on their machine — enforced by which data
+        exists, not by a permission flag someone can be talked into changing.
+      </p>
+    </div>
+    <div class="layers">
+      <div class="layer">
+        <div class="tag">Clinic layer</div>
+        <h3>Shared, when a clinic has a front desk</h3>
+        <p style="color:var(--muted);margin:0">Patients, today's queue, paid status, visit fee.</p>
+        <ul class="checks">
+          <li>Lives on the clinic's own machine</li>
+          <li>Never on a server anyone else operates</li>
+        </ul>
+      </div>
+      <div class="layer clinical">
+        <div class="tag">Clinical layer</div>
+        <h3>Always the doctor's own device</h3>
+        <p style="color:var(--muted);margin:0">Prescriptions, examinations, growth records, learned vocabulary.</p>
+        <ul class="checks">
+          <li>Never transmitted, to anywhere</li>
+          <li>A front-desk device refuses to store one</li>
+        </ul>
+      </div>
+    </div>
     <div class="note">
-      <strong>Solo practice is the simple case.</strong>
+      <strong>Solo practice is the simple case</strong>
       Both layers sit on one machine, nothing syncs, and the queue is switched off
       entirely — a doctor working alone never meets it.
     </div>
   </section>
 
-  <section id="flow">
-    <h2>A visit, end to end</h2>
-    <p class="sub">Two machines on the clinic's own wifi. Nothing leaves the building.</p>
+  <section id="visit">
+    <div class="center">
+      <span class="eyebrow">Two machines</span>
+      <h2>A visit, end to end</h2>
+      <p class="sub">On the clinic's own wifi. Nothing leaves the building.</p>
+    </div>
     <div class="flow">
-      <svg viewBox="0 0 700 240" role="img" aria-label="Front desk adds a patient; the station shares the queue; the doctor's device writes the prescription and keeps it locally">
+      <svg viewBox="0 0 700 250" role="img" aria-label="The front desk adds a patient; the station shares the queue; the doctor's device writes the prescription and keeps it">
         <defs>
           <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0 0 L10 5 L0 10 z" fill="#8a9691"/>
+            <path d="M0 0 L10 5 L0 10 z" fill="#475569"/>
           </marker>
         </defs>
-        <g font-family="'IBM Plex Sans',system-ui,sans-serif" font-size="13">
-          <rect x="8" y="46" width="180" height="96" rx="12" fill="#fff" stroke="#d8e0e0"/>
-          <text x="26" y="76" font-size="14" font-weight="600" fill="#14201f">Front desk</text>
-          <text x="26" y="98" fill="#55635f">Name, age, token, fee</text>
-          <text x="26" y="118" fill="#55635f">Paid / unpaid / waived</text>
+        <g font-family="Inter,system-ui,sans-serif" font-size="13">
+          <rect x="8" y="52" width="186" height="100" rx="14" fill="#0e131a" stroke="#1e2833"/>
+          <text x="28" y="84" font-size="14.5" font-weight="700" fill="#f1f5f9">Front desk</text>
+          <text x="28" y="107" fill="#94a3b8">Name, age, token, fee</text>
+          <text x="28" y="128" fill="#94a3b8">Paid · unpaid · waived</text>
 
-          <rect x="258" y="30" width="184" height="128" rx="12" fill="#e6f2f0" stroke="#0f766e"/>
-          <text x="276" y="60" font-size="14" font-weight="600" fill="#0b5a54">Clinic station</text>
-          <text x="276" y="82" fill="#0b5a54">Shares the queue only</text>
-          <text x="276" y="102" fill="#0b5a54">Names, tokens, payment</text>
-          <text x="276" y="128" fill="#b4232a" font-weight="600">No diagnosis. No drugs.</text>
+          <rect x="262" y="34" width="188" height="136" rx="14" fill="#0d201f" stroke="#2dd4bf"/>
+          <text x="282" y="66" font-size="14.5" font-weight="700" fill="#2dd4bf">Clinic station</text>
+          <text x="282" y="89" fill="#94a3b8">Shares the queue only</text>
+          <text x="282" y="110" fill="#94a3b8">Names, tokens, payment</text>
+          <text x="282" y="140" fill="#f87171" font-weight="600">No diagnosis. No drugs.</text>
 
-          <rect x="512" y="46" width="180" height="96" rx="12" fill="#fff" stroke="#d8e0e0"/>
-          <text x="530" y="76" font-size="14" font-weight="600" fill="#14201f">Doctor's device</text>
-          <text x="530" y="98" fill="#55635f">Writes the prescription</text>
-          <text x="530" y="118" fill="#55635f">Keeps every record</text>
+          <rect x="518" y="52" width="174" height="100" rx="14" fill="#0e131a" stroke="#1e2833"/>
+          <text x="538" y="84" font-size="14.5" font-weight="700" fill="#f1f5f9">Doctor's device</text>
+          <text x="538" y="107" fill="#94a3b8">Writes the script</text>
+          <text x="538" y="128" fill="#94a3b8">Keeps every record</text>
 
-          <line x1="192" y1="94" x2="252" y2="94" stroke="#8a9691" stroke-width="1.5" marker-end="url(#a)"/>
-          <line x1="446" y1="94" x2="506" y2="94" stroke="#8a9691" stroke-width="1.5" marker-end="url(#a)"/>
-          <text x="196" y="84" fill="#8a9691" font-size="11">queue</text>
-          <text x="452" y="84" fill="#8a9691" font-size="11">queue</text>
+          <line x1="198" y1="102" x2="256" y2="102" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+          <line x1="454" y1="102" x2="512" y2="102" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+          <text x="204" y="92" fill="#64748b" font-size="11">queue</text>
+          <text x="460" y="92" fill="#64748b" font-size="11">queue</text>
 
-          <path d="M602 150 v40" stroke="#8a9691" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#a)"/>
-          <text x="430" y="212" fill="#55635f" font-size="12.5">Prescriptions stay here. No arrow goes back.</text>
-
-          <text x="8" y="228" fill="#8a9691" font-size="11.5">Internet: never involved.</text>
+          <path d="M604 160 v34" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#a)"/>
+          <text x="392" y="222" fill="#94a3b8" font-size="12.5">Prescriptions stop here. No arrow goes back.</text>
+          <text x="8" y="238" fill="#64748b" font-size="11.5">Internet: never involved.</text>
         </g>
       </svg>
     </div>
   </section>
 
   <section id="setup">
-    <h2>Setting it up</h2>
-    <p class="sub">
-      One machine or two. If you are working alone, do step 1 and stop.
-    </p>
+    <div class="center">
+      <span class="eyebrow">Setup</span>
+      <h2>One machine, or two</h2>
+      <p class="sub">Working alone? Do the first two steps and stop.</p>
+    </div>
 
-    <h3 style="margin:0 0 12px">Solo — one device</h3>
+    <h3 style="margin:0 0 14px">Solo — one device</h3>
     <ol class="steps">
       <li>
-        <strong>Open the app and fill in your details</strong>
-        <p>Name, qualifications, registration number and clinic. Choose A4 or Letter,
+        <strong>Fill in your details</strong>
+        <p>Name, qualifications, registration number, clinic. Choose A4 or Letter,
            and whether you print on plain paper or a pre-printed pad.</p>
       </li>
       <li>
         <strong>Set a backup passphrase, and export today</strong>
         <p>Records live only on this device. The encrypted export is the only way
-           back from a lost phone or a cleared browser.</p>
+           back from a lost phone or a cleared browser. There is no reset, because
+           there is nothing held anywhere to reset from.</p>
       </li>
     </ol>
 
-    <h3 style="margin:30px 0 12px">Two machines — front desk and consulting room</h3>
+    <h3 style="margin:38px 0 14px">Front desk + consulting room</h3>
     <ol class="steps">
       <li>
         <strong>Run the station on the reception PC</strong>
         <p>Copy <code>nabz-clinic.exe</code> and double-click it. Allow it through
-           Windows Firewall on <strong>Private</strong> networks. It prints its address
-           and a six-digit pairing code.</p>
+           Windows Firewall on <strong>Private</strong> networks only. It prints its
+           address and a six-digit pairing code.</p>
       </li>
       <li>
-        <strong>Reserve that PC's IP on your router</strong>
+        <strong>Reserve that PC&rsquo;s IP on your router</strong>
         <p>Not optional. Browser storage is tied to the address the app was opened
-           from — if the address changes, the doctor's device opens an empty app.</p>
+           from, so if the address moves, the doctor&rsquo;s device opens an empty app.</p>
       </li>
       <li>
-        <strong>Set each machine's role</strong>
-        <p>On first run each device asks what it is for. A front desk shows only the
-           queue and <em>cannot save a prescription at all</em>.</p>
+        <strong>Tell each machine what it is for</strong>
+        <p>Asked once, on first run. A front desk shows only the queue and
+           <em>cannot save a prescription at all</em> — not hidden, not permitted.</p>
       </li>
       <li>
-        <strong>Install the clinic certificate on the doctor's device</strong>
-        <p>Open the station's <code>http://</code> address and follow it. On iPhone this
-           is two steps and the second is easy to miss: install the profile, then
-           <strong>Settings → General → About → Certificate Trust Settings</strong>.</p>
+        <strong>Install the clinic certificate on the doctor&rsquo;s device</strong>
+        <p>Open the station&rsquo;s <code>http://</code> address and follow it. On
+           iPhone this is two steps and the second is easy to miss: install the
+           profile, then <strong>Settings → General → About → Certificate Trust
+           Settings</strong>.</p>
       </li>
       <li>
         <strong>Open the <code>https://</code> address and enter the pairing code</strong>
-        <p>Add it to the home screen. The queue then syncs both ways on its own.</p>
+        <p>Add it to the home screen. The queue then syncs both ways on its own, and
+           keeps syncing while you are writing a script.</p>
       </li>
     </ol>
 
-    <div class="note danger">
-      <strong>Why the certificate matters</strong>
-      Over a plain <code>http://</code> address a browser switches off encrypted backup,
-      the PIN and offline use — silently. On the device holding every clinical record.
-      The certificate is what turns those back on.
+    <div class="note bad">
+      <strong>Why the certificate is not optional</strong>
+      Over a plain <code>http://</code> address a browser silently switches off
+      encrypted backup, the PIN and offline use — on the one device holding every
+      clinical record. The certificate is what turns those back on.
     </div>
   </section>
 
   <section id="build">
-    <h2>Running it from source</h2>
-    <pre><code>npm install
-npm run assets      # WHO/CDC growth tables + the OFL fonts, from their publishers
+    <div class="center">
+      <span class="eyebrow">For developers</span>
+      <h2>Run it from source</h2>
+      <p class="sub">Node 20+. No database to provision, because there is no database.</p>
+    </div>
+<pre><code>npm install
+npm run assets         <span class="c"># WHO/CDC growth tables + OFL fonts, from their publishers</span>
 npm run build
-npm start           # serves the app only, stores nothing
+npm start              <span class="c"># serves the app only, stores nothing</span>
 
-npm run start:clinic   # reception station: also shares the queue on the LAN
-npm run build:exe      # -> release/nabz-clinic.exe, one self-contained file</code></pre>
-    <p class="sub" style="margin-top:16px">
-      The growth tables and fonts are deliberately not committed — they are fetched
-      from WHO, CDC and Google Fonts so every value is traceable to its publisher
-      rather than to a copy someone pasted in years ago.
-    </p>
+npm run start:clinic   <span class="c"># reception station: also shares the queue on the LAN</span>
+npm run build:exe      <span class="c"># -&gt; release/nabz-clinic.exe, one self-contained file</span></code></pre>
+    <div class="note">
+      <strong>Assets are fetched, not committed</strong>
+      The growth tables and the Nastaliq fonts come from WHO, CDC and Google Fonts
+      at build time, so every value is traceable to its publisher rather than to a
+      copy someone pasted into a repository years ago. Without them the growth
+      module refuses to compute and the renderer refuses to draw — loudly, rather
+      than producing a document with no Urdu in it.
+    </div>
   </section>
-
 </div>
 
 <footer>
   <div class="wrap">
-    Nabz — bilingual clinical prescriptions.
-    Built for private paediatric practice in Pakistan.
-    <a href="https://github.com/itskaero/nabz">Source on GitHub</a>.
-    <br>
-    Not a medical device. Clinical content is authored and reviewed by a clinician
-    before use.
+    <div class="footrow">
+      <img src="assets/logo-dark.svg" alt="Nabz">
+      <span>Bilingual clinical prescriptions.</span>
+      <a href="https://github.com/itskaero/nabz" style="margin-left:auto">Source on GitHub</a>
+    </div>
+    <p style="margin:18px 0 0;max-width:70ch">
+      Not a medical device. Clinical content is authored and reviewed by a clinician
+      before use — the app can validate that a translation exists, never that it is
+      right.
+    </p>
   </div>
 </footer>
 

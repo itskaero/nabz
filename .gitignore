@@ -41,3 +41,11 @@ src/data/growth/tables/
 # packaged clinic station
 release/
 .exe-build/
+
+# Working specs and local tooling -- kept out of the published repo.
+# These stay on disk; they are simply not part of what ships.
+CLAUDE.md
+PRODUCT.md
+DESIGN.md
+.mcp.json
+.claude/

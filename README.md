@@ -7,9 +7,8 @@
 *نبض — a pulse.*
 
 [How it works](https://itskaero.github.io/nabz/) ·
-[What &amp; why](PRODUCT.md) ·
-[How to build](CLAUDE.md) ·
-[How it looks](DESIGN.md)
+[Setup guide](https://itskaero.github.io/nabz/#setup) ·
+[Run from source](#getting-started)
 
 </div>
 
@@ -303,9 +302,9 @@ goes near a patient.
   licensed paediatric guidance, every one marked `verified: false` and labelled
   as unverified in the UI. They exist to prove the citation pipeline end to end.
   The pack author authors and verifies the real ones.
-- **`src/data/phrases/ur-PK.ts`** — plain patient-register Urdu, but PRODUCT.md
-  §15 is explicit that the validators are real patients and pharmacists, not the
-  person who wrote the code. Treat it as a first draft awaiting that pass.
+- **`src/data/phrases/ur-PK.ts`** — plain patient-register Urdu. The validators
+  who matter are real patients and pharmacists, not the person who wrote the
+  code, so treat it as a first draft awaiting that pass.
 
 No non-paediatric content pack is shipped, on purpose. The schema is open; the
 content is not ours to write.
@@ -322,9 +321,10 @@ And two rules the code structure enforces rather than documents: nothing loads a
 prior prescription by matching a patient, and the app never fills a clinical
 value the doctor did not choose.
 
-**Known spec gap:** the pack builder is specified in `DESIGN.md` §12 but is not
-scoped anywhere in `PRODUCT.md` §4 — not v1, not v2+, not Never. It is built and
-shipping regardless; `PRODUCT.md` should say where it belongs.
+The product and design specs are kept privately rather than in this repository.
+Source comments cite them by section, which is enough to follow the reasoning:
+where a file says "rule 3.1", it means the record-keeping rule this README opens
+with — nothing clinical on any server.
 
 ---
 
