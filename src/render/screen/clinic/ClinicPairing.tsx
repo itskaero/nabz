@@ -16,6 +16,7 @@
  */
 import { useState } from 'react';
 import { forgetPairing, pairedCode, setPairedCode } from '@storage/clinicSync.ts';
+import { isReceptionDevice } from '@domain/deviceRole.ts';
 
 export function ClinicPairing({ onPaired }: { onPaired?: () => void }) {
   const [code, setCode] = useState('');
@@ -70,9 +71,16 @@ export function ClinicPairing({ onPaired }: { onPaired?: () => void }) {
           </button>
         </div>
       )}
+      {/*
+        The same fact, told from where the reader is standing. On a front desk
+        "records never leave this device" implies they are here; they are not,
+        and that is the whole point of the machine.
+      */}
       <p className="hint">
-        Pairing shares the queue only — names, ages, tokens and payment.
-        Prescriptions, examinations and growth records never leave this device.
+        Pairing shares the queue only — names, ages, tokens and payment.{' '}
+        {isReceptionDevice()
+          ? 'Prescriptions, examinations and growth records are never stored on this computer at all.'
+          : 'Prescriptions, examinations and growth records never leave this device.'}
       </p>
     </>
   );

@@ -112,6 +112,8 @@ not a hardcode. See §6.
 ### v1 (build this)
 
 - Investigations / labs section (§8a), seeded per specialty and editable.
+- Device role (§13a): a machine is set up once as the doctor's device or the
+  front desk, and a front desk cannot store clinical records at all.
 - Five-section prescription: Problems, Examination, Diagnosis, Medications, Advice/Follow-up.
 - Locale-keyed **approved phrase library** for medication instructions (`en`, `ur-PK`).
 - **Free-text drug entry** with a brand→generic→strength **autocomplete library** (name only auto-filled).
@@ -538,6 +540,30 @@ reference for any purpose". Dosing stays hand-authored and cited.
 - Accept as a known v1 cost: some doctors won't back up and will lose data. Fully
   solving this = v2 cloud backup (the paid upgrade). Don't hide the weakness;
   convert it into the upgrade path.
+
+---
+
+## 13a. Device role — what a machine is for
+
+Set once, on first run, and stored **per device** (localStorage) rather than in
+the doctor profile. The profile travels inside the encrypted backup, so a role
+stored there would mean restoring the doctor's backup onto the reception PC
+silently turns it into a consulting device — defeating the point.
+
+- `reception`: the clinical views are **not rendered**, and `savePrescription`
+  **refuses**. This is what turns "the receptionist cannot read clinical content
+  because it is not on their machine" from a claim into a property. Choosing it
+  turns the queue on, because that is the only thing that machine does.
+- `consulting`: everything, and it holds the only copy of every record.
+- An **unclassified** device behaves as consulting. The permissive default is
+  safe in this direction only: every install predating the setting must keep
+  working, and the failure mode is "the doctor sees their own records" rather
+  than "the receptionist sees someone else's".
+- Switching a device that already holds records does **not** delete them. They
+  become unreachable until it is switched back, and the confirm says the count
+  out loud.
+- The PIN (§ roles) stays for the case this does not cover: a solo doctor who
+  needs both roles on one machine.
 
 ---
 

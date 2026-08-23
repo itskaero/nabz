@@ -63,6 +63,7 @@ src/
     exam.ts          # findings-chip state model (present/absent/value)
     labs.ts          # investigations: ordered/not + qualifier (en-only)
     secureContext.ts # WebCrypto guard -- a plain-HTTP origin has no crypto.subtle
+    deviceRole.ts    # consulting vs reception; per-DEVICE, never in the profile
     pluralize/       # per-locale number/plural rules (en, ur-PK)
     bidi.ts          # helpers to wrap LTR tokens inside RTL text
     growth/          # LMS -> z-score -> percentile (pure, TESTED, safety-critical)
@@ -264,6 +265,10 @@ covered by a regression test.
   v2 per-doctor license.
 - New in the profile: `labsPlacement` (where investigations print),
   `hiddenLabCategories` (categories this doctor never orders from).
+- **`deviceRole` is NOT in the profile.** It lives in localStorage beside the
+  pairing code, because the profile rides inside the encrypted backup and a role
+  restored onto the reception PC would silently re-enable the clinical side.
+  Same reasoning, same place, as `nabz.pairing`.
 - Never merge these into one blob. "App default" and "my letterhead" are different scopes.
 
 ---

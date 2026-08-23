@@ -32,6 +32,9 @@ import { PatientPicker } from './components/PatientPicker.tsx';
 import { RoleGateLock } from './components/RoleGateLock.tsx';
 import { canAccess, hasPin } from '@domain/roles.ts';
 import { hasWebCrypto } from '@domain/secureContext.ts';
+import type { DeviceRole } from '@domain/deviceRole.ts';
+import { deviceRole, deviceAllows } from '@domain/deviceRole.ts';
+import { DeviceRolePicker } from './components/DeviceRolePicker.tsx';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
 const ClinicPanel = lazy(() =>
@@ -86,7 +89,9 @@ function canShareFiles(): boolean {
 export function App() {
   const store = useStore();
   const { rx, profile, pack, phrases, contentRejected, dirty, save, startNew } = store;
-  const [view, setView] = useState<View>('write');
+  const [view, setView] = useState<View>(() =>
+    deviceRole() === 'reception' ? 'clinic' : 'write',
+  );
   const [tab, setTab] = useState<SectionId>('problems');
   const [fontsLoaded, setFontsLoaded] = useState(fontsReady());
   const [fontError, setFontError] = useState<string | null>(null);
@@ -96,6 +101,24 @@ export function App() {
   // while the page is open.
   const [secure] = useState(hasWebCrypto);
   const [unlocked, setUnlocked] = useState(false);
+  // Null until someone says what this machine is for. Asked once, then stored
+  // per-device -- never in the profile, which travels inside the backup.
+  const [role, setRole] = useState<DeviceRole | null>(deviceRole);
+  const reception = role === 'reception';
+  /**
+   * Ask only on a genuinely fresh install.
+   *
+   * An unclassified device already behaves as a consulting one, so a machine
+   * that has prescriptions on it is obviously the doctor's -- putting a
+   * full-screen question in front of someone who just updated the app would be
+   * noise, and the answer is already implied by the records sitting there.
+   * They can still switch in Settings.
+   */
+  const [askRole, setAskRole] = useState(false);
+  useEffect(() => {
+    if (deviceRole() !== null) return;
+    void db.prescriptionCount().then((n) => setAskRole(n === 0));
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) return;
@@ -149,6 +172,16 @@ export function App() {
   const locked =
     hasPin(profile.roleGate) && !unlocked && !canAccess('receptionist', view);
 
+  /**
+   * The device role and the PIN are different mechanisms and both apply.
+   *
+   * The PIN hides what IS on a shared machine; the device role means it is not
+   * there at all. `deviceAllows` is checked at the render site as well as in
+   * the nav, so a stale `view` — restored state, a deep link, a bug — cannot
+   * put a clinical surface on a reception station.
+   */
+  const shown = (v: View) => deviceAllows(v) && !locked;
+
   const model = useMemo(() => {
     if (view !== 'preview' || !fontsLoaded) return null;
     return buildDocument({ rx, profile, pack, packs: phrases, defaults: appDefaults });
@@ -177,6 +210,39 @@ export function App() {
     }
   }, [model]);
 
+  /*
+    Asked before anything else renders. A reception station that was never
+    classified is just a doctor's PC, and the guarantee this setting exists to
+    make would quietly not hold.
+  */
+  if (role === null && askRole) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <div className="brand">
+            Nabz
+            <small>first-time setup</small>
+          </div>
+        </header>
+        <DeviceRolePicker
+          onChosen={(chosen) => {
+            setRole(chosen);
+            setView(chosen === 'reception' ? 'clinic' : 'write');
+            // The queue is off by default so a solo doctor never meets it, but
+            // it is the ONLY thing a front desk does -- leaving it off hands
+            // the receptionist a blank screen.
+            if (chosen === 'reception' && !profile.clinic.enabled) {
+              store.setProfile({
+                ...profile,
+                clinic: { ...profile.clinic, enabled: true },
+              });
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     /*
       The doctor's surface is mobile-first at ~390px (DESIGN.md 11). The
@@ -188,9 +254,14 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           Nabz
-          <small>on this device only</small>
+          <small>{reception ? 'front desk' : 'on this device only'}</small>
         </div>
         <div className="spacer" />
+        {/*
+          On a reception station the clinical destinations are NOT RENDERED --
+          not disabled, not PIN-hidden. There is nothing behind them on this
+          machine, and a greyed-out button implies there is.
+        */}
         <nav className="topbar-nav">
           {profile.clinic.enabled && (
             <button
@@ -201,24 +272,30 @@ export function App() {
               Queue
             </button>
           )}
-          <button
-            className="icon-btn"
-            aria-pressed={view === 'growth'}
-            onClick={() => setView(view === 'growth' ? 'write' : 'growth')}
-          >
-            Growth
-          </button>
-          <button
-            className="icon-btn"
-            aria-pressed={view === 'history'}
-            onClick={() => setView(view === 'history' ? 'write' : 'history')}
-          >
-            History
-          </button>
+          {!reception && (
+            <button
+              className="icon-btn"
+              aria-pressed={view === 'growth'}
+              onClick={() => setView(view === 'growth' ? 'write' : 'growth')}
+            >
+              Growth
+            </button>
+          )}
+          {!reception && (
+            <button
+              className="icon-btn"
+              aria-pressed={view === 'history'}
+              onClick={() => setView(view === 'history' ? 'write' : 'history')}
+            >
+              History
+            </button>
+          )}
           <button
             className="icon-btn"
             aria-pressed={view === 'settings'}
-            onClick={() => setView(view === 'settings' ? 'write' : 'settings')}
+            onClick={() =>
+              setView(view === 'settings' ? (reception ? 'clinic' : 'write') : 'settings')
+            }
           >
             Settings
           </button>
@@ -317,7 +394,7 @@ export function App() {
         />
       )}
 
-      {!locked && view === 'write' && (
+      {shown('write') && view === 'write' && (
         <>
           <PatientBar />
           <nav className="tabs" role="tablist">
@@ -370,7 +447,7 @@ export function App() {
         </>
       )}
 
-      {!locked && view === 'preview' && (
+      {shown('preview') && view === 'preview' && (
         <>
           {model ? (
             <PreviewSheet model={model} />
@@ -382,7 +459,7 @@ export function App() {
         </>
       )}
 
-      {!locked && view === 'builder' && (
+      {shown('builder') && view === 'builder' && (
         <Suspense
           fallback={
             <div className="body">
@@ -406,9 +483,9 @@ export function App() {
         </Suspense>
       )}
 
-      {!locked && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
+      {shown('history') && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
       {view === 'settings' && <SettingsPanel onOpenBuilder={() => setView('builder')} />}
-      {!locked && view === 'growth' && (
+      {shown('growth') && view === 'growth' && (
         <div className="body">
           <GrowthPanel />
         </div>
@@ -445,11 +522,24 @@ export function App() {
             </button>
           </>
         )}
-        {(view === 'history' || view === 'settings' || view === 'growth' || view === 'builder' || view === 'clinic') && (
-          <button className="btn quiet" onClick={() => setView('write')}>
-            Back to the script
-          </button>
-        )}
+        {/*
+          A front desk has no script to go back to -- offering one names a
+          surface that does not exist on that machine. It goes back to the
+          queue, and from the queue there is nowhere further back.
+        */}
+        {(view === 'history' ||
+          view === 'settings' ||
+          view === 'growth' ||
+          view === 'builder' ||
+          view === 'clinic') &&
+          !(reception && view === 'clinic') && (
+            <button
+              className="btn quiet"
+              onClick={() => setView(reception ? 'clinic' : 'write')}
+            >
+              {reception ? 'Back to the queue' : 'Back to the script'}
+            </button>
+          )}
       </footer>
     </div>
   );

@@ -15,6 +15,7 @@
 import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
 import type { GrowthPoint, Prescription } from '@domain/prescription.ts';
+import { isReceptionDevice, ReceptionDeviceError } from '@domain/deviceRole.ts';
 import type { DoctorProfile } from '@config/doctorProfile.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
@@ -149,6 +150,15 @@ export function db(): Promise<IDBPDatabase<NabzDb>> {
 // --- prescriptions ---------------------------------------------------------
 
 export async function savePrescription(rx: Prescription): Promise<void> {
+  /*
+    The line that turns a claim into a property.
+
+    "The receptionist cannot read clinical content because it is not on their
+    machine" was only true while nobody wrote a script there. Refusing here
+    means a prescription cannot land on a reception station by accident, by
+    habit, or through a bug in some view that should not have rendered.
+  */
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
   const database = await db();
   await database.put('prescriptions', rx);
   await database.put('meta', new Date().toISOString(), 'lastWriteAt');

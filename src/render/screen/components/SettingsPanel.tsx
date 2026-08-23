@@ -23,6 +23,7 @@ import { parseFee } from '@domain/clinic.ts';
 import { applyPatch } from '@domain/patch.ts';
 import { hasPin, openGate, setPin } from '@domain/roles.ts';
 import { secureContextProblem } from '@domain/secureContext.ts';
+import { deviceRole, setDeviceRole } from '@domain/deviceRole.ts';
 
 const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   {
@@ -62,6 +63,8 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
   // Null when the browser has given us real crypto. Does not change while the
   // page is open, so it is read once.
   const [cryptoProblem] = useState(secureContextProblem);
+  const [role, setRole] = useState(deviceRole);
+  const [confirmReception, setConfirmReception] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -297,6 +300,67 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
           />
         </div>
         {status && <p className="hint">{status}</p>}
+      </section>
+
+      <section className="card settings-section">
+        <h3>What this computer is for</h3>
+        <p className="hint" style={{ marginTop: 0 }}>
+          {role === 'reception'
+            ? 'The front desk. This machine holds the queue and payments — prescriptions cannot be written or saved here.'
+            : 'The doctor’s own device. Prescriptions, examinations and growth records live here, and nowhere else.'}
+        </p>
+
+        {role === 'reception' ? (
+          <button
+            className="btn quiet"
+            onClick={() => {
+              setDeviceRole('consulting');
+              setRole('consulting');
+              setStatus('This is now the doctor’s device. Reload to see the clinical sections.');
+            }}
+          >
+            Make this the doctor&rsquo;s device
+          </button>
+        ) : (
+          <button className="btn quiet" onClick={() => setConfirmReception(true)}>
+            Make this the front desk
+          </button>
+        )}
+
+        {/*
+          Switching a device that already holds records is the dangerous
+          direction: the records are not deleted, but nothing on a reception
+          station can reach them. Say the number out loud rather than letting
+          someone discover it.
+        */}
+        {confirmReception && (
+          <div className="warn-box" style={{ margin: '10px 0' }}>
+            <strong>
+              {counts?.rx
+                ? `${counts.rx} prescriptions are stored on this device.`
+                : 'Nothing clinical is stored on this device yet.'}
+            </strong>
+            {counts?.rx
+              ? ' They will not be deleted, but a front-desk computer cannot open them. Export a backup first, then switch.'
+              : ' Safe to switch.'}
+            <div className="actionbar" style={{ padding: '8px 0 0', borderTop: 'none' }}>
+              <button className="btn quiet" onClick={() => setConfirmReception(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn quiet danger"
+                onClick={() => {
+                  setDeviceRole('reception');
+                  setRole('reception');
+                  setConfirmReception(false);
+                  setStatus('This is now the front desk. Reload to apply.');
+                }}
+              >
+                Switch to front desk
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="card settings-section">

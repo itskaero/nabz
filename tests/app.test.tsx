@@ -12,7 +12,7 @@
  *  - advice tier 2 offers no free-text field at all.
  */
 import 'fake-indexeddb/auto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '@render/screen/App.tsx';
@@ -20,8 +20,18 @@ import { StoreProvider } from '@render/screen/store.tsx';
 import { paediatrics } from '@data/packs/index.ts';
 import { packs as shippedPhrases } from '@data/phrases/index.ts';
 import { publishContent, resetContentCache, revertToShipped } from '@data/provider.ts';
+import { setDeviceRole, clearDeviceRole } from '@domain/deviceRole.ts';
+
+/**
+ * These tests are about the clinical app, not first-run setup. A device with no
+ * role and no records is a fresh install, and the shell correctly asks what the
+ * machine is for before anything else -- so say it is the doctor's, the way a
+ * real one would have been answered once. Onboarding has its own tests.
+ */
+beforeEach(() => setDeviceRole('consulting'));
 
 afterEach(async () => {
+  clearDeviceRole();
   cleanup();
   await revertToShipped();
   resetContentCache();
