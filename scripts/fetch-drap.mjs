@@ -74,6 +74,26 @@ const DISCLAIMER =
   'Source: https://eapp.dra.gov.pk/WebProductIndex.php';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * One retry on a network blip.
+ *
+ * A dropped connection cost a real row in a full run ("Calamine Lotion ::
+ * lookup failed"), which is indistinguishable in the output from a brand DRAP
+ * genuinely does not carry -- and that difference matters to whoever reviews
+ * the queue. One retry after a pause is enough for a transient failure without
+ * hammering a health regulator's server.
+ */
+async function retrying(fn, label) {
+  try {
+    return await fn();
+  } catch (err) {
+    process.stderr.write(`    retrying ${label} after ${err.message}
+`);
+    await sleep(1500);
+    return fn();
+  }
+}
 const UA =
   'nabz-formulary-seed/1.0 (paediatric prescribing app; catalogue reconciliation)';
 
@@ -101,12 +121,28 @@ async function searchBrand(term) {
   }
 }
 
+/**
+ * DRAP double-encodes apostrophes, so "Children's Panadol Liquid" arrives as
+ * "Children&#039;s Panadol Liquid". Decoded here rather than at display time --
+ * the entity would otherwise be stored, and then printed on a prescription.
+ */
+function decodeEntities(text) {
+  return (text ?? '')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&amp;/g, '&');
+}
+
 /** Pull the fields we are allowed to keep out of the HTML detail view. */
 function parseDetail(html) {
   const cells = html
     .replace(/<[^>]*>/g, '|')
     .split('|')
-    .map((s) => s.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim())
+    .map((s) => decodeEntities(s).replace(/\s+/g, ' ').trim())
     .filter(Boolean);
   const after = (label) => {
     const i = cells.findIndex((c) => c.toLowerCase() === label.toLowerCase());
@@ -173,10 +209,16 @@ const HARMLESS = new Set([
   'mcg', 'iu', 'gm', 'g', 'w', 'v',
 ]);
 
-function score(seed, candidateText) {
+/**
+ * `matchOn` is the term that actually produced these hits, which is not always
+ * the seed's brand: a multi-word seed ("Panadol Syrup") falls back to its base
+ * word, and scoring the full string against DRAP's "Panadol Tablet." matches
+ * nothing. Form and strength still come from the seed and do the disambiguating.
+ */
+function score(seed, candidateText, matchOn = seed.brand) {
   const c = norm(candidateText);
-  const b = norm(seed.brand);
-  if (!c.includes(b)) return 0;
+  const b = norm(matchOn);
+  if (!c.includes(b)) return { score: 0, notes: [] };
 
   // Everything the candidate says that the seed brand does not.
   const extras = c
@@ -185,17 +227,38 @@ function score(seed, candidateText) {
     .filter(Boolean)
     .filter((w) => !/^\d/.test(w) && !HARMLESS.has(w));
 
-  // A line extension is not a weaker match, it is the wrong product.
-  if (extras.some((w) => LINE_EXTENSIONS.includes(w) && !b.includes(w))) return 0;
+  /*
+    Demote, do not delete.
 
-  // Nor is a different dosage form. "Brufen 400mg tablet" matched "Brufen
-  // 400mg/4ml Injection" while form only ever ADDED points and never removed
-  // any -- an injection standing in for a tablet on a paediatric script.
+    These used to return 0, which was right while the script assigned
+    registration numbers itself. It is wrong now that a human decides: hard
+    filtering discarded the very information the reviewer needs. "Zithromax"
+    was reported as having NO DRAP entry when in fact ZITHROMAX INJECTION
+    exists and was thrown away on a form mismatch. The reviewer can see an
+    injection and reject it; they cannot see something never shown to them.
+
+    The one thing still hard-filtered is a veterinary product, below -- that is
+    categorically never the answer in a paediatric formulary.
+  */
+  const notes = [];
+  let penalty = 0;
+
+  if (extras.some((w) => LINE_EXTENSIONS.includes(w) && !b.includes(w))) {
+    penalty += 60;
+    notes.push('different product line');
+  }
+
+  // A different dosage form is a strong signal but not a certainty: DRAP names
+  // are inconsistent, and "Brufen 400mg tablet" matching "Brufen 400mg/4ml
+  // Injection" should sink, not disappear.
   if (seed.form) {
     const wantForm = norm(seed.form);
     const words = new Set(c.split(' '));
-    const named = FORM_WORDS.filter((f) => words.has(f));
-    if (named.length && !named.some((f) => f === wantForm || wantForm.includes(f))) return 0;
+    const named = FORM_WORDS.filter((f) => words.has(f) || words.has(`${f}s`));
+    if (named.length && !named.some((f) => f === wantForm || wantForm.includes(f))) {
+      penalty += 45;
+      notes.push(`different form (${named[0]})`);
+    }
   }
 
   let s = 50;
@@ -206,7 +269,7 @@ function score(seed, candidateText) {
     const digits = norm(seed.strength).replace(/[^0-9]/g, '');
     if (digits && norm(candidateText).replace(/[^0-9]/g, '').includes(digits)) s += 20;
   }
-  return s;
+  return { score: Math.max(1, s - penalty), notes };
 }
 
 /**
@@ -242,17 +305,43 @@ async function main() {
     n += 1;
     const tag = `${n}/${seeds.length} ${seed.brand}`;
     try {
-      const hits = await searchBrand(seed.brand);
+      let hits = await retrying(() => searchBrand(seed.brand), seed.brand);
       await sleep(PAUSE_MS);
 
+      /*
+        Retry on the base word when the full brand finds nothing.
+
+        The seed writes the presentation into the brand -- "Panadol Syrup",
+        "Calpol Forte", "Ventolin Nebules" -- and DRAP indexes the registered
+        product name, which is spelled differently. 19 of 50 misses in the first
+        full run were this, and "Panadol" alone returns 18 hits where "Panadol
+        Syrup" returns none. The seed's own form and strength then do the
+        disambiguating, which is what they are for.
+      */
+      const base = seed.brand.trim().split(/\s+/)[0];
+      let matchedOn = seed.brand;
+      if (hits.length === 0 && base && base.toLowerCase() !== seed.brand.trim().toLowerCase()) {
+        hits = await retrying(() => searchBrand(base), base);
+        matchedOn = base;
+        await sleep(PAUSE_MS);
+      }
+
       const ranked = hits
-        .map((h) => ({ ...h, score: score(seed, h.text) }))
+        .map((h) => {
+          const verdict = score(seed, h.text, matchedOn);
+          return { ...h, score: verdict.score, notes: verdict.notes };
+        })
         .filter((h) => h.score > 0)
         .sort((a, b) => b.score - a.score)
         .slice(0, MAX_CANDIDATES);
 
       if (ranked.length === 0) {
-        unresolved.push({ ...seed, why: 'no DRAP entry matched the brand name' });
+        unresolved.push({
+          ...seed,
+          why: hits.length
+            ? `${hits.length} DRAP entries share the name but none resembled this product`
+            : 'no DRAP entry matched the brand name',
+        });
         process.stderr.write(`  ${tag}: no candidates
 `);
         continue;
@@ -263,7 +352,9 @@ async function main() {
       // detail page can, and DRAP indexes both in one registry.
       const candidates = [];
       for (const hit of ranked) {
-        const detail = parseDetail(await ask({ webRegNo: hit.id }));
+        const detail = parseDetail(
+          await retrying(() => ask({ webRegNo: hit.id }), `reg ${hit.id}`),
+        );
         await sleep(PAUSE_MS);
         if (!/human/i.test(detail.usedFor)) {
           rejectedVeterinary.push({
@@ -289,12 +380,14 @@ async function main() {
             (!seed.form ||
               norm(`${detail.dosageForm} ${detail.productName}`).includes(norm(seed.form))),
           drapRegNo: String(hit.id).trim(),
-          drapProductName: detail.productName || hit.text.trim(),
+          drapProductName: decodeEntities(detail.productName || hit.text).trim(),
           company: detail.company,
           registrationStatus: detail.status,
           dosageForm: detail.dosageForm,
           composition: detail.composition,
           rank: hit.score,
+          /** why this one ranked low, for the reviewer to read at a glance */
+          concerns: hit.notes,
         });
       }
 
