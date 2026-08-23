@@ -84,6 +84,36 @@ export interface ExamSystemDefinition {
   order?: number;
 }
 
+// --- investigations palette ------------------------------------------------
+
+/**
+ * One offered test. Same shape as FindingDefinition on purpose -- labs reuse
+ * the exam chip control wholesale, so the definitions should not diverge.
+ */
+export interface LabDefinition {
+  id: string;
+  /** English, always. A lab technician reads "CBC", never a transliteration. */
+  label: string;
+  /** offer an inline qualifier field ("PA view", "abdomen") */
+  takesValue?: boolean;
+  valueHint?: string;
+  /**
+   * A property of the TEST, not a decision about the patient.
+   *
+   * Used to OFFER the matching tier-1 advice line ("nothing to eat for 8 hours
+   * before the test"), never to add one silently -- the library suggests and
+   * the prescriber confirms (PRODUCT.md rule 3.2).
+   */
+  fasting?: boolean;
+}
+
+/** Haematology, Biochemistry, Microbiology, Imaging -- editable per specialty. */
+export interface LabCategoryDefinition {
+  id: string;
+  label: string;
+  order?: number;
+}
+
 // --- the pack --------------------------------------------------------------
 
 export type ModuleId = 'growth';
@@ -116,6 +146,10 @@ export interface ContentPack {
   examSystems: ExamSystemDefinition[];
   /** systemId -> chips offered for that system */
   findingsPalette: Record<string, FindingDefinition[]>;
+  /** investigation categories this specialty offers, in offer order */
+  labCategories: LabCategoryDefinition[];
+  /** categoryId -> tests offered under it */
+  labsPalette: Record<string, LabDefinition[]>;
   advicePacks: {
     /** tier-1 template ids this specialty offers, in offer order */
     tier1: string[];
@@ -190,6 +224,39 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
       seenFinding.add(key);
       if (!finding.label.trim()) {
         issues.push({ severity: 'error', where: key, message: 'finding has no label' });
+      }
+    }
+  }
+
+  const categoryIds = new Set(pack.labCategories.map((c) => c.id));
+  for (const id of Object.keys(pack.labsPalette)) {
+    if (!categoryIds.has(id)) {
+      issues.push({
+        severity: 'error',
+        where: `labsPalette.${id}`,
+        message: 'palette for a lab category this pack does not declare',
+      });
+    }
+  }
+  for (const category of pack.labCategories) {
+    if (!pack.labsPalette[category.id]) {
+      issues.push({
+        severity: 'warning',
+        where: `labCategories.${category.id}`,
+        message: 'category has no tests; it will be free-text only',
+      });
+    }
+  }
+  const seenLab = new Set<string>();
+  for (const [categoryId, labs] of Object.entries(pack.labsPalette)) {
+    for (const lab of labs) {
+      const key = `${categoryId}/${lab.id}`;
+      if (seenLab.has(key)) {
+        issues.push({ severity: 'error', where: key, message: 'duplicate lab id' });
+      }
+      seenLab.add(key);
+      if (!lab.label.trim()) {
+        issues.push({ severity: 'error', where: key, message: 'lab has no label' });
       }
     }
   }
@@ -271,7 +338,7 @@ export function packErrors(pack: ContentPack): PackIssue[] {
 
 /** A stable fingerprint of a red flag's wording across every locale. */
 export function redFlagWording(strings: string[]): string {
-  const joined = strings.join(' ');
+  const joined = strings.join('\u0000');
   let hash = 0;
   for (let i = 0; i < joined.length; i += 1) {
     hash = (Math.imul(hash, 31) + joined.charCodeAt(i)) | 0;

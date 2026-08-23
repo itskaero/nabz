@@ -34,8 +34,19 @@ export type SectionId =
   | 'problems'
   | 'examination'
   | 'diagnosis'
+  | 'labs'
   | 'medications'
   | 'advice';
+
+/**
+ * Where the investigations block sits on the printed script.
+ *
+ * A setting rather than a fixed order because practice differs: some print
+ * "Advised" under the diagnosis, others tear the lab slip off below the Rx.
+ * Deliberately two values and not a general section-reorder engine -- that is a
+ * far larger change to a tested renderer, for a flexibility nobody asked for.
+ */
+export type LabsPlacement = 'after-diagnosis' | 'after-medications';
 
 export interface AppDefaults {
   paper: PaperSize;
@@ -51,6 +62,7 @@ export interface AppDefaults {
    * the document that has to survive that printer (PRODUCT.md 10).
    */
   urduMinPt: number;
+  labsPlacement: LabsPlacement;
   /** base size for English clinical text */
   latinBasePt: number;
   /** how loudly to nag about backups; see PRODUCT.md 12 */
@@ -65,12 +77,16 @@ export const appDefaults: AppDefaults = {
     problems: { primary: 'en' },
     examination: { primary: 'en' },
     diagnosis: { primary: 'en' },
+    // English only: a lab technician reads "CBC", and a transliteration would
+    // be unusable at the laboratory (PRODUCT.md 6).
+    labs: { primary: 'en' },
     // Never Urdu alone: the English is the safety net a pharmacist reads
     // (PRODUCT.md rule 3.5).
     medications: { primary: 'en', secondary: 'ur-PK' },
     advice: { primary: 'ur-PK', secondary: 'en' },
   },
   urduMinPt: 11,
+  labsPlacement: 'after-diagnosis',
   latinBasePt: 9.5,
   backupReminderDays: 7,
   defaultLocale: 'en',

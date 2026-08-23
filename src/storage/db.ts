@@ -49,7 +49,7 @@ export interface StoredContent {
 export interface LearnedTerm {
   /** `${field}:${normalised text}` */
   key: string;
-  field: 'problem' | 'diagnosis' | 'finding' | 'drug' | 'advice';
+  field: 'problem' | 'diagnosis' | 'finding' | 'drug' | 'advice' | 'lab';
   text: string;
   count: number;
   lastUsed: string;
@@ -442,8 +442,11 @@ export async function suggest(
  * Free-text findings the doctor keeps typing, so the palette can offer to grow
  * (PRODUCT.md 8). Returns candidates only -- promoting one is the doctor's call.
  */
-export async function promotionCandidates(minCount = 4): Promise<LearnedTerm[]> {
-  const rows = await (await db()).getAllFromIndex('learned', 'byField', 'finding');
+export async function promotionCandidates(
+  minCount = 4,
+  field: LearnedTerm['field'] = 'finding',
+): Promise<LearnedTerm[]> {
+  const rows = await (await db()).getAllFromIndex('learned', 'byField', field);
   return rows.filter((r) => r.count >= minCount).sort((a, b) => b.count - a.count);
 }
 

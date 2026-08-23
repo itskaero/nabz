@@ -61,6 +61,8 @@ src/
     sig.ts           # sig composition (structured -> rendered string, per locale)
     advice.ts        # advice tiers 1/2/3 model
     exam.ts          # findings-chip state model (present/absent/value)
+    labs.ts          # investigations: ordered/not + qualifier (en-only)
+    secureContext.ts # WebCrypto guard -- a plain-HTTP origin has no crypto.subtle
     pluralize/       # per-locale number/plural rules (en, ur-PK)
     bidi.ts          # helpers to wrap LTR tokens inside RTL text
     growth/          # LMS -> z-score -> percentile (pure, TESTED, safety-critical)
@@ -202,7 +204,10 @@ See PRODUCT.md §4a. Enforce in code:
   `.tsx`/logic, that's a bug — it must be a new pack file (data only), mirroring the
   "adding a locale is data not code" rule.
 - `ContentPack = { id, specialty, examSystems[], findingsPalette{},
-  advicePacks{ tier1, tier2 }, formularySeed[], modules[] }`.
+  labCategories[], labsPalette{}, advicePacks{ tier1, tier2 }, formularySeed[],
+  dosing[], modules[] }`.
+- Adding a specialty's investigations is a pack file, never a `.tsx` edit -- the
+  builder's Tests tab exists to make that true (see 6c).
 - v1 ships exactly one pack: `data/packs/paediatrics.ts` (authored by Ali).
 - `modules[]` lists specialty modules the pack enables (v1 paeds: `['growth']`).
 - Do NOT author non-paediatric packs. The schema is open for others; the content is not
@@ -225,6 +230,31 @@ See PRODUCT.md §4b. This is the second provably-correct requirement after Urdu.
 - Plotting is presentation only; never let the chart UI recompute percentiles — it
   renders values from `domain/growth`, single source of truth.
 
+## 6c. Investigations (labs)
+
+Reuses the exam chip control wholesale -- same `takesValue`/`valueHint`, same
+palette-in-the-pack shape. Differences worth knowing before you touch it:
+
+- **English-only**, so no bidi, no plural rules, no locale template. A lab
+  technician reads "CBC"; a transliteration is unusable at the laboratory.
+  Patient-facing instruction (fasting, bring the report) is tier-1 advice.
+- **Two states, not three.** A test is ordered or it is not. There is no
+  pertinent-negative for an investigation, and adding one would print "no CBC".
+- `LabOrder.label` is **frozen at order time**, like `ExamFinding.label`, so
+  editing the palette cannot retitle a test on an already-printed script.
+- Chips are offered, **never suggested from a diagnosis** -- that would be
+  decision support (rule 3.3). See PRODUCT.md 8a.
+- Placement on the sheet is `profile.labsPlacement`; the section language is
+  `{ primary: 'en' }` in `appDefaults`.
+
+**State updates must go through the updater form.** `setLabs` takes
+`(prev) => next`, not a computed array: two chips tapped before a re-render both
+close over the same render's `rx.labs`, and passing a value made the second tap
+overwrite the first -- a silently dropped investigation, found in a browser and
+covered by a regression test.
+
+---
+
 ## 7. Config layers (keep physically separate)
 
 - `config/appDefaults` — shipped defaults (A4, bilingual meds on, …).
@@ -232,6 +262,8 @@ See PRODUCT.md §4b. This is the second provably-correct requirement after Urdu.
   (name/quals/**registration field is locale-aware: PMDC/GMC/…**/clinic), per-section
   language overrides, exam systems, findings palette. Also the future anchor for the
   v2 per-doctor license.
+- New in the profile: `labsPlacement` (where investigations print),
+  `hiddenLabCategories` (categories this doctor never orders from).
 - Never merge these into one blob. "App default" and "my letterhead" are different scopes.
 
 ---
@@ -244,6 +276,15 @@ See PRODUCT.md §4b. This is the second provably-correct requirement after Urdu.
 - Ship a **loud, repeated** "records live only on this device — back up regularly"
   nudge. Local storage is evictable; this is the known v1 weakness (v2 cloud backup
   is the fix + the paid tier). Add an obvious "Export my data" from day one.
+
+---
+
+**Anything using `crypto.subtle` must check `isSecureContext` first and fail with
+a sentence, not a `TypeError`.** A plain-HTTP LAN origin -- exactly what a clinic
+station hands a doctor -- has no `crypto.subtle`, so the encrypted backup, the
+PIN and the service worker all silently vanish there. `domain/secureContext.ts`
+holds the guard; `App.tsx` shows a persistent banner. Never test this only on
+`localhost`: localhost IS a secure context, which is how it stayed hidden.
 
 ---
 
@@ -281,6 +322,12 @@ See PRODUCT.md §11a. Enforce in code:
 - No rigid dropdown-ification of exam/diagnosis (kills expert speed).
 - No bulk-parsing of copyrighted reference PDFs into the dosing DB (consult-and-cite
   only; WHO open-licensed sources excepted).
+- No lab **results**, reference ranges or result entry -- that is an LIS, and it
+  is what turns this into an EMR. No lab integrations, e-ordering or panels.
+- No investigation suggested from a diagnosis (decision support; rule 3.3).
+- No auto-assignment of DRAP registration numbers. `scripts/fetch-drap.mjs`
+  proposes candidates; a human confirms in the builder. See PRODUCT.md 11a for
+  the measured mismatches that settled this.
 
 ---
 

@@ -57,6 +57,7 @@ describe.runIf(out)('sample document', () => {
         },
       ],
       diagnosis: ['Community-acquired pneumonia, right lower lobe'],
+      labs: [],
       medications: [
         {
           id: 'm1',

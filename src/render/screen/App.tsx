@@ -21,6 +21,7 @@ import * as db from '@storage/db.ts';
 import { useStore } from './store.tsx';
 import { ListSection } from './sections/ListSection.tsx';
 import { ExamSection } from './sections/ExamSection.tsx';
+import { LabsSection } from './sections/LabsSection.tsx';
 import { MedicationsSection } from './sections/MedicationsSection.tsx';
 import { AdviceSection } from './sections/AdviceSection.tsx';
 import { PreviewSheet } from './components/PreviewSheet.tsx';
@@ -52,6 +53,7 @@ const TAB_ORDER: SectionId[] = [
   'problems',
   'examination',
   'diagnosis',
+  'labs',
   'medications',
   'advice',
 ];
@@ -60,6 +62,7 @@ const TAB_LABEL: Record<SectionId, string> = {
   problems: 'Problems',
   examination: 'Exam',
   diagnosis: 'Diagnosis',
+  labs: 'Tests',
   medications: 'Medicines',
   advice: 'Advice',
 };
@@ -131,6 +134,7 @@ export function App() {
       problems: rx.problems.length,
       examination: rx.examination.reduce((n, s) => n + findingCount(s), 0),
       diagnosis: rx.diagnosis.length,
+      labs: rx.labs.length,
       medications: rx.medications.length,
       advice: rx.advice.length,
     }),
@@ -359,6 +363,7 @@ export function App() {
                 note="Free text on purpose — diagnosis is judgement, not a list to pick from."
               />
             )}
+            {tab === 'labs' && <LabsSection />}
             {tab === 'medications' && <MedicationsSection />}
             {tab === 'advice' && <AdviceSection />}
           </div>

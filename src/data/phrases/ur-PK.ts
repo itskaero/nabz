@@ -162,6 +162,7 @@ export const urPK: LocalePack = {
     'section.problems': 'شکایات',
     'section.examination': 'معائنہ',
     'section.diagnosis': 'تشخیص',
+    'section.labs': 'تجویز کردہ ٹیسٹ',
     'section.medications': 'ادویات',
     'section.advice': 'ہدایات',
     'section.patientInstructions': 'مریض کے لیے ہدایات',

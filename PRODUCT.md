@@ -110,6 +110,8 @@ not a hardcode. See §6.
 ## 4. Scope
 
 ### v1 (build this)
+
+- Investigations / labs section (§8a), seeded per specialty and editable.
 - Five-section prescription: Problems, Examination, Diagnosis, Medications, Advice/Follow-up.
 - Locale-keyed **approved phrase library** for medication instructions (`en`, `ur-PK`).
 - **Free-text drug entry** with a brand→generic→strength **autocomplete library** (name only auto-filled).
@@ -324,6 +326,48 @@ Each system: **tap-chips of common findings + free text.**
 
 ---
 
+## 8a. Investigations — the labs section
+
+Same chip control as §8, and the reason it is allowed here when §8 forbids it for
+Diagnosis is **boundedness**. Diagnoses are an open set, so a closed list pushes
+click-convenience ahead of judgement. A paediatrician's investigation repertoire
+is roughly thirty tests with ten covering most days — the same shape as exam
+findings. So labs reuse that machinery, and the distinction is written down so
+nobody later reads this as a contradiction.
+
+- **English-only, and this is a safety decision, not a scope cut.** A laboratory
+  technician reads "CBC". Transliterating a test name would hand the patient a
+  slip nobody at the lab can act on. Consequently the section has no locale pack,
+  no bidi and no plural rules.
+- **Patient-facing instruction about the tests is tier-1 advice** — fasting, when
+  to go, bringing the report. That keeps the Urdu in the authored-and-reviewed
+  path rather than inventing a second one here (§9).
+- **Free text never blocks.** "Serum ceruloplasmin" must type and print.
+- A chip carries an optional **qualifier** ("Chest X-ray *PA view*", "Ultrasound
+  abdomen *full bladder*") — the same `takesValue` affordance as an exam chip.
+- **No third state.** An exam chip records a pertinent negative because that is
+  a clinical claim; there is no "pertinently un-ordered" test, and inventing one
+  would print "no CBC" on a prescription.
+- Palette is **per-specialty, editable and self-growing**, seeded from the
+  content pack (§4a) and adjustable in the pack builder. A doctor may hide
+  categories they never order from.
+- **Placement is a per-doctor setting** — after Diagnosis (default) or after
+  Medications. Practice genuinely differs on where "Advised" belongs.
+
+**Explicitly NOT in this section:**
+
+- **No test suggested from a diagnosis.** "Pneumonia → order CXR" is automated
+  clinical judgement (rule 3.3) and a decision-support engine, which §9 of
+  CLAUDE.md rules out. The palette offers what the specialty commonly orders;
+  the doctor decides.
+- **No results, reference ranges, or result entry.** That is a laboratory
+  information system, and it is what would turn this into the EMR §1 says it is
+  not.
+- **No lab integrations, e-ordering, prices, or commercial panels** — every one
+  of them would put clinical content on a server.
+
+---
+
 ## 9. Advice / follow-up (three-tier model)
 
 Audience = patient → needs Urdu. But advice is free-form, so it can't be a closed
@@ -429,6 +473,36 @@ carries a **mandatory citation**. None of the Pakistani commercial sites qualify
   AMH or AHFS DI.
 - **Pakistan context:** WHO EMRO guidance; official national guidelines / EPI schedule
   (verify against the official source, not a third-party site).
+
+### What reconciling against DRAP actually established
+
+DRAP is the registry of record and seeding the catalogue from it is sanctioned
+(CLAUDE.md 8a). `scripts/fetch-drap.mjs` does that. Three findings from the real
+run, which constrain how its output may be used:
+
+- **DRAP indexes veterinary and human products together, and the search endpoint
+  does not say which.** Only the per-product detail page carries
+  `Used For: Human`. A bulk import therefore puts animal drugs into a paediatric
+  autocomplete — six were caught and filtered in one run of 150 brands.
+- **Automated brand matching is not safe enough to assign registration numbers.**
+  Measured mismatches: `Curam 457mg/5ml` → Curamin (different brand),
+  `Panadol 500mg` → Panadol Night (adds diphenhydramine), `Brufen tablet` →
+  Brufen Injection and → Medibrufen (different company), three Augmentin syrups
+  → one shared tablet registration. Each was the *only* candidate returned, so
+  "one result" is not "the right result".
+- Therefore the script **proposes and never decides**: it collects ranked,
+  human-use-confirmed candidates and `provenance` flips to `'DRAP'` only when a
+  person picks one in the pack builder. This is the same rule the rest of the
+  app lives by — the library suggests, the prescriber confirms (rule 3.2).
+
+Scale is the second reason not to import everything: two generics alone returned
+2,800 products. Tens of thousands of unranked rows are autocomplete noise to a
+doctor with a 200-drug repertoire, and a large bundle to ship offline.
+
+**Under no circumstances may DRAP data reach the `dosing` table.** It is a
+registration registry: it records that a product exists, never what dose a child
+should receive. DRAP's own disclaimer says the list "cannot be used as a
+reference for any purpose". Dosing stays hand-authored and cited.
 
 ### Copyright rule for references (INCLUDING owned PDFs)
 - BNF/BNFC, Nelson, Harriet Lane, Lexicomp, Micromedex are **copyrighted/licensed.**

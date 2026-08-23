@@ -120,6 +120,25 @@ export interface ExamSystem {
   freeText?: string;
 }
 
+// --- investigations --------------------------------------------------------
+
+/**
+ * One ordered test.
+ *
+ * Mirrors ExamFinding, including the frozen `label`: a later edit to the pack's
+ * palette must not be able to retitle a test on a script already printed. There
+ * is no `state` -- a test is ordered or it is not (see domain/labs.ts).
+ */
+export interface LabOrder {
+  id: string;
+  /** id into the pack's labsPalette, or 'free:<text>' when typed */
+  labId: string;
+  /** the English label as shown, frozen at order time */
+  label: string;
+  /** the qualifier: "PA view", "abdomen", "left ear" */
+  value?: string;
+}
+
 // --- advice ----------------------------------------------------------------
 
 /**
@@ -180,6 +199,11 @@ export interface Prescription {
   examination: ExamSystem[];
   /** English; free text. Deliberately NOT chip-ified -- PRODUCT.md 8. */
   diagnosis: string[];
+  /**
+   * Investigations ordered. English-only: a lab technician reads "CBC", and a
+   * transliteration would be unusable at the laboratory. See domain/labs.ts.
+   */
+  labs: LabOrder[];
   medications: MedicationLine[];
   advice: AdviceItem[];
   /** doctor-initiated only; see PRODUCT.md 4b longitudinal carve-out */
@@ -203,6 +227,7 @@ export function emptyPrescription(packId: string, id: string, now = new Date()):
     problems: [],
     examination: [],
     diagnosis: [],
+    labs: [],
     medications: [],
     advice: [],
     packId,
@@ -216,6 +241,7 @@ export function isBlank(rx: Prescription): boolean {
     rx.patient.name.trim() === '' &&
     rx.problems.length === 0 &&
     rx.diagnosis.length === 0 &&
+    rx.labs.length === 0 &&
     rx.medications.length === 0 &&
     rx.advice.length === 0 &&
     rx.examination.every((s) => s.findings.length === 0 && !s.freeText?.trim())

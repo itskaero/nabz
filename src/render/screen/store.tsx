@@ -23,6 +23,7 @@ import type { ReactNode } from 'react';
 import type {
   AdviceItem,
   ExamSystem,
+  LabOrder,
   MedicationLine,
   Patient,
   Prescription,
@@ -77,6 +78,15 @@ interface Store {
   setPatient: (patch: Patch<Patient>) => void;
   setList: (field: 'problems' | 'diagnosis', items: string[]) => void;
   setExam: (systems: ExamSystem[]) => void;
+  /**
+   * Takes an updater, not a value.
+   *
+   * Two chips tapped in quick succession both read `rx.labs` from the render
+   * that was on screen when they were tapped, so passing a computed array makes
+   * the second tap overwrite the first -- a silently dropped investigation.
+   * Reproduced in a browser: tapping CBC then Chest X-ray left only the X-ray.
+   */
+  setLabs: (update: (prev: LabOrder[]) => LabOrder[]) => void;
   setMedications: (lines: MedicationLine[]) => void;
   setAdvice: (items: AdviceItem[]) => void;
   setFollowUp: (days: number | null) => void;
@@ -165,6 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setPatient: (p) => patch((prev) => ({ ...prev, patient: applyPatch(prev.patient, p) })),
       setList: (field, items) => patch((prev) => ({ ...prev, [field]: items })),
       setExam: (systems) => patch((prev) => ({ ...prev, examination: systems })),
+      setLabs: (update) => patch((prev) => ({ ...prev, labs: update(prev.labs) })),
       setMedications: (lines) => patch((prev) => ({ ...prev, medications: lines })),
       setAdvice: (items) => patch((prev) => ({ ...prev, advice: items })),
       setFollowUp: (days) =>

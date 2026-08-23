@@ -10,7 +10,7 @@ import type { ClinicSettings } from '@domain/clinic.ts';
 import { defaultClinicSettings } from '@domain/clinic.ts';
 import type { RoleGate } from '@domain/roles.ts';
 import { openGate } from '@domain/roles.ts';
-import type { Margins, PaperSize, SectionId } from './appDefaults.ts';
+import type { LabsPlacement, Margins, PaperSize, SectionId } from './appDefaults.ts';
 import { appDefaults } from './appDefaults.ts';
 
 /**
@@ -65,6 +65,10 @@ export interface DoctorProfile {
   packId: string;
   /** ids of exam systems this doctor has hidden from their palette */
   hiddenExamSystems: string[];
+  /** lab categories this doctor never orders from; mirrors hiddenExamSystems */
+  hiddenLabCategories: string[];
+  /** where the investigations block prints; overrides the app default */
+  labsPlacement?: LabsPlacement;
   /**
    * Findings this doctor has added to a system's palette, plus the ones the app
    * has offered to promote from repeated free text (PRODUCT.md 8, self-growing).
@@ -100,6 +104,7 @@ export const defaultDoctorProfile: DoctorProfile = {
   sectionLanguage: {},
   packId: 'paediatrics',
   hiddenExamSystems: [],
+  hiddenLabCategories: [],
   extraFindings: {},
   growth: { reference: 'WHO' },
   clinic: defaultClinicSettings,

@@ -24,6 +24,7 @@ import { directionOf } from '@domain/locale.ts';
 import { composeSig, drugLabel } from '@domain/sig.ts';
 import { composeAdvice, orderAdvice } from '@domain/advice.ts';
 import { composeExamination } from '@domain/exam.ts';
+import { composeLabs } from '@domain/labs.ts';
 import type { TextRun } from '@domain/text.ts';
 import type { AppDefaults } from '@config/appDefaults.ts';
 import { PAPER } from '@config/appDefaults.ts';
@@ -839,6 +840,21 @@ export function buildDocument(ctx: RenderContext): DocumentModel {
     b.y += SECTION_GAP - 6;
   }
 
+  /**
+   * Investigations. English only, so this is the cheap section: no bidi, no
+   * plural rules, no locale template. Placement follows the doctor's setting --
+   * some print "Advised" under the diagnosis, others below the Rx.
+   */
+  const placement = profile.labsPlacement ?? ctx.defaults.labsPlacement;
+  const drawLabs = () => {
+    if (!rx.labs.length) return;
+    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.labs'), 'EN');
+    bulletList(b, composeLabs(rx.labs), true);
+    b.y += SECTION_GAP - 6;
+  };
+
+  if (placement === 'after-diagnosis') drawLabs();
+
   if (rx.medications.length) {
     const lang = languageFor(profile, 'medications');
     const tag = lang.secondary
@@ -855,6 +871,8 @@ export function buildDocument(ctx: RenderContext): DocumentModel {
     });
     b.y += SECTION_GAP - 6;
   }
+
+  if (placement === 'after-medications') drawLabs();
 
   if (rx.advice.length) {
     const lang = languageFor(profile, 'advice');

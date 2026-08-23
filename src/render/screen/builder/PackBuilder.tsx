@@ -18,13 +18,14 @@ import { forkForEditing, publishContent, revertToShipped, shippedContent } from 
 import { useDraft } from './useDraft.ts';
 import { downloadPack, parsePackFile, serialisePack } from './packFile.ts';
 import { ExamTab } from './tabs/ExamTab.tsx';
+import { LabsTab } from './tabs/LabsTab.tsx';
 import { FormularyTab } from './tabs/FormularyTab.tsx';
 import { DosingTab } from './tabs/DosingTab.tsx';
 import { AdviceTab } from './tabs/AdviceTab.tsx';
 import { PhrasesTab } from './tabs/PhrasesTab.tsx';
 import { ReviewTab } from './tabs/ReviewTab.tsx';
 
-type Tab = 'exam' | 'formulary' | 'dosing' | 'advice' | 'phrases' | 'review';
+type Tab = 'exam' | 'labs' | 'formulary' | 'dosing' | 'advice' | 'phrases' | 'review';
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'formulary', label: 'Medicines' },
@@ -32,6 +33,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'phrases', label: 'Phrases' },
   { id: 'advice', label: 'Advice' },
   { id: 'exam', label: 'Exam' },
+  { id: 'labs', label: 'Tests' },
   { id: 'review', label: 'Review & export' },
 ];
 
@@ -131,6 +133,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
         {tab === 'phrases' && <PhrasesTab draft={draft} />}
         {tab === 'advice' && <AdviceTab draft={draft} />}
         {tab === 'exam' && <ExamTab draft={draft} />}
+        {tab === 'labs' && <LabsTab draft={draft} />}
         {tab === 'review' && (
           <ReviewTab draft={draft} json={serialisePack(draft.pack, draft.phrases)} />
         )}

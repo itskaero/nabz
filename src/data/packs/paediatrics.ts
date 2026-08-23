@@ -161,6 +161,87 @@ export const paediatrics: ContentPack = {
     ],
   },
 
+  /**
+   * Investigations a Pakistani paediatric OPD actually orders.
+   *
+   * CLINICAL CONTENT AWAITING REVIEW, exactly like the formulary and the red
+   * flags: the schema is ours, the list is Ali's to correct. A test offered
+   * here is only a chip -- ordering one is always the doctor's tap, and nothing
+   * suggests a test from a diagnosis (that would be decision support, which
+   * rule 3.3 forbids).
+   *
+   * Grouped so the palette stays scannable at 390px; `fasting` is a property of
+   * the test, used to OFFER the matching advice line, never to add one.
+   */
+  labCategories: [
+    { id: 'haem', label: 'Haematology', order: 1 },
+    { id: 'biochem', label: 'Biochemistry', order: 2 },
+    { id: 'micro', label: 'Microbiology & serology', order: 3 },
+    { id: 'imaging', label: 'Imaging', order: 4 },
+  ],
+
+  labsPalette: {
+    haem: [
+      { id: 'cbc', label: 'CBC' },
+      { id: 'cbc_esr', label: 'CBC with ESR' },
+      { id: 'esr', label: 'ESR' },
+      { id: 'crp', label: 'CRP' },
+      { id: 'retics', label: 'Reticulocyte count' },
+      { id: 'pbf', label: 'Peripheral blood film' },
+      { id: 'pt_aptt', label: 'PT / APTT' },
+      { id: 'blood_group', label: 'Blood group & Rh' },
+      { id: 'ferritin', label: 'Serum ferritin' },
+    ],
+    biochem: [
+      { id: 'rbs', label: 'Random blood sugar' },
+      { id: 'fbs', label: 'Fasting blood sugar', fasting: true },
+      { id: 'lfts', label: 'LFTs' },
+      { id: 'rfts', label: 'RFTs' },
+      { id: 'electrolytes', label: 'Serum electrolytes' },
+      { id: 'calcium', label: 'Serum calcium' },
+      { id: 'vit_d', label: 'Vitamin D (25-OH)' },
+      { id: 'tsh', label: 'TSH' },
+      { id: 'lipids', label: 'Lipid profile', fasting: true },
+      { id: 'serum_albumin', label: 'Serum albumin' },
+    ],
+    micro: [
+      { id: 'urine_re', label: 'Urine R/E' },
+      { id: 'urine_cs', label: 'Urine C/S' },
+      { id: 'stool_re', label: 'Stool R/E' },
+      { id: 'blood_cs', label: 'Blood C/S' },
+      { id: 'throat_swab', label: 'Throat swab C/S' },
+      { id: 'mp_ict', label: 'Malarial parasite / ICT' },
+      { id: 'dengue_ns1', label: 'Dengue NS1 antigen' },
+      { id: 'typhidot', label: 'Typhidot (IgM)' },
+      { id: 'widal', label: 'Widal test' },
+      { id: 'mantoux', label: 'Mantoux test' },
+      { id: 'covid_pcr', label: 'COVID-19 PCR' },
+    ],
+    imaging: [
+      {
+        id: 'xray_chest',
+        label: 'Chest X-ray',
+        takesValue: true,
+        valueHint: 'PA view',
+      },
+      {
+        id: 'xray_other',
+        label: 'X-ray',
+        takesValue: true,
+        valueHint: 'left knee AP + lateral',
+      },
+      {
+        id: 'usg_abdomen',
+        label: 'Ultrasound abdomen',
+        takesValue: true,
+        valueHint: 'full bladder',
+      },
+      { id: 'usg_kub', label: 'Ultrasound KUB' },
+      { id: 'echo', label: 'Echocardiography' },
+      { id: 'ct', label: 'CT', takesValue: true, valueHint: 'brain, plain' },
+    ],
+  },
+
   sigTemplates: [
     'sig.oral.liquid',
     'sig.oral.solid',

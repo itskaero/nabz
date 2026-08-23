@@ -160,6 +160,7 @@ export const en: LocalePack = {
     'section.problems': 'Presenting complaints',
     'section.examination': 'Examination',
     'section.diagnosis': 'Diagnosis',
+    'section.labs': 'Investigations advised',
     'section.medications': 'Medications',
     'section.advice': 'Advice',
     'section.patientInstructions': 'For the patient',

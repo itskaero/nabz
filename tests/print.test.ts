@@ -55,6 +55,7 @@ const prescription = (over: Partial<Prescription> = {}): Prescription => ({
     },
   ],
   diagnosis: ['Community-acquired pneumonia'],
+  labs: [],
   medications: [
     {
       id: 'm1',

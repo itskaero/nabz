@@ -1,0 +1,3477 @@
+{
+  "source": "DRAP public product index",
+  "url": "https://eapp.dra.gov.pk/WebProductIndex.php",
+  "fetchedAt": "2026-08-23T07:30:43.015Z",
+  "disclaimer": "This is an expanded provisional list of drugs registered by the Registration Board. Whilst due care has been taken in preparation of the provisional list of registered drugs, there might be some errors or omissions. This list cannot be used as a reference for any purpose including but not limited to litigation, claim, right, research, citation, or statistical analysis. Source: https://eapp.dra.gov.pk/WebProductIndex.php",
+  "note": "CATALOGUE ONLY: brand, generic, strength, form, company, registration number. No dosing information is present, and none may be derived from this file. Dosing lives in a separate table where every row is cited. Every product here was confirmed \"Used For: Human\" on its DRAP detail page -- DRAP indexes veterinary products alongside human ones and the search endpoint does not distinguish them.",
+  "counts": {
+    "seedRows": 150,
+    "withCandidates": 100,
+    "unresolved": 50,
+    "veterinaryFiltered": 6
+  },
+  "review": [
+    {
+      "brand": "Zentel",
+      "generic": "Albendazole",
+      "strength": "400mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "006729",
+          "drapProductName": "Zentel 200mg Tablet",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Tablet",
+          "composition": "Albendazole ...... 200 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Amoxil Drops",
+      "generic": "Amoxicillin",
+      "strength": "125mg/1.25ml",
+      "form": "drops",
+      "candidates": [
+        {
+          "drapRegNo": "000509",
+          "drapProductName": "Amoxil Drops 125mg/1.25ml",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Drops",
+          "composition": "Amoxicillin trihydrate eq to Amoxicillin ...... 125 mg",
+          "rank": 119
+        }
+      ]
+    },
+    {
+      "brand": "Augmentin",
+      "generic": "Amoxicillin + Clavulanic acid",
+      "strength": "156mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "006747",
+          "drapProductName": "Augmentin Tablets 375mg",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Amoxicillin Trihydrate eq. to Amoxicillin ...... 250 mg",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Augmentin",
+      "generic": "Amoxicillin + Clavulanic acid",
+      "strength": "312mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "006747",
+          "drapProductName": "Augmentin Tablets 375mg",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Amoxicillin Trihydrate eq. to Amoxicillin ...... 250 mg",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Augmentin",
+      "generic": "Amoxicillin + Clavulanic acid",
+      "strength": "457mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "006747",
+          "drapProductName": "Augmentin Tablets 375mg",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Amoxicillin Trihydrate eq. to Amoxicillin ...... 250 mg",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Curam",
+      "generic": "Amoxicillin + Clavulanic acid",
+      "strength": "457mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "036988",
+          "drapProductName": "Curamin Tablets",
+          "company": "Aries Pharmaceuticals (Pvt) Ltd.",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Sulphadoxine ...... 500 mg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Surbex-Z",
+      "generic": "B-complex + Zinc",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "010972",
+          "drapProductName": "SURBEX-Z TAB",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Multivitamin ...... 0 mg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Enterogermina",
+      "generic": "Bacillus clausii spores",
+      "strength": "2 billion/5ml",
+      "form": "solution",
+      "candidates": [
+        {
+          "drapRegNo": "095289",
+          "drapProductName": "Enterogermina 4bn/5ml",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Oral suspension",
+          "composition": "Spores of Polyantibiotic-resistant Bacillus Clausii ...... 4 Billion",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Tegral",
+      "generic": "Carbamazepine",
+      "strength": "100mg/5ml",
+      "form": "suspension",
+      "candidates": [
+        {
+          "drapRegNo": "070803",
+          "drapProductName": "Tegral Suspension",
+          "company": "Nouveaux Pharma Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Suspension",
+          "composition": "Carbamazepine ...... 100mg mg/5ml",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Ceftum",
+      "generic": "Cefuroxime",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "024078",
+          "drapProductName": "Ceftum Tablets Each tablets contains:- Cefpodoxim",
+          "company": "Pharmedic Pharmaceuticals Industries (Pvt.) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Cefpodoxime Proxetil eq. to Cefpodoxime.............100mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Rigix",
+      "generic": "Cetirizine",
+      "strength": "10mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "011248",
+          "drapProductName": "RIGIX 10mg TABLET",
+          "company": "AGP Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Cetirizine Hydrochloride ...... 10 mg",
+          "rank": 119
+        }
+      ]
+    },
+    {
+      "brand": "Zyrtec",
+      "generic": "Cetirizine",
+      "strength": "10mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "011020",
+          "drapProductName": "Zyrtec Tablet 10mg",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Tablet",
+          "composition": "Cetrizine 2HCl ...... 10 mg",
+          "rank": 119
+        }
+      ]
+    },
+    {
+      "brand": "Dermovate",
+      "generic": "Clobetasol propionate",
+      "strength": "0.05%",
+      "form": "cream",
+      "candidates": [
+        {
+          "drapRegNo": "003100",
+          "drapProductName": "Dermovate Cream",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "Clobetasol propionate ...... 0.05 %",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Zole-F",
+      "generic": "Clotrimazole + Fluocinolone",
+      "form": "cream",
+      "candidates": [
+        {
+          "drapRegNo": "082551",
+          "drapProductName": "Zole-F Cream",
+          "company": "Aulton Pharmaceuticals",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "Miconazole Nitrate ...... 20 %",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Gravinate",
+      "generic": "Dimenhydrinate",
+      "strength": "12.5mg/4ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "014409",
+          "drapProductName": "Gravinate Liquid 12.5mg/4ml",
+          "company": "The Searle Company Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Liquid",
+          "composition": "Dimenhydrinate ...... 12.5mg/4ml mg",
+          "rank": 104
+        }
+      ]
+    },
+    {
+      "brand": "Smecta",
+      "generic": "Diosmectite",
+      "strength": "3g",
+      "form": "sachet",
+      "candidates": [
+        {
+          "drapRegNo": "124927",
+          "drapProductName": "Smectamed 3gm Sachet",
+          "company": "Medella Pharmaceuticals (Pvt) Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Sachet",
+          "composition": "Dioctahedral smectite ...... 3 gm",
+          "rank": 107
+        }
+      ]
+    },
+    {
+      "brand": "Iberet Folic",
+      "generic": "Ferrous sulphate + Folic acid",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "006441",
+          "drapProductName": "IBERET FOLIC-500 GRADUMET TAB",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "FERROUS SULPHATE 525MG, VITAMIN C 500MG, FOLIC ACID 800MG, NICTINAMIDE 30MG, CAL. PATOTHENATE 10",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Sofradex",
+      "generic": "Framycetin + Dexamethasone",
+      "form": "drops",
+      "candidates": [
+        {
+          "drapRegNo": "000684",
+          "drapProductName": "SOFRADEX (FOR EYE&amp;EAR) DRP",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Eye drops",
+          "composition": "FRAMYCETIN SULPHATE 8MG,",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Sangobion",
+      "generic": "Iron + Vitamin B complex",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "001493",
+          "drapProductName": "Sangobion Capsules",
+          "company": "Martin Dow Marker Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Soft Gelatin Capsule",
+          "composition": "Ferrous Gluconate dehydrate ...... 250 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Duphalac",
+      "generic": "Lactulose",
+      "strength": "3.35g/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "006655",
+          "drapProductName": "Duphalac Syrup",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Syrup",
+          "composition": "Lactulose ...... 667 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Clarinase",
+      "generic": "Loratadine + Pseudoephedrine",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "017805",
+          "drapProductName": "CLARINASE REPETABS",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "LORATADINE 5MG PSUEDOEPHEDERINE SULPHATE 120MG",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Flagyl",
+      "generic": "Metronidazole",
+      "strength": "200mg/5ml",
+      "form": "suspension",
+      "candidates": [
+        {
+          "drapRegNo": "001214",
+          "drapProductName": "Flagyl Suspension",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Suspension",
+          "composition": "Benzoyl Metronidazole 320mg equivalent to Metronidazole BP ...... 200 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Mupirocin",
+      "generic": "Mupirocin",
+      "strength": "2%",
+      "form": "ointment",
+      "candidates": [
+        {
+          "drapRegNo": "018641-EX",
+          "drapProductName": "Reta-Mupirocin Ointment",
+          "company": "OPAL LABORATORIES (PVT) LTD",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Ointment",
+          "composition": "Mupirocin ...... 2 % W/W",
+          "rank": 77
+        }
+      ]
+    },
+    {
+      "brand": "Calpol",
+      "generic": "Paracetamol",
+      "strength": "120mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "001612",
+          "drapProductName": "Calpol Tablets",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Paracetamol ...... 500 mg",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Febrol",
+      "generic": "Paracetamol",
+      "strength": "120mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "061445",
+          "drapProductName": "Febrol SHE Caplet",
+          "company": "Barrett Hodgson Pakistan (Pvt.) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Caplet",
+          "composition": "Paracetamol ...... 500 mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Combantrin",
+      "generic": "Pyrantel pamoate",
+      "strength": "250mg/5ml",
+      "form": "suspension",
+      "candidates": [
+        {
+          "drapRegNo": "000433",
+          "drapProductName": "Combantrin Oral Suspension",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "Pyrental (Pamoate) ...... 50 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Zantac",
+      "generic": "Ranitidine",
+      "strength": "75mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "006520",
+          "drapProductName": "Zantac 150mg",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "RANITIDINE 150MG,",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Septran DS",
+      "generic": "Sulfamethoxazole + Trimethoprim",
+      "strength": "960mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "004926",
+          "drapProductName": "Septran DS Tablet",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Trimethoprim ...... 160 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Tobrex",
+      "generic": "Tobramycin",
+      "strength": "0.3%",
+      "form": "drops",
+      "candidates": [
+        {
+          "drapRegNo": "097352",
+          "drapProductName": "Tobrex Eye Drops",
+          "company": "Nouveaux Pharma Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Eye drops",
+          "composition": "Tobramycin ...... 3 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Amoxil",
+      "generic": "Amoxicillin",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "008451",
+          "drapProductName": "AMOXILLIN",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "AMOXICILLIN....1000MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "011781",
+          "drapProductName": "AMOXILLIN DRP",
+          "company": "idealpharma",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Drops",
+          "composition": "AMOXYCILLIN 100mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Amoxil",
+      "generic": "Amoxicillin",
+      "strength": "250mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "008451",
+          "drapProductName": "AMOXILLIN",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "AMOXICILLIN....1000MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "011781",
+          "drapProductName": "AMOXILLIN DRP",
+          "company": "idealpharma",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Drops",
+          "composition": "AMOXYCILLIN 100mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Penbritin",
+      "generic": "Ampicillin",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "000216",
+          "drapProductName": "Penbritin Syrup",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "AMPICILLIN TRIHYDRATE 125MG,",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "000004",
+          "drapProductName": "PENBRITIN 250MG TAB",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "AMPICILLIN TRIHYDRATE 250MG,",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Becotide",
+      "generic": "Beclometasone",
+      "strength": "50mcg/puff",
+      "form": "inhaler",
+      "candidates": [
+        {
+          "drapRegNo": "003564",
+          "drapProductName": "BECOTIDE INL",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "BECLOMETHASONE DIPROPIONATE 0.8MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "003565",
+          "drapProductName": "BECOTIDE NASAL SPR",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Nasal Solution",
+          "composition": "BECLOMETHASONE DIPROPIONATE 50MCG, METERD AEROSOL",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Osnate-D",
+      "generic": "Calcium + Vitamin D3",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "055948",
+          "drapProductName": "Osnate-D Tablet",
+          "company": "AGP Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Ossein Mineral Complex ...... 830 %",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "094234",
+          "drapProductName": "Fosnate-D Tablet",
+          "company": "Danas Pharmaceuticals (Pvt) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Alendronate sodium trihydrate eq to alendronic acid ...... 70 mg",
+          "rank": 77
+        }
+      ]
+    },
+    {
+      "brand": "Cefiget",
+      "generic": "Cefixime",
+      "strength": "100mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "045118",
+          "drapProductName": "Cefiget Capsules 400mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "Cefixime ...... 400 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "048776",
+          "drapProductName": "Cefiget 200mg Capsules",
+          "company": "Getz Pharma (Pvt) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "Cefixime (as Trihydrate)........200mg(USP Specification)",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Cefspan",
+      "generic": "Cefixime",
+      "strength": "400mg",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "013860",
+          "drapProductName": "Cefspan 400mg Capsule",
+          "company": "Barrett Hodgson Pakistan (Pvt.) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "Cefixime ...... 400 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "013859",
+          "drapProductName": "Cefspan 200mg Capsule",
+          "company": "Barrett Hodgson Pakistan (Pvt.) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "Cefixime ...... 200 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Velosef",
+      "generic": "Cephradine",
+      "strength": "500mg",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "001863",
+          "drapProductName": "Velosef 500mg Capsule",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Capsule",
+          "composition": "Cephradine ...... 500 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "001871",
+          "drapProductName": "Velosef 250mg Capsule",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Capsule",
+          "composition": "Cephradine ...... 250 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Ciproxin",
+      "generic": "Ciprofloxacin",
+      "strength": "250mg/5ml",
+      "form": "suspension",
+      "candidates": [
+        {
+          "drapRegNo": "048466",
+          "drapProductName": "Ciproxin XR 500 Tablets",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "334.8 mg Ciprofloxacin HCl Monohydrate Ph. Eur. and 253mg Ciprofloxacin Hydrous, corresp. to Ciprof",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "048467",
+          "drapProductName": "Ciproxin XR 1000 Tablets",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "669.4 mg Ciprofloxacin HCl Monohydrate Ph. Eur. and 506mg Ciprofloxacin Hydrous, corresp. to Ciprof",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Klaricid",
+      "generic": "Clarithromycin",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "013149",
+          "drapProductName": "Klaricid 250mg Tablets",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Clarithromycin ...... 250 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "020203",
+          "drapProductName": "Klaricid XL Modified",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Modified-release film-coated tablet",
+          "composition": "Clarithromycin ...... 500 mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Rivotril",
+      "generic": "Clonazepam",
+      "strength": "0.5mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "001049",
+          "drapProductName": "RIVOTRIL TABLET 0.5mg",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Clonazepam ...... 0.5 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "003626",
+          "drapProductName": "RIVOTRIL TABLET 2mg",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Clonazepam ...... 2 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Motilium",
+      "generic": "Domperidone",
+      "strength": "5mg/5ml",
+      "form": "suspension",
+      "candidates": [
+        {
+          "drapRegNo": "006527",
+          "drapProductName": "Motilium Oral Suspension",
+          "company": "Aspin Pharma",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Suspension",
+          "composition": "Domperidone ...... 5 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "006526",
+          "drapProductName": "Motilium Tablets",
+          "company": "Aspin Pharma",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Domperidone ...... 10 mg",
+          "rank": 84
+        }
+      ]
+    },
+    {
+      "brand": "Ferrofol",
+      "generic": "Ferrous sulphate + Folic acid",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "009333-EX",
+          "drapProductName": "FERROFOL TABLET",
+          "company": "Swiss Pharmaceuticals Pvt. Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Chewable tablet",
+          "composition": "Iron (III) Hydroxide Polymaltose Complex eq. to elemental iron ...... 100 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "004293",
+          "drapProductName": "FERROFOL CAP",
+          "company": "Eros Pharmaceuticals (Pvt.) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "FERROUS SULPHATE 200MG, FOLIC ACID 0.1MG,",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Buscopan",
+      "generic": "Hyoscine butylbromide",
+      "strength": "10mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "001110",
+          "drapProductName": "Buscopan",
+          "company": "Martin Dow Marker Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Hyoscine Butylbromide ...... 10 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "007313",
+          "drapProductName": "BUSCOPAN ELX",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Elixir",
+          "composition": "HYOSCINE N BUTYLBROMIDE 5MG,",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Nizoral",
+      "generic": "Ketoconazole",
+      "strength": "2%",
+      "form": "solution",
+      "candidates": [
+        {
+          "drapRegNo": "006799",
+          "drapProductName": "NIZORAL 200MG TAB",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "KETOPROFEN 200MG,",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "009080",
+          "drapProductName": "NIZORAL 20MG SUP",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "KETOCONAZOLE MICRONIZED 20MG,",
+          "rank": 92
+        }
+      ]
+    },
+    {
+      "brand": "Cravit",
+      "generic": "Levofloxacin",
+      "strength": "250mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "022245",
+          "drapProductName": "Cravit Tablets",
+          "company": "Hilton Pharma (Pvt) Limited.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Levofloxacin as hemihydrate.... 250 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "022246",
+          "drapProductName": "Cravit Tablets 500",
+          "company": "Hilton Pharma (Pvt) Limited.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Levofloxacin as hemihydrate.... 500 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Vermox",
+      "generic": "Mebendazole",
+      "strength": "100mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "004778",
+          "drapProductName": "Vermox Tablets 100 mg",
+          "company": "Aspin Pharma",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Mebendazole ...... 100 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "009082",
+          "drapProductName": "Vermox Tablet 500 mg",
+          "company": "Aspin Pharma",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Mebendazole ...... 500 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Orsal",
+      "generic": "Oral rehydration salts",
+      "strength": "WHO formula",
+      "form": "sachet",
+      "candidates": [
+        {
+          "drapRegNo": "069000",
+          "drapProductName": "Orsal Sachet",
+          "company": "Well &amp; Well Pharma Pvt.Ltd",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Sachet",
+          "composition": "Sodium chloride+Potassium chloride+Sodium citrate+Glucose anhydrous ...... 2.6+1.5+2.9+13.5 gm",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "134824",
+          "drapProductName": "ORSalix Sachet (Orange Flavor)",
+          "company": "CKD Pharmaceuticals Pakistan Pvt. Ltd",
+          "registrationStatus": "Active",
+          "dosageForm": "Powder for oral solution",
+          "composition": "Sodium Chloride ...... 2.6 g",
+          "rank": 75
+        }
+      ]
+    },
+    {
+      "brand": "Panadol Drops",
+      "generic": "Paracetamol",
+      "strength": "100mg/ml",
+      "form": "drops",
+      "candidates": [
+        {
+          "drapRegNo": "008556",
+          "drapProductName": "Children&#039;s Panadol Drops",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Drops",
+          "composition": "PARACETAMOL 80MG,",
+          "rank": 65
+        },
+        {
+          "drapRegNo": "101140",
+          "drapProductName": "Children&#039;s Panadol Drops",
+          "company": "Haleon Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Drops",
+          "composition": "Paracetamol ...... 80 mg",
+          "rank": 65
+        }
+      ]
+    },
+    {
+      "brand": "Polyfax",
+      "generic": "Polymyxin B + Bacitracin",
+      "form": "ointment",
+      "candidates": [
+        {
+          "drapRegNo": "000372",
+          "drapProductName": "Polyfax Eye Ointment",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Ointment",
+          "composition": "Polymyxin B sulfate ...... 10000 IU",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "000371",
+          "drapProductName": "Polyfax Skin Ointment",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Ointment",
+          "composition": "Polymyxin B sulfate ...... 10000 IU",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Deltacortril",
+      "generic": "Prednisolone",
+      "strength": "5mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "000448",
+          "drapProductName": "Deltacortril 5mg Tablet",
+          "company": "Lucky Core Industries Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Prednisolone ...... 5 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "053218",
+          "drapProductName": "Deltacortril 5mg Enteric Coated Tablet",
+          "company": "Lucky Core Industries Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Prednisolone ...... 5 mg",
+          "rank": 95
+        }
+      ]
+    },
+    {
+      "brand": "Aldactone",
+      "generic": "Spironolactone",
+      "strength": "25mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "000017",
+          "drapProductName": "Aldactone-A 25mg Tablets",
+          "company": "The Searle Company Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Spironolactone ...... 25 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "003203",
+          "drapProductName": "Aldactone 100mg Tablet",
+          "company": "The Searle Company Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Spironolactone ...... 100 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Septran",
+      "generic": "Sulfamethoxazole + Trimethoprim",
+      "strength": "240mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "003196",
+          "drapProductName": "SEPTRAN INF",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "TRIMETHOPRIM ...............80MG, SULPHAMETHOXAZOLE .......400MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "001588",
+          "drapProductName": "SEPTRAN IM INJ",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "TRIMETHOPRIM 160MG, SULPHAMETHOXAZOLE 800MG,",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Augmentin",
+      "generic": "Amoxicillin + Clavulanic acid",
+      "strength": "625mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "017297",
+          "drapProductName": "Augmentin 625mg Tablet",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Amoxicillin trihydrate eq to Amoxicillin ...... 500 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "006747",
+          "drapProductName": "Augmentin Tablets 375mg",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Amoxicillin Trihydrate eq. to Amoxicillin ...... 250 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "022244",
+          "drapProductName": "Augmentin BD Tablet",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Amoxicillin trihydrate eq. to Amoxicillin ...... 875 mg",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Calamox",
+      "generic": "Amoxicillin + Clavulanic acid",
+      "strength": "312mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "021509",
+          "drapProductName": "Calamox Tablets 375mg",
+          "company": "Bosch Pharmaceuticals (Pvt) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Amoxicillin Trihydrate ...... 250 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "021510",
+          "drapProductName": "Calamox Tablets 625mg",
+          "company": "Bosch Pharmaceuticals (Pvt) Ltd.",
+          "registrationStatus": "In Process",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Amoxicillin Trihydrate ...... 500 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "058393",
+          "drapProductName": "Calamox Drop",
+          "company": "Bosch Pharmaceuticals (Pvt) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Drops",
+          "composition": "Amoxicillin (As trihydrate)…50mg Clavulanic Acid (As Potassium) 12.5 mg ...... 50/12.5 mg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Azomax",
+      "generic": "Azithromycin",
+      "strength": "250mg",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "022200",
+          "drapProductName": "Azomax 250mg Capsule",
+          "company": "Novartis Pharma (Pakistan) Limited",
+          "registrationStatus": "Cancelled",
+          "dosageForm": "Capsule",
+          "composition": "Azithromycin ...... 250 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "112797",
+          "drapProductName": "Azomax Capsule 250mg",
+          "company": "AGP Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Azithromycin (as dihydrate) ...... 250 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "112797",
+          "drapProductName": "Azomax Capsule 250mg",
+          "company": "AGP Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Azithromycin (as dihydrate) ...... 250 mg",
+          "rank": 119
+        }
+      ]
+    },
+    {
+      "brand": "Betnovate",
+      "generic": "Betamethasone valerate",
+      "strength": "0.1%",
+      "form": "cream",
+      "candidates": [
+        {
+          "drapRegNo": "000256",
+          "drapProductName": "Betnovate Cream",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Cream",
+          "composition": "Betamethasone Valerate ...... 0.1 %",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "000254",
+          "drapProductName": "Betnovate N Cream",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Cream",
+          "composition": "Betamethasone Valerate ...... 0.1 %",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "000259",
+          "drapProductName": "BETNOVATE-C CREAM",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "BETNOVATE-C CREAM CONTAINING:BETAMETHASONE 17-VALERATE 0.1 %, CLIOQUINOL..... 3 %,",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Pulmicort",
+      "generic": "Budesonide",
+      "strength": "0.5mg/2ml",
+      "form": "solution",
+      "candidates": [
+        {
+          "drapRegNo": "016333",
+          "drapProductName": "PULMICORT 200",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "BUDESONIDE 2.80MG",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "016334",
+          "drapProductName": "PULMICORT 50",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "BUDESONIDE....0.71MG",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "016335",
+          "drapProductName": "PULMICORT TURBUHALER",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "BUDESONIDE....200MCG",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Fortum",
+      "generic": "Ceftazidime",
+      "strength": "500mg",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "010078",
+          "drapProductName": "Fortum 500mg Injection",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftazidime as Ceftazidime Pentahydrate ...... 500 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "010077",
+          "drapProductName": "Fortum 1gm Injection",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftazidime as Ceftazidime Pentahydrate ...... 1 gm",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "015819",
+          "drapProductName": "Fortum Injection 250mg",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Injection",
+          "composition": "Ceftazidime as Ceftazidime Pentahydrate ...... 250 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Klaricid",
+      "generic": "Clarithromycin",
+      "strength": "250mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "013149",
+          "drapProductName": "Klaricid 250mg Tablets",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Clarithromycin ...... 250 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "018145",
+          "drapProductName": "Klaricid 500mg Tablet",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Clarithromycin ...... 500 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "020203",
+          "drapProductName": "Klaricid XL Modified",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Modified-release film-coated tablet",
+          "composition": "Clarithromycin ...... 500 mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Dexa",
+      "generic": "Dexamethasone",
+      "strength": "4mg/ml",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "069744",
+          "drapProductName": "Dexafort Injection 40mg/ml",
+          "company": "Lucky Core Industries Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Triamcinolone acetonide ...... 40 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "007597",
+          "drapProductName": "DEXAWAL INJECTION 4MG / ML",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "DEXAMETHASONE-21-PHOSPHATE SODIUM 4MG,",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "012541",
+          "drapProductName": "Dexasone Injection 4mg/ml",
+          "company": "Indus Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Dexamethasone Sodium Phosphate ...... 4 mg/ml",
+          "rank": 107
+        }
+      ]
+    },
+    {
+      "brand": "Adrenaline",
+      "generic": "Epinephrine",
+      "strength": "1mg/ml",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "080303",
+          "drapProductName": "Adrenaline 1mg/ml Injection",
+          "company": "SAFE PHARMACEUTICAL (PVT) LTD",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Adrenaline ...... 1 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "011392-EX",
+          "drapProductName": "Adrenaline 1mg/ml Injection",
+          "company": "Maxitech Pharma (Pvt) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Epinephrine ...... 1 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "059861",
+          "drapProductName": "Adrenaline Injection",
+          "company": "Lawrence Pharma (PVT) LTD",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Ampoule",
+          "composition": "Adrenaline (as acid tartrate) ...... 1 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Erythrocin",
+      "generic": "Erythromycin",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "000247",
+          "drapProductName": "ERYTHROCIN SUP",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "ERYTHROCIN STEARATE 125 MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "007444",
+          "drapProductName": "ERYTHROCIN IV",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "ERYTHROMYCIN 1GM, BENZYL ALCOHOL 180MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "007555",
+          "drapProductName": "ERYTHROCIN IV 500MG",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "ERYTHROMYCIN 0.5GM, BENZYL ALCOHOL 90MG,",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Flixotide",
+      "generic": "Fluticasone propionate",
+      "strength": "50mcg/puff",
+      "form": "inhaler",
+      "candidates": [
+        {
+          "drapRegNo": "028445",
+          "drapProductName": "Flixotide Evohaler 50mcg",
+          "company": "GSK Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Inhalant",
+          "composition": "Fluticasone Propionate micronized ...... 50 mcg",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "028447",
+          "drapProductName": "Flixotide Evohaler 250mcg",
+          "company": "GSK Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Inhalant",
+          "composition": "Fliticasone Propionate micronized ...... 250 mcg",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "028446",
+          "drapProductName": "Flixotide Evohaler 125mcg",
+          "company": "GSK Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Inhaler",
+          "composition": "Fluticasone Propionate micronized ...... 125 mcg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Gentamicin",
+      "generic": "Gentamicin",
+      "strength": "20mg",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "075843",
+          "drapProductName": "Gentamicin 80mg/2ml Injection",
+          "company": "CITY PHARMACEUTICAL LABORATORIES",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Gentamicin (as sulfate) ...... 80 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "011862",
+          "drapProductName": "Gentamicin Injection 40mg",
+          "company": "TABROS PHARMA (PVT). LTD.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Gentamicin Sulphate ...... 40 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "013618",
+          "drapProductName": "Gentamicin Injection",
+          "company": "VENUS PHARMA",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Gentamicin ...... 40 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Loratin",
+      "generic": "Loratadine",
+      "strength": "5mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "027641",
+          "drapProductName": "Loratine Syrup",
+          "company": "Delux Chemical Industries",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "Loratadine........5mg",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "027912",
+          "drapProductName": "Loratine Syrup",
+          "company": "Delux Chemical Industries",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "Paracetamol........500mg",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "027640",
+          "drapProductName": "Loratine Tablets",
+          "company": "Delux Chemical Industries",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Loratadine........10mg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Flagyl",
+      "generic": "Metronidazole",
+      "strength": "400mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "000827",
+          "drapProductName": "Flagyl 400mg Tablet",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Metronidazole ...... 400 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "000910",
+          "drapProductName": "Flagyl 200mg Tablet",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Metronidazole ...... 200 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "013899",
+          "drapProductName": "FLAGYL COMPOUND TAB Each tablet contains:- METRONI",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "METRONIDAZOLE 400mg",
+          "rank": 75
+        }
+      ]
+    },
+    {
+      "brand": "Singulair",
+      "generic": "Montelukast",
+      "strength": "4mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "027343",
+          "drapProductName": "Singulair 4mg Tablet",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "4.16MG MONTELUKAST SODIUM EQUIVALENT TO 4.0MG OF FREE ACID.",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "023673",
+          "drapProductName": "SINGULAIR TABLETS 5MG",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "MONTELUKAST SODIUM 5MG",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "025259",
+          "drapProductName": "Singulair 10mg Tablet",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "10.4MG MONTELUKAST SODIUM EQ TO 10MG OF FREE ACID",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Vidaylin",
+      "generic": "Multivitamin",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "014730",
+          "drapProductName": "Vidaylin-L Syrup",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Syrup",
+          "composition": "Vitamin A ...... 3000 IU",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "000043",
+          "drapProductName": "VIDAYLIN SYP",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "Vitamin A ...... 0.9 mg",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "000044",
+          "drapProductName": "VIDAYLIN-M SYP",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "Vitamin A ...... 0.9 mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Epival",
+      "generic": "Sodium valproate",
+      "strength": "200mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "012079",
+          "drapProductName": "Epival Syrup",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "Sodium valproate eq. to Valproic acid ...... 250 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "009303",
+          "drapProductName": "EPIVAL 125MG TAB",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "DIVALPROEX SODIUM 125MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "022481",
+          "drapProductName": "Epival CR 500mg Tablets",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Divalproex Sodium ...... 500 mg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Zincat",
+      "generic": "Zinc sulphate",
+      "strength": "20mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "042499",
+          "drapProductName": "Zincat Syrup",
+          "company": "Atco Laboratories Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "Elemental Zinc (as ZnSO4.H2O) ...... 10 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "053094",
+          "drapProductName": "Zincat-OD Syrup",
+          "company": "Atco Laboratories Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Syrup",
+          "composition": "Zinc Sulfate Monohydrate ...... 20 mg",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "070452",
+          "drapProductName": "Zincat 20mgTablet (Dispersible)",
+          "company": "Atco Laboratories Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "54.9mg Zinc Sulphate Monohydrate Equivalent to Elemental Zinc ...... 20 mg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Amikin",
+      "generic": "Amikacin",
+      "strength": "100mg",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "088256",
+          "drapProductName": "Amikin 100mg Injection",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Injection",
+          "composition": "Amikacin (as sulphate) ...... 100 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "010666",
+          "drapProductName": "AMIKIN IM/IV INJECTION 100MG",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "AMIKACIN SULPHATE 100MG",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "005487",
+          "drapProductName": "Amikin 250m Injection",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "...... 0",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "005488",
+          "drapProductName": "Amikin Injection 500mg",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "...... 0",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Amoxil",
+      "generic": "Amoxicillin",
+      "strength": "250mg",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "000213",
+          "drapProductName": "Amoxil 250mg Capsule",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Capsule",
+          "composition": "Amoxicillin (as trihydrate) ...... 250 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "040208",
+          "drapProductName": "Amoxilite Capsule 250 mg",
+          "company": "Elite Pharma (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "Amoxicillin (as Trihydrate) ...... 250mg mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "006669",
+          "drapProductName": "Amoxil 500mg Capsule",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Capsule",
+          "composition": "Amoxicillin Trihydrate Eq To Amoxicillin Base ...... 500 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "013185",
+          "drapProductName": "AMOXILLIN 250MG CAP Each capsule contains:- AMOXYC",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "AMOXYCILLIN TRIHYDRATE 250mg",
+          "rank": 95
+        }
+      ]
+    },
+    {
+      "brand": "Amoxil",
+      "generic": "Amoxicillin",
+      "strength": "500mg",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "006669",
+          "drapProductName": "Amoxil 500mg Capsule",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Capsule",
+          "composition": "Amoxicillin Trihydrate Eq To Amoxicillin Base ...... 500 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "040209",
+          "drapProductName": "Amoxilite Capsule 500 mg",
+          "company": "Elite Pharma (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "Amoxicillin (as Trihydrate) ...... 500mg mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "000213",
+          "drapProductName": "Amoxil 250mg Capsule",
+          "company": "GlaxoSmithKline Pakistan Limited",
+          "registrationStatus": "Approved / Finalized",
+          "dosageForm": "Capsule",
+          "composition": "Amoxicillin (as trihydrate) ...... 250 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "013186",
+          "drapProductName": "AMOXILLIN 500MG CAP Each capsule contains:- AMOXYC",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "AMOXYCILLIN TRIHYDRATE 500mg",
+          "rank": 95
+        }
+      ]
+    },
+    {
+      "brand": "Ceclor",
+      "generic": "Cefaclor",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "007176",
+          "drapProductName": "CECLOR 125MG / 5ML SUP",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "CEFACLOR 125MG,",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "007175",
+          "drapProductName": "CECLOR 250MG / 5ML SUP",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "CEFACLOR 250MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "007177",
+          "drapProductName": "CECLOR 250MG CAP",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "CEFACLOR 250MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "007178",
+          "drapProductName": "CECLOR 500MG CAP",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "CEFACLOR 500MG,",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Rocephin",
+      "generic": "Ceftriaxone",
+      "strength": "250mg",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "008432",
+          "drapProductName": "Rocephin 250mg IM Injection",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftriaxone as Sodium ...... 250 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "008433",
+          "drapProductName": "Rocephin 250mg IV Injection",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injectable",
+          "composition": "Ceftriaxone as Sodium ...... 250 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "008435",
+          "drapProductName": "Rocephin Injection 500mg IV",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftriaxone ...... 500 mg",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "007014",
+          "drapProductName": "ROCEPHIN 1gm INJECTION IV",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftriaxone ...... 1 gm",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Rocephin",
+      "generic": "Ceftriaxone",
+      "strength": "1g",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "007014",
+          "drapProductName": "ROCEPHIN 1gm INJECTION IV",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftriaxone ...... 1 gm",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "008436",
+          "drapProductName": "ROCEPHIN 1gm INJECTION IM",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftriaxone ...... 1 gm",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "008435",
+          "drapProductName": "Rocephin Injection 500mg IV",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftriaxone ...... 500 mg",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "008434",
+          "drapProductName": "Rocephin Injection 500mg IM",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "Ceftriaxone ...... 500 mg",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Keflex",
+      "generic": "Cephalexin",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "001070",
+          "drapProductName": "KEFLEX (ORAL) SUP",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "CEPHALEXIN MONOHYDRATE 125MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "001073",
+          "drapProductName": "KEFLEX 500MG TAB",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "CEPHALEXIN MONOHYDRATE 500MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "001071",
+          "drapProductName": "KEFLEX PAED, 100MG DRP",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Drops",
+          "composition": "CEPHALEXIN 100MG,",
+          "rank": 60
+        },
+        {
+          "drapRegNo": "001072",
+          "drapProductName": "KEFLEX PULVULES 250MG CAP",
+          "company": "Eli Lilly Pakistan (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "CEPHALEXIN MONOHYDRATE 250MG,",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Softin",
+      "generic": "Cetirizine",
+      "strength": "5mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "024780",
+          "drapProductName": "Softin Syrup.",
+          "company": "Werrick Pharmaceuticals",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Syrup",
+          "composition": "Loratadine ...... 5 mg/ml",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "012026",
+          "drapProductName": "Softin Tablets",
+          "company": "Werrick Pharmaceuticals",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Loratadine ...... 10 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "065168",
+          "drapProductName": "Softin-OD Tablets",
+          "company": "Werrick Pharmaceuticals",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Desloratadine ...... 5 mg",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "060094",
+          "drapProductName": "Softin-P Tablets",
+          "company": "Werrick Pharmaceuticals",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Extended Release Tablet",
+          "composition": "Loratadine ...... 5 mg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Resochin",
+      "generic": "Chloroquine",
+      "strength": "150mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "000025",
+          "drapProductName": "Resochin 250mg Tablet",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Chloroquine phosphate ...... 250 mg corresponding to",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "107228",
+          "drapProductName": "Resochin 250mg Tablet",
+          "company": "OBS Pharma (Pvt) Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Chloroquine phosphate ...... 250 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "000031",
+          "drapProductName": "RESOCHIN INJ",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "CHLOROQUINE PHOSPHATE 65MG,",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "000023",
+          "drapProductName": "RESOCHIN 80MG (FOR CHILDREN) TAB",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "CHLOROQUINE PHOSPHATE 80MG,",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Canesten",
+      "generic": "Clotrimazole",
+      "strength": "1%",
+      "form": "cream",
+      "candidates": [
+        {
+          "drapRegNo": "107229",
+          "drapProductName": "Canesten 1 Vaginal Cream",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Cream",
+          "composition": "Clotrimazole ...... 10 gm (10% w/w)",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "003322",
+          "drapProductName": "CANESTEN 1% SOL",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "CLOTRIMAZOLE 1%,",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "003321",
+          "drapProductName": "Canesten Clotrimazole Cream",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "CLOTRIMAZOLE 1%,",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "007484",
+          "drapProductName": "Canesten Exstra Cream",
+          "company": "Bayer Pakistan Private Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "Bifonazole ...... 1 gm",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Nexum",
+      "generic": "Esomeprazole",
+      "strength": "20mg",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "033890",
+          "drapProductName": "Nexum Capsules 20mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Esomeprazole (as magnesium trihydrate enteric coated pellets) eq to esomeprazole ...... 20 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "033890",
+          "drapProductName": "Nexum Capsules 20mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Esomeprazole (as magnesium trihydrate enteric coated pellets) eq to esomeprazole ...... 20 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "033430",
+          "drapProductName": "Nexum Tablets 20mg",
+          "company": "Getz Pharma (Pvt) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Esomeprazole Magnesium Trihydrate eq. to Esomeprazole ..20mg",
+          "rank": 104
+        },
+        {
+          "drapRegNo": "033891",
+          "drapProductName": "Nexum Capsule 40mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Esomeprazole (as magnesium trihydrate enteric coated pellets) eq to esomeprazole ...... 40 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Telfast",
+      "generic": "Fexofenadine",
+      "strength": "30mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "021119",
+          "drapProductName": "Telfast 120mg Tablet",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Fexofenadine hydrochloride ...... 120 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "021120",
+          "drapProductName": "Telfast 180mg Tablet",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Fexofenadine hydrochloride ...... 180 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "021121",
+          "drapProductName": "Telfast 60mg Tablet",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Fexofenadine hydrochloride ...... 60 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "023617",
+          "drapProductName": "Telfast D Tablet",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Fexofenadine hydrochloride ...... 60 mg",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Seretide",
+      "generic": "Fluticasone + Salmeterol",
+      "strength": "25/50mcg",
+      "form": "inhaler",
+      "candidates": [
+        {
+          "drapRegNo": "027381",
+          "drapProductName": "Seretide Evohaler 25/50mcg",
+          "company": "GSK Pakistan Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Inhalant",
+          "composition": "Fluticasone Propionate ...... 50 mcg",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "027382",
+          "drapProductName": "Seretide Evohaler 25/125mcg",
+          "company": "GSK Pakistan Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Inhalant",
+          "composition": "Salmeterol Xinafoate ...... 36.3 mcg",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "027383",
+          "drapProductName": "Seretide Evohaler 25/250mcg",
+          "company": "GSK Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Inhalant",
+          "composition": "Salmeterol Xinafoate ...... 36.3 mcg",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "074728",
+          "drapProductName": "Seretide Diskus 50/500 mcg",
+          "company": "GSK Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Inhalation powder",
+          "composition": "Salmeterol (as xinafoate) ...... 50 mcg",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Folic Acid",
+      "generic": "Folic acid",
+      "strength": "5mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "057669",
+          "drapProductName": "Folic Acid Tablets 5mg",
+          "company": "Drugpharm pvt ltd",
+          "registrationStatus": "Cancelled",
+          "dosageForm": "Tablet",
+          "composition": "Folic Acid ................. 5mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "057707",
+          "drapProductName": "Folic Acid 5mg Tablet",
+          "company": "Semos Pharmaceuticals PVT LTD",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Folic acid ...... 5 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "005821",
+          "drapProductName": "FOLIC ACID 5MG TABLET",
+          "company": "Geofman Pharmaceuticals",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Folic Acid ...... 5 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "005865",
+          "drapProductName": "Folic Acid Tablets 5mg",
+          "company": "KARACHI PHARMACEUTICAL LABORATORIES",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Folic acid ...... 5 mg",
+          "rank": 119
+        }
+      ]
+    },
+    {
+      "brand": "Fucidin",
+      "generic": "Fusidic acid",
+      "strength": "2%",
+      "form": "cream",
+      "candidates": [
+        {
+          "drapRegNo": "015539",
+          "drapProductName": "Fucidin Cream",
+          "company": "Zam Zam Corporation",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "Fusidic acid ...... 20 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "023123",
+          "drapProductName": "Fucidin H Cream",
+          "company": "Zam Zam Corporation",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "FUSIDIC ACID 20MG HYDROCORTISONE ACETATE 10MG",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "025229",
+          "drapProductName": "Fucidin Intertulle",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tulle",
+          "composition": "EACH GAUZE IS IMPREGNETED WITH 1.5GM OF FUCIDIN OINTMENT 2% IS LESS THAN 0.03GM EQ TO 30GM SODIUM FU",
+          "rank": 72
+        },
+        {
+          "drapRegNo": "012802",
+          "drapProductName": "FUCIDIN LEO CRM",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Cream",
+          "composition": "FUSIDIC ACID ANHYDROUS 20mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Hydrocortisone",
+      "generic": "Hydrocortisone sodium succinate",
+      "strength": "100mg",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "126770",
+          "drapProductName": "Hydrocortisone injection 100mg IV",
+          "company": "Akhai Pharmaceuticals Private Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Injection",
+          "composition": "Hydrocortisone Sodium Succinate Eq. to Hydrocortisone ...... 100 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "003726",
+          "drapProductName": "HYDROCORTISONE INJECTION",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "HYDROCORTISOIE ACETATE SUPENSION 25MG,",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "020370",
+          "drapProductName": "Hydrocortisone Injection",
+          "company": "Highnoon Laboratories Ltd",
+          "registrationStatus": "Cancelled",
+          "dosageForm": "Injection",
+          "composition": "Hydrocortisone sodium succinate equivalent to hydrocortisone ...... 100 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "129421",
+          "drapProductName": "Hydrocortisone 500mg IV Injection",
+          "company": "Akhai Pharmaceuticals Private Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Powder for injection",
+          "composition": "Hydrocortisone ...... 500 mg",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Brufen",
+      "generic": "Ibuprofen",
+      "strength": "400mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "061940",
+          "drapProductName": "Medibrufen 400mg Tablet",
+          "company": "Mediate Pharmaceutical Pvt Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Ibuprofen ...... 400 mg",
+          "rank": 97
+        },
+        {
+          "drapRegNo": "001541",
+          "drapProductName": "BRUFEN 400MG TAB",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "IBUPROFEN 400MG,",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "018388",
+          "drapProductName": "Brufen Retard 800mg Tablets",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Pack Size(s)",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "108578",
+          "drapProductName": "Brufen Duo Tablet",
+          "company": "Abbott Laboratories (Pakistan) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Paracetamol ...... 500 mg",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Nidazole",
+      "generic": "Metronidazole",
+      "strength": "200mg/5ml",
+      "form": "suspension",
+      "candidates": [
+        {
+          "drapRegNo": "008094-Ex",
+          "drapProductName": "Nidazole Suspension 200mg",
+          "company": "Miracle Pharmaceuticals Pvt Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "Metronidazole ...... 200 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "062757",
+          "drapProductName": "Fynidazole Suspension",
+          "company": "FYNK Pharmaceuticals",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "Metronidazole as Benzoate ...... 200 mg",
+          "rank": 77
+        },
+        {
+          "drapRegNo": "064959",
+          "drapProductName": "Metronidazole Suspension",
+          "company": "Drugpharm pvt ltd",
+          "registrationStatus": "Cancelled",
+          "dosageForm": "Suspension",
+          "composition": "Metronidazole benzoyl eq to metronidazole ...... 200 mg",
+          "rank": 77
+        },
+        {
+          "drapRegNo": "079356",
+          "drapProductName": "Metronidazole Liquid Suspension",
+          "company": "Caliph Pharmaceuticals (Pvt) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Suspension",
+          "composition": "Metronidazole benzoate Eq. to Metronidazole ...... 200 mg/5ml",
+          "rank": 77
+        }
+      ]
+    },
+    {
+      "brand": "Daktarin",
+      "generic": "Miconazole",
+      "strength": "2%",
+      "form": "cream",
+      "candidates": [
+        {
+          "drapRegNo": "005480",
+          "drapProductName": "DAKTARIN 20MG CRM",
+          "company": "Aspin Pharma",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Cream",
+          "composition": "Miconazole Nitrate ...... 2 %",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "006656",
+          "drapProductName": "DAKTARIN 2% LOT",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "MICONAZOLE NITRATE 20MG,",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "006657",
+          "drapProductName": "DAKTARIN TINCTURE 2%",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Product Specification",
+          "composition": "MICONAZOLE NITRATE 20MG,",
+          "rank": 92
+        },
+        {
+          "drapRegNo": "006658",
+          "drapProductName": "DAKTARIN 2% PDR",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Water Soluble Powder",
+          "composition": "MICONAZOLE NITRATE 20MG,",
+          "rank": 92
+        }
+      ]
+    },
+    {
+      "brand": "Montiget",
+      "generic": "Montelukast",
+      "strength": "4mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "034836",
+          "drapProductName": "Montiget Chewable Tablet 4mg",
+          "company": "Getz Pharma (Pvt) Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Chewable tablet",
+          "composition": "Montelukast Sodium ...... 4 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "008008-EX",
+          "drapProductName": "Montiget Chewable Tablet 4mg",
+          "company": "Getz Pharma (Pvt) Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Montelukast ...... 4 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "034838",
+          "drapProductName": "Montiget Tablet 10mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Tablet",
+          "composition": "Montelukast as Sodium ...... 10 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "034838",
+          "drapProductName": "Montiget Tablet 10mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Tablet",
+          "composition": "Montelukast as Sodium ...... 10 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Montiget",
+      "generic": "Montelukast",
+      "strength": "5mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "034837",
+          "drapProductName": "Montiget Chewable Tablet 5mg",
+          "company": "Getz Pharma (Pvt) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Chewable tablet",
+          "composition": "Montelukast Sodium ...... 5 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "008009-EX",
+          "drapProductName": "Montiget Chewable Tablets 5mg",
+          "company": "Getz Pharma (Pvt) Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Montelukast ...... 5 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "034838",
+          "drapProductName": "Montiget Tablet 10mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Tablet",
+          "composition": "Montelukast as Sodium ...... 10 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "034838",
+          "drapProductName": "Montiget Tablet 10mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Tablet",
+          "composition": "Montelukast as Sodium ...... 10 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "Synflex",
+      "generic": "Naproxen sodium",
+      "strength": "275mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "114452",
+          "drapProductName": "Synflex Tablet 275mg",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Naproxen Sodium ...... 275 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "010197",
+          "drapProductName": "Synflex Tablet 550mg",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Naproxen Sodium ...... 550 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "123083",
+          "drapProductName": "Synflex Tablets 220mg",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Naproxen Sodium ...... 220 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "083167",
+          "drapProductName": "Synflex-M Tablet",
+          "company": "Martin Dow Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Film-coated tablet",
+          "composition": "Sumatriptan succinate eq. to sumatriptan ...... 85 mg",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Risek",
+      "generic": "Omeprazole",
+      "strength": "20mg",
+      "form": "capsule",
+      "candidates": [
+        {
+          "drapRegNo": "019364",
+          "drapProductName": "Risek Capsules 20mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Omeprazole (as enteric coated pellets) ...... 20 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "019364",
+          "drapProductName": "Risek Capsules 20mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Omeprazole (as enteric coated pellets) ...... 20 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "061568",
+          "drapProductName": "Risek Fast Capsule 20mg+1100mg",
+          "company": "Getz Pharma (Pvt) Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Capsule",
+          "composition": "Omeprazole ...... 20 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "022109",
+          "drapProductName": "Risek Capsules 40mg",
+          "company": "Getz Pharma (Pvt.) Ltd.",
+          "registrationStatus": "Active",
+          "dosageForm": "Capsule",
+          "composition": "Enteric coated pellets of Omeprazole equivalent to Omeprazole ...... 40 mg",
+          "rank": 99
+        }
+      ]
+    },
+    {
+      "brand": "ORS Sachet",
+      "generic": "Oral rehydration salts",
+      "strength": "WHO low-osmolarity",
+      "form": "sachet",
+      "candidates": [
+        {
+          "drapRegNo": "097314",
+          "drapProductName": "ORS Sachet",
+          "company": "Avensis Pharmaceuticals",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Sachet",
+          "composition": "Sodium chloride ...... 2.6 g",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "097316",
+          "drapProductName": "ORS Sachet",
+          "company": "Avensis Pharmaceuticals",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Sachet",
+          "composition": "Sodium chloride ...... 1.3 g",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "121493",
+          "drapProductName": "ORS Sachet",
+          "company": "Titlis Pharma (Private) Limited",
+          "registrationStatus": "Active",
+          "dosageForm": "Sachet",
+          "composition": "Sodium Chloride ...... 2.60 gm",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "011209",
+          "drapProductName": "W.W. ORS Sachet",
+          "company": "W. Woodward Pakistan (Pvt) Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Sachet",
+          "composition": "Sodium Chloride 1.3gm eq. to Sodium ...... 37.5 mmol",
+          "rank": 89
+        }
+      ]
+    },
+    {
+      "brand": "Peditral",
+      "generic": "Oral rehydration salts",
+      "strength": "WHO formula",
+      "form": "sachet",
+      "candidates": [
+        {
+          "drapRegNo": "067113",
+          "drapProductName": "Peditral Liquid (Regular flavor)",
+          "company": "The Searle Company Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Liquid",
+          "composition": "Sodium chloride ...... 17.5 mg",
+          "rank": 60
+        },
+        {
+          "drapRegNo": "067114",
+          "drapProductName": "Peditral Liquid (Orange flavor)",
+          "company": "The Searle Company Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Liquid",
+          "composition": "Sodium chloride ...... 17.5 mg",
+          "rank": 60
+        },
+        {
+          "drapRegNo": "067115",
+          "drapProductName": "Peditral Liquid (Bubble gum flavor)",
+          "company": "The Searle Company Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Liquid",
+          "composition": "Sodium chloride ...... 17.5 mg",
+          "rank": 60
+        },
+        {
+          "drapRegNo": "067116",
+          "drapProductName": "Peditral Liquid (Banana Flavor)",
+          "company": "The Searle Company Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Liquid",
+          "composition": "Sodium chloride ...... 17.5 mg",
+          "rank": 60
+        }
+      ]
+    },
+    {
+      "brand": "Panadol",
+      "generic": "Paracetamol",
+      "strength": "500mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "000817",
+          "drapProductName": "Panadol Tablet.",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "PARACETAMOL 500 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "101138",
+          "drapProductName": "Panadol Tablet",
+          "company": "Haleon Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Paracetamol ...... 500 mg",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "012437",
+          "drapProductName": "Panadol Extract Tablet",
+          "company": "Company Address",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "PARACETAMOL 500mg, CAFFEINE 65mg",
+          "rank": 87
+        },
+        {
+          "drapRegNo": "013114",
+          "drapProductName": "PANADOL D TABLET",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "PARACETAMOL 500mg, PSEUDOEPHEDRINE HCL 3mg, DEXTROMETHORPHAN HBR 15mg",
+          "rank": 87
+        }
+      ]
+    },
+    {
+      "brand": "Provas",
+      "generic": "Paracetamol",
+      "strength": "500mg",
+      "form": "tablet",
+      "candidates": [
+        {
+          "drapRegNo": "108840",
+          "drapProductName": "Provas Tablet 500mg",
+          "company": "SAMI Pharmaceuticals Pvt. Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Paracetamol ...... 500 mg",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "108579",
+          "drapProductName": "Provas Duo Tablet 500mg/200mg",
+          "company": "SAMI Pharmaceuticals Pvt. Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Paracetamol ...... 500 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "108837",
+          "drapProductName": "Provas Duo Tablet 500/150mg",
+          "company": "SAMI Pharmaceuticals Pvt. Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Paracetamol ...... 500 mg",
+          "rank": 107
+        },
+        {
+          "drapRegNo": "018387-EX",
+          "drapProductName": "Provas Advance 500mg Tablet",
+          "company": "SAMI Pharmaceuticals Pvt. Ltd.",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "paracetamol ...... 500 mg",
+          "rank": 107
+        }
+      ]
+    },
+    {
+      "brand": "Avil",
+      "generic": "Pheniramine maleate",
+      "strength": "22.5mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "005323",
+          "drapProductName": "Avil Syrup",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Syrup",
+          "composition": "Pheniramine Maleate ...... 15 mg/5ml",
+          "rank": 99
+        },
+        {
+          "drapRegNo": "000224",
+          "drapProductName": "Avil Tablets 25mg",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Pheniramine Maleate ...... 22.7 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "000225",
+          "drapProductName": "Avil Tablets 50mg",
+          "company": "Hoechst Pakistan Limited",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Pheniramine ...... 50 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "060539",
+          "drapProductName": "Javil Syrup",
+          "company": "IRZA PHARMA (PVT) LTD",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Syrup",
+          "composition": "Pheniramine Maleate ...... 15 mg",
+          "rank": 77
+        }
+      ]
+    },
+    {
+      "brand": "Phenobarbitone",
+      "generic": "Phenobarbital",
+      "strength": "20mg/5ml",
+      "form": "syrup",
+      "candidates": [
+        {
+          "drapRegNo": "058243",
+          "drapProductName": "Phenobarbitone Tablets",
+          "company": "SAFE PHARMACEUTICAL (PVT) LTD",
+          "registrationStatus": "Reviewed",
+          "dosageForm": "Tablet",
+          "composition": "Phenobarbitone ...... 30 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "001518",
+          "drapProductName": "Phenobarbitone Tablets 30mg",
+          "company": "Ferozsons Laboratories Limited",
+          "registrationStatus": "Verified / Active",
+          "dosageForm": "Tablet",
+          "composition": "Phenobarbitone/Phenobarbital ...... 30 mg",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "011968",
+          "drapProductName": "Phenobarbitone Tablets 30mg",
+          "company": "ms Zumars Pharma Fty Pvt Ltd",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "Pack Size(s)",
+          "rank": 84
+        },
+        {
+          "drapRegNo": "001330",
+          "drapProductName": "PHENOBARBITONE 30MG TAB",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Tablet",
+          "composition": "PHENOBARBITONE 30MG,",
+          "rank": 72
+        }
+      ]
+    },
+    {
+      "brand": "Vitamin K1",
+      "generic": "Phytomenadione",
+      "strength": "1mg",
+      "form": "injection",
+      "candidates": [
+        {
+          "drapRegNo": "016807",
+          "drapProductName": "VITAMIN K1 INJECTION",
+          "company": "test3",
+          "registrationStatus": "Provisionally Active",
+          "dosageForm": "Injection",
+          "composition": "PHYTOMENADIONE 1MG",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "018223",
+          "drapProductName": "VITAMIN K1 INJECTION 10MG",
+          "company": "test3",
+          "registrationStatus": "Cancelled",
+          "dosageForm": "Injection",
+          "composition": "VITAMIN K-1 10MG/ML",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "121588",
+          "drapProductName": "Vitamin K1 2mg/ml Injection",
+          "company": "VENUS PHARMA",
+          "registrationStatus": "Active",
+          "dosageForm": "Injection",
+          "composition": "Phytomenadione (Vitamin K1) ...... 2 mg/ml",
+          "rank": 119
+        },
+        {
+          "drapRegNo": "121589",
+          "drapProductName": "Vitamin K1 10mg/ml Injection",
+          "company": "VENUS PHARMA",
+          "registrationStatus": "Active",
+          "dosageForm": "Injection",
+          "composition": "Phytomenadione (Vitamin K1) ...... 10 mg",
+          "rank": 119
+        }
+      ]
+    }
+  ],
+  "unresolved": [
+    {
+      "brand": "Panadol Syrup",
+      "generic": "Paracetamol",
+      "provenance": "manual",
+      "strength": "120mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Calpol Forte",
+      "generic": "Paracetamol",
+      "provenance": "manual",
+      "strength": "250mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Paracetamol Suppository",
+      "generic": "Paracetamol",
+      "provenance": "manual",
+      "strength": "125mg",
+      "form": "suppository",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Brufen Syrup",
+      "generic": "Ibuprofen",
+      "provenance": "manual",
+      "strength": "100mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Ibucon",
+      "generic": "Ibuprofen",
+      "provenance": "manual",
+      "strength": "100mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Ponstan",
+      "generic": "Mefenamic acid",
+      "provenance": "manual",
+      "strength": "250mg",
+      "form": "capsule",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Ponstan Syrup",
+      "generic": "Mefenamic acid",
+      "provenance": "manual",
+      "strength": "50mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Crystapen",
+      "generic": "Benzylpenicillin",
+      "provenance": "manual",
+      "strength": "1 MU",
+      "form": "injection",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Velosef",
+      "generic": "Cephradine",
+      "provenance": "manual",
+      "strength": "125mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Velosef",
+      "generic": "Cephradine",
+      "provenance": "manual",
+      "strength": "250mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Cefspan",
+      "generic": "Cefixime",
+      "provenance": "manual",
+      "strength": "100mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Zinnat",
+      "generic": "Cefuroxime",
+      "provenance": "manual",
+      "strength": "250mg",
+      "form": "tablet",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Azomax",
+      "generic": "Azithromycin",
+      "provenance": "manual",
+      "strength": "200mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Zithromax",
+      "generic": "Azithromycin",
+      "provenance": "manual",
+      "strength": "200mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Vibramycin",
+      "generic": "Doxycycline",
+      "provenance": "manual",
+      "strength": "100mg",
+      "form": "capsule",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Ventolin Syrup",
+      "generic": "Salbutamol",
+      "provenance": "manual",
+      "strength": "2mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Ventolin Inhaler",
+      "generic": "Salbutamol",
+      "provenance": "manual",
+      "strength": "100mcg/puff",
+      "form": "inhaler",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Ventolin Nebules",
+      "generic": "Salbutamol",
+      "provenance": "manual",
+      "strength": "2.5mg/2.5ml",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Salbetol",
+      "generic": "Salbutamol",
+      "provenance": "manual",
+      "strength": "2mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Atrovent",
+      "generic": "Ipratropium bromide",
+      "provenance": "manual",
+      "strength": "250mcg/ml",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Hydrillin",
+      "generic": "Diphenhydramine + Ammonium chloride",
+      "provenance": "manual",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Toplexil",
+      "generic": "Oxomemazine + Guaifenesin",
+      "provenance": "manual",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Zyrtec",
+      "generic": "Cetirizine",
+      "provenance": "manual",
+      "strength": "5mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Piriton",
+      "generic": "Chlorpheniramine",
+      "provenance": "manual",
+      "strength": "2mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Prednisolone Syrup",
+      "generic": "Prednisolone",
+      "provenance": "manual",
+      "strength": "15mg/5ml",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Solu-Medrol",
+      "generic": "Methylprednisolone",
+      "provenance": "manual",
+      "strength": "40mg",
+      "form": "injection",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Zinc-D",
+      "generic": "Zinc sulphate",
+      "provenance": "manual",
+      "strength": "20mg",
+      "form": "tablet",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Protexin",
+      "generic": "Probiotic (multi-strain)",
+      "provenance": "manual",
+      "form": "sachet",
+      "why": "every DRAP match was a veterinary product"
+    },
+    {
+      "brand": "Colicaid",
+      "generic": "Simethicone + Dill oil",
+      "provenance": "manual",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Vermox Suspension",
+      "generic": "Mebendazole",
+      "provenance": "manual",
+      "strength": "100mg/5ml",
+      "form": "suspension",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Zentel Suspension",
+      "generic": "Albendazole",
+      "provenance": "manual",
+      "strength": "200mg/5ml",
+      "form": "suspension",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Coartem",
+      "generic": "Artemether + Lumefantrine",
+      "provenance": "manual",
+      "strength": "20/120mg",
+      "form": "tablet",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Vidaylin Drops",
+      "generic": "Multivitamin",
+      "provenance": "manual",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Feroglobin",
+      "generic": "Iron + Zinc + B vitamins",
+      "provenance": "manual",
+      "form": "syrup",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Indrop-D",
+      "generic": "Cholecalciferol",
+      "provenance": "manual",
+      "strength": "400 IU/drop",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Sandoz Cal",
+      "generic": "Calcium carbonate + Vitamin D3",
+      "provenance": "manual",
+      "form": "tablet",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Elocon",
+      "generic": "Mometasone furoate",
+      "provenance": "manual",
+      "strength": "0.1%",
+      "form": "cream",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Scabex",
+      "generic": "Permethrin",
+      "provenance": "manual",
+      "strength": "5%",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Calamine Lotion",
+      "generic": "Calamine",
+      "provenance": "manual",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Chloromycetin",
+      "generic": "Chloramphenicol",
+      "provenance": "manual",
+      "strength": "0.5%",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Otrivin Paediatric",
+      "generic": "Xylometazoline",
+      "provenance": "manual",
+      "strength": "0.05%",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Nasivion",
+      "generic": "Oxymetazoline",
+      "provenance": "manual",
+      "strength": "0.025%",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Normal Saline Nasal Drops",
+      "generic": "Sodium chloride",
+      "provenance": "manual",
+      "strength": "0.9%",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Ciplox-D",
+      "generic": "Ciprofloxacin + Dexamethasone",
+      "provenance": "manual",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Waxsol",
+      "generic": "Docusate sodium",
+      "provenance": "manual",
+      "strength": "0.5%",
+      "form": "drops",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Keppra",
+      "generic": "Levetiracetam",
+      "provenance": "manual",
+      "strength": "100mg/ml",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Diazepam Rectal",
+      "generic": "Diazepam",
+      "provenance": "manual",
+      "strength": "5mg",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Lasix",
+      "generic": "Furosemide",
+      "provenance": "manual",
+      "strength": "10mg/ml",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Nystatin Oral",
+      "generic": "Nystatin",
+      "provenance": "manual",
+      "strength": "100000 units/ml",
+      "form": "solution",
+      "why": "no DRAP entry matched the brand name"
+    },
+    {
+      "brand": "Miconazole Oral Gel",
+      "generic": "Miconazole",
+      "provenance": "manual",
+      "strength": "2%",
+      "form": "ointment",
+      "why": "no DRAP entry matched the brand name"
+    }
+  ],
+  "rejectedVeterinary": [
+    {
+      "brand": "Calamox",
+      "drapRegNo": "026198",
+      "name": "Calamox Tablets 1g",
+      "usedFor": ""
+    },
+    {
+      "brand": "Gentamicin",
+      "drapRegNo": "022701 ",
+      "name": "GENTAMICIN SULPHATE 20% INJECTION",
+      "usedFor": "Veterinary"
+    },
+    {
+      "brand": "Dexa",
+      "drapRegNo": "017071",
+      "name": "Dexamethasone Injection 4mg",
+      "usedFor": "Veterinary"
+    },
+    {
+      "brand": "Protexin",
+      "drapRegNo": "019907",
+      "name": "Protexin Compounder (VET)",
+      "usedFor": "Veterinary"
+    },
+    {
+      "brand": "Zentel",
+      "drapRegNo": "073928",
+      "name": "I-Zentel Bolus",
+      "usedFor": "Veterinary"
+    },
+    {
+      "brand": "Adrenaline",
+      "drapRegNo": "010786",
+      "name": "ADRENALINE INJECTION 25CC & 10CC",
+      "usedFor": "Veterinary"
+    }
+  ]
+}

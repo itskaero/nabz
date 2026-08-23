@@ -165,6 +165,10 @@ safety state follows this rule: at least one non-colour channel.
 
 ## 9. Input patterns (shaped for expert speed)
 
+- **Chips, like exam:** investigations. Bounded set, so the chip is right here
+  (PRODUCT.md 8a). On the printed sheet the investigations block is a
+  CLINICAL-register English block and takes Examination's treatment — it must
+  not inherit the patient block's warmth, because a laboratory reads it.
 - **Free text + own-history autocomplete:** problems, diagnosis. Diagnosis is
   judgement — NEVER chip-ify it.
 - **Findings chips (exam):** per-system, collapsible. A chip is a **stateful control**:
@@ -210,7 +214,8 @@ The printed script is the actual product the patient holds — design it, don't 
   about one-handed use at OPD speed, which does not apply to either. The doctor's
   own surfaces stay phone-shaped.
 - **Section model:** top bar (brand + patient) → segmented section tabs (Problems /
-  Exam / Dx / Meds / Advice, each tagged with its render language) → scroll body →
+  Exam / Dx / Tests / Meds / Advice, each tagged with its render language) →
+  scroll body →
   bottom action bar (Save local · Preview & Print).
 - **Language-per-section tags** in tabs (EN, EN·UR, UR·EN) make the audience model
   visible. Keep them.

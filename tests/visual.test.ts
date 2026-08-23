@@ -56,6 +56,12 @@ describe.runIf(outDir)('visual check', () => {
         },
       ],
       diagnosis: ['Community-acquired pneumonia, right lower lobe'],
+      labs: [
+        { id: 'l1', labId: 'cbc_esr', label: 'CBC with ESR' },
+        { id: 'l2', labId: 'crp', label: 'CRP' },
+        { id: 'l3', labId: 'xray_chest', label: 'Chest X-ray', value: 'PA view' },
+        { id: 'l4', labId: 'free:serum ceruloplasmin', label: 'Serum ceruloplasmin' },
+      ],
       medications: [
         {
           id: 'm1',
