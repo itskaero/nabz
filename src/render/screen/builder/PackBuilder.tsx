@@ -63,6 +63,8 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
   /** A parsed file waiting for someone to say which part of it to take. */
   const [incoming, setIncoming] = useState<{ name: string; file: PackFile } | null>(null);
+  /** Open while someone is choosing how much of their pack to write out. */
+  const [exporting, setExporting] = useState(false);
 
   const save = async () => {
     const result = await publishContent(draft.pack, draft.phrases);
@@ -197,6 +199,13 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
               <p className="hint" style={{ marginTop: 0 }}>
                 {incoming.name} · everything else in your pack is left alone.
               </p>
+              {incoming.file.section && (
+                <p className="hint">
+                  This file holds only <strong>{SECTION_LABEL[incoming.file.section].toLowerCase()}</strong>,
+                  so that is the only thing it can give you. Everything else in it is
+                  empty, and taking it would wipe yours.
+                </p>
+              )}
               {incoming.file.draft && (
                 <div className="warn-box" style={{ margin: '10px 0' }}>
                   <strong>This file was exported as a draft.</strong>
@@ -206,11 +215,12 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </div>
               )}
               <div className="rows" style={{ marginTop: 10 }}>
-                {(
-                  [
-                    tabSection(tab),
-                    ...(['formulary', 'dosing', 'phrases', 'advice', 'exam', 'labs', 'all'] as PackSection[]),
-                  ].filter((v, i, a) => v !== null && a.indexOf(v) === i) as PackSection[]
+                {(incoming.file.section
+                  ? [incoming.file.section]
+                  : ([
+                      tabSection(tab),
+                      ...(['formulary', 'dosing', 'phrases', 'advice', 'exam', 'labs', 'all'] as PackSection[]),
+                    ].filter((v, i, a) => v !== null && a.indexOf(v) === i) as PackSection[])
                 ).map((section) => (
                   <div className="queue-row" key={section}>
                     <div style={{ minWidth: 0, flex: 1 }}>
@@ -228,6 +238,60 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
               </div>
               <div className="actionbar" style={{ padding: '10px 0 0', borderTop: 'none' }}>
                 <button className="btn quiet" onClick={() => setIncoming(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/*
+          How much to write out. Sharing a formulary should share a formulary --
+          not the advice, the sign-offs and every reworded phrase riding along
+          because they were in the same object. `mergeSection` would ignore them
+          on the way in, but they would still have left the building.
+        */}
+        {exporting && (
+          <div className="scrim" role="dialog" aria-modal="true">
+            <div className="sheet-modal">
+              <h3>What should this file contain?</h3>
+              <p className="hint" style={{ marginTop: 0 }}>
+                {draft.exportable
+                  ? 'Anything outside your choice is left out of the file entirely.'
+                  : 'This pack still has blocking problems, so the file will be marked as a draft.'}
+              </p>
+              <div className="rows" style={{ marginTop: 10 }}>
+                {(
+                  [
+                    tabSection(tab),
+                    ...(['formulary', 'dosing', 'phrases', 'advice', 'exam', 'labs', 'all'] as PackSection[]),
+                  ].filter((v, i, a) => v !== null && a.indexOf(v) === i) as PackSection[]
+                ).map((section) => (
+                  <div className="queue-row" key={section}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="who">{SECTION_LABEL[section]}</div>
+                      <div className="meta">
+                        {sectionSize(draft.pack, draft.phrases, section)} rows
+                      </div>
+                    </div>
+                    <button
+                      className="btn quiet"
+                      onClick={() => {
+                        downloadPack(draft.pack, draft.phrases, !draft.exportable, section);
+                        setExporting(false);
+                        setStatus(
+                          `Wrote ${SECTION_LABEL[section].toLowerCase()} to a file` +
+                            (draft.exportable ? '.' : ', marked as a draft.'),
+                        );
+                      }}
+                    >
+                      Write file
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="actionbar" style={{ padding: '10px 0 0', borderTop: 'none' }}>
+                <button className="btn quiet" onClick={() => setExporting(false)}>
                   Cancel
                 </button>
               </div>
@@ -280,10 +344,10 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           className="btn ghost"
           title={
             draft.exportable
-              ? 'Write this pack to a file'
+              ? 'Write this pack, or one part of it, to a file'
               : 'Saves your work so far. The file is marked as a draft.'
           }
-          onClick={() => downloadPack(draft.pack, draft.phrases, !draft.exportable)}
+          onClick={() => setExporting(true)}
         >
           {draft.exportable ? 'Export' : 'Export draft'}
         </button>

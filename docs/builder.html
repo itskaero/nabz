@@ -99,8 +99,9 @@
         </div>
         <div class="field-note">
           <span class="key">Export</span>
-          <p>Writes the whole pack to a <code>.json</code> file — your backup, and how
-             you move content to another device or hand it to a colleague.</p>
+          <p>Writes a <code>.json</code> file — the whole pack, or just
+             <strong>one part</strong> of it. Your backup, and how you move content
+             to another device or hand it to a colleague.</p>
         </div>
         <div class="field-note">
           <span class="key">Import</span>
@@ -439,14 +440,40 @@
           <strong>Export</strong> is still what protects a body of work.
         </p>
 
-        <h3>Export — writes a file</h3>
+        <h3>Export — writes a file, whole or in part</h3>
         <p>
-          One <code>.json</code> file holding the pack and both locale packs, named
-          for the pack and the date. It is plain JSON, not encrypted, and that is
-          deliberate: it contains drug names, chip labels and phrase templates and
-          <strong>nothing about any patient</strong>. Encrypting it would protect
-          nothing and prevent the one thing it exists for, which is handing it to
-          a colleague.
+          Export asks the same question Import does: <strong>how much of it?</strong>
+          You can write the whole pack, or just the medicines, just the phrases, just
+          the advice.
+        </p>
+<pre><code>What should this file contain?
+
+  Medicines          150 rows   [ Write file ]
+  Doses               10 rows   [ Write file ]
+  Phrases             10 rows   [ Write file ]
+  Advice &amp; red flags  24 rows   [ Write file ]
+  Exam chips          73 rows   [ Write file ]
+  Investigations      36 rows   [ Write file ]
+  Everything         160 rows   [ Write file ]</code></pre>
+        <p>
+          A section file contains <strong>only</strong> that section — everything
+          else in it is emptied, not merely ignored. Handing a colleague your
+          formulary should hand them your formulary, not your advice, your red-flag
+          sign-offs and every phrase you have reworded riding along invisibly because
+          they happened to sit in the same file.
+        </p>
+        <p>
+          The filename says what is inside, so
+          <code>nabz-pack-paediatrics-formulary-2026-08-23.json</code> is
+          recognisable in a folder months later without opening it. Importing a
+          section file offers only that section, since taking anything else from it
+          would wipe yours with a blank.
+        </p>
+        <p>
+          It is plain JSON, not encrypted, and that is deliberate: it holds drug
+          names, chip labels and phrase templates and <strong>nothing about any
+          patient</strong>. Encrypting it would protect nothing and prevent the one
+          thing it exists for.
         </p>
         <div class="note">
           <strong>This is not your records backup</strong>
@@ -517,6 +544,13 @@ colleague-pack.json - everything else in your pack is left alone.
           yours, edit the two files together, and import the result — or use
           <strong>Import CSV</strong> on the Medicines tab, which does append.
         </p>
+        <div class="note">
+          <strong>Both directions work section by section</strong>
+          Export one part, import one part. That is what makes it practical for two
+          people to divide the work: one reconciles the formulary against DRAP while
+          the other writes and signs off the Urdu, and each takes only their half
+          from the other's file.
+        </div>
 
         <h3>Reset</h3>
         <p>

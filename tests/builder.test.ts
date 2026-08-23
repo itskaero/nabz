@@ -514,3 +514,79 @@ describe('saving a pack to a file', () => {
     expect(merged.pack.formularySeed).toEqual(paediatrics.formularySeed);
   });
 });
+
+
+describe('exporting one section of a pack', () => {
+  /**
+   * The counterpart to a sectional import. Handing a colleague your formulary
+   * should hand them your formulary -- not your advice, your red-flag sign-offs
+   * and every phrase you reworded, riding along because they happened to sit in
+   * the same object. `mergeSection` would ignore them on the way in, but they
+   * would still have left the building, and pack files get mailed around.
+   */
+  it('carries the chosen section and empties the rest', () => {
+    const file = parsePackFile(serialisePack(paediatrics, shippedPhrases, false, 'formulary'));
+
+    expect(file.section).toBe('formulary');
+    expect(file.pack.formularySeed).toEqual(paediatrics.formularySeed);
+
+    // Nothing else came with it.
+    expect(file.pack.dosing).toEqual([]);
+    expect(file.pack.advicePacks).toEqual({ tier1: [], tier2: [] });
+    expect(file.pack.findingsPalette).toEqual({});
+    expect(file.pack.labsPalette).toEqual({});
+    expect(file.pack.redFlagReview).toBeUndefined();
+    expect(file.phrases.en.templates).toEqual({});
+    expect(file.phrases['ur-PK'].advice.tier2).toEqual({});
+  });
+
+  it('does not leak reviewed advice out of a phrases export', () => {
+    // The pairing that matters. Advice wording carries a clinician's sign-off,
+    // so it leaves the building only when advice is what was asked for.
+    const file = parsePackFile(serialisePack(paediatrics, shippedPhrases, false, 'phrases'));
+    expect(Object.keys(file.phrases.en.templates).length).toBeGreaterThan(0);
+    expect(file.phrases.en.advice).toEqual({ tier1: {}, tier2: {} });
+    expect(file.pack.advicePacks).toEqual({ tier1: [], tier2: [] });
+    expect(file.pack.redFlagReview).toBeUndefined();
+  });
+
+  it('takes the sign-offs when advice IS the section', () => {
+    const file = parsePackFile(serialisePack(paediatrics, shippedPhrases, false, 'advice'));
+    expect(file.pack.advicePacks.tier2.length).toBeGreaterThan(0);
+    expect(Object.keys(file.phrases['ur-PK'].advice.tier2).length).toBeGreaterThan(0);
+    // and left the catalogue behind
+    expect(file.pack.formularySeed).toEqual([]);
+  });
+
+  it('round-trips: a section exported then imported changes only that section', () => {
+    const theirs = structuredClone(paediatrics);
+    theirs.formularySeed = [{ brand: 'OnlyOne', generic: 'Paracetamol', provenance: 'manual' }];
+    const file = parsePackFile(serialisePack(theirs, shippedPhrases, false, 'formulary'));
+
+    const mine = {
+      pack: structuredClone(paediatrics),
+      phrases: structuredClone(shippedPhrases),
+    };
+    const after = mergeSection(mine, { pack: file.pack, phrases: file.phrases }, 'formulary');
+
+    expect(after.pack.formularySeed).toHaveLength(1);
+    // The emptied parts of the file did NOT wipe the importer's own content.
+    expect(after.pack.dosing).toEqual(mine.pack.dosing);
+    expect(after.pack.advicePacks).toEqual(mine.pack.advicePacks);
+    expect(after.phrases).toEqual(mine.phrases);
+  });
+
+  it('names the file after what is in it', () => {
+    const when = new Date('2026-08-23T00:00:00Z');
+    expect(packFilename(paediatrics, when, false, 'formulary')).toContain('-formulary-');
+    expect(packFilename(paediatrics, when, true, 'advice')).toContain('-advice-draft-');
+    expect(packFilename(paediatrics, when, false, 'all')).not.toContain('-all');
+  });
+
+  it('a whole-pack export is unchanged', () => {
+    const file = parsePackFile(serialisePack(paediatrics, shippedPhrases));
+    expect(file.section).toBeUndefined();
+    expect(file.pack.formularySeed).toEqual(paediatrics.formularySeed);
+    expect(file.pack.dosing).toEqual(paediatrics.dosing);
+  });
+});
