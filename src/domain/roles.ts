@@ -19,6 +19,8 @@
  * sitting in IndexedDB is the kind of thing that ends up in an exported backup.
  */
 
+import { requireWebCrypto } from './secureContext.ts';
+
 export type Role = 'doctor' | 'receptionist';
 
 export interface RoleGate {
@@ -49,6 +51,9 @@ async function digest(pin: string, salt: string): Promise<string> {
 }
 
 export async function setPin(pin: string): Promise<RoleGate> {
+  // The digest needs WebCrypto, which a plain-HTTP LAN origin does not have.
+  // Better to refuse to SET a PIN than to set one that cannot be checked later.
+  requireWebCrypto('Setting a PIN');
   if (!/^\d{4,8}$/.test(pin)) {
     throw new Error('The PIN must be 4 to 8 digits.');
   }
@@ -58,6 +63,9 @@ export async function setPin(pin: string): Promise<RoleGate> {
 
 export async function checkPin(gate: RoleGate, pin: string): Promise<boolean> {
   if (!gate.pinHash) return true;
+  // A gate that cannot be opened is worse than no gate: the doctor would be
+  // locked out of their own records by an address change. Say why.
+  requireWebCrypto('Checking the PIN');
   return (await digest(pin, gate.salt)) === gate.pinHash;
 }
 

@@ -30,6 +30,7 @@ import { HistoryPanel } from './components/HistoryPanel.tsx';
 import { PatientPicker } from './components/PatientPicker.tsx';
 import { RoleGateLock } from './components/RoleGateLock.tsx';
 import { canAccess, hasPin } from '@domain/roles.ts';
+import { hasWebCrypto } from '@domain/secureContext.ts';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
 const ClinicPanel = lazy(() =>
@@ -88,6 +89,9 @@ export function App() {
   const [fontError, setFontError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [nagBackup, setNagBackup] = useState(false);
+  // Read once: whether the browser has given us real crypto does not change
+  // while the page is open.
+  const [secure] = useState(hasWebCrypto);
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
@@ -221,6 +225,27 @@ export function App() {
       {rx.patient.allergies?.trim() && (
         <div className="banner banner-allergy" role="alert">
           <span>ALLERGY — {rx.patient.allergies}</span>
+        </div>
+      )}
+
+      {/*
+        NOT dismissible, and deliberately above the backup nag.
+
+        A plain-HTTP LAN address is not a secure context, so the browser removes
+        crypto.subtle — and with it the encrypted backup, on a device that holds
+        the only copy of every record. It used to fail silently, which is the
+        one behaviour this product cannot afford. Amber rather than red: red is
+        danger and the allergy banner owns it (DESIGN.md 3).
+      */}
+      {!secure && (
+        <div className="banner banner-backup" role="status">
+          <span>
+            <strong>This device cannot back itself up.</strong> The app was
+            opened over a plain connection, so the browser has switched off
+            encrypted backup, the PIN and offline use. Open the address starting{' '}
+            <code>https://</code> that the clinic station prints, or open the app
+            on the computer itself.
+          </span>
         </div>
       )}
 

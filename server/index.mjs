@@ -34,6 +34,7 @@ import { networkInterfaces } from 'node:os';
 import { spawn } from 'node:child_process';
 import { randomInt } from 'node:crypto';
 import { mergeCollection, purgeTombstones, changedSince, QUEUE_CONTESTED } from './merge.mjs';
+import { addressLines } from './addresses.mjs';
 
 /**
  * Where this file lives -- when it lives anywhere.
@@ -337,19 +338,13 @@ ready.then(() => server.listen(PORT, HOST, () => {
  * genuinely works.
  */
 function announceStation() {
-  const addresses = Object.values(networkInterfaces())
-    .flat()
-    .filter((n) => n && n.family === 'IPv4' && !n.internal)
-    .map((n) => n.address);
-
   console.log('');
   console.log('  Nabz - clinic station');
   console.log('  ---------------------');
   console.log('');
-  console.log('  On this computer:      http://localhost:' + PORT);
-  for (const address of addresses) {
-    console.log('  From a tablet/phone:   http://' + address + ':' + PORT);
-  }
+  // ONE recommended address, because a list of three is how someone picks the
+  // VirtualBox one and concludes the product is broken. See addresses.mjs.
+  for (const line of addressLines(networkInterfaces(), PORT)) console.log(line);
   console.log('');
   console.log('  This machine holds the queue: names, ages, tokens, payment.');
   console.log('  It does NOT hold prescriptions, examinations or growth records');

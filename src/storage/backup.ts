@@ -15,6 +15,7 @@ import type { DoctorProfile } from '@config/doctorProfile.ts';
 import type { GrowthPoint } from '@domain/prescription.ts';
 import type { LearnedTerm } from './db.ts';
 import { db, markBackedUp } from './db.ts';
+import { requireWebCrypto } from '@domain/secureContext.ts';
 
 const MAGIC = 'NABZ-BACKUP';
 const FORMAT_VERSION = 1;
@@ -99,6 +100,9 @@ export async function exportEncrypted(
   passphrase: string,
   includeProfile = true,
 ): Promise<Blob> {
+  // Checked BEFORE the passphrase, so a doctor on a plain-HTTP LAN address is
+  // told the real problem rather than being sent to think about their password.
+  requireWebCrypto('Backing up');
   if (passphrase.length < 8) {
     throw new Error('Use a passphrase of at least 8 characters. This file holds patient records.');
   }
@@ -128,6 +132,10 @@ export async function decryptBackup(
   fileText: string,
   passphrase: string,
 ): Promise<BackupPayload> {
+  // A restore is when someone has already lost something. Failing here with
+  // "Cannot read properties of undefined" would be the worst possible moment
+  // for an unreadable error.
+  requireWebCrypto('Restoring a backup');
   let file: BackupFile;
   try {
     file = JSON.parse(fileText) as BackupFile;

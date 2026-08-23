@@ -10,25 +10,20 @@ import { spawnSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { addressLines } from '../server/addresses.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const port = process.env.PORT ?? '8080';
 
-const addresses = Object.values(networkInterfaces())
-  .flat()
-  .filter((n) => n && n.family === 'IPv4' && !n.internal)
-  .map((n) => n.address);
-
 console.log('');
-console.log('  Nabz — clinic mode');
+console.log('  Nabz - clinic mode');
 console.log('  This machine holds the queue: names, ages, tokens and fees.');
-console.log('  It holds NO prescriptions, examinations or growth records —');
-console.log('  those stay on the doctor\'s own device.');
+console.log('  It holds NO prescriptions, examinations or growth records -');
+console.log("  those stay on the doctor's own device.");
 console.log('');
-console.log('  Open on this machine:  http://localhost:' + port);
-for (const address of addresses) {
-  console.log('  From another device:   http://' + address + ':' + port);
-}
+// Shared with the packaged station so the advice cannot drift apart. Both used
+// to build their own list and both got it wrong the same way.
+for (const line of addressLines(networkInterfaces(), port)) console.log(line);
 console.log('');
 
 const result = spawnSync(process.execPath, [join(root, 'server', 'index.mjs')], {

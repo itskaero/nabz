@@ -22,6 +22,7 @@ import { detectSyncMode } from '@storage/clinicSync.ts';
 import { parseFee } from '@domain/clinic.ts';
 import { applyPatch } from '@domain/patch.ts';
 import { hasPin, openGate, setPin } from '@domain/roles.ts';
+import { secureContextProblem } from '@domain/secureContext.ts';
 
 const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   {
@@ -58,6 +59,9 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
   const [newPin, setNewPin] = useState('');
   const [counts, setCounts] = useState<{ rx: number; usage: number; quota: number } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  // Null when the browser has given us real crypto. Does not change while the
+  // page is open, so it is read once.
+  const [cryptoProblem] = useState(secureContextProblem);
 
   useEffect(() => {
     void (async () => {
@@ -238,11 +242,23 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
               : ' · never backed up'}
           </p>
         )}
+        {/*
+          A button that throws when pressed is worse than a button that says why
+          it cannot work. On a plain-HTTP address the browser has taken
+          crypto.subtle away, so there is no encryption to be had here at all.
+        */}
+        {cryptoProblem && (
+          <div className="warn-box" style={{ margin: '8px 0' }}>
+            <strong>Backup is unavailable on this address.</strong>
+            {cryptoProblem}
+          </div>
+        )}
         <div className="field" style={{ marginTop: 8 }}>
           <label>Backup passphrase</label>
           <input
             type="password"
             value={passphrase}
+            disabled={!!cryptoProblem}
             placeholder="at least 8 characters"
             onChange={(e) => setPassphrase(e.target.value)}
           />
@@ -252,12 +268,18 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
           </p>
         </div>
         <div className="actionbar" style={{ padding: '10px 0 0', borderTop: 'none' }}>
-          <button className="btn" disabled={passphrase.length < 8} onClick={exportNow}>
+          <button
+            className="btn"
+            disabled={!!cryptoProblem || passphrase.length < 8}
+            title={cryptoProblem ?? undefined}
+            onClick={exportNow}
+          >
             Export my data
           </button>
           <button
             className="btn ghost"
-            disabled={passphrase.length < 8}
+            disabled={!!cryptoProblem || passphrase.length < 8}
+            title={cryptoProblem ?? undefined}
             onClick={() => fileInput.current?.click()}
           >
             Restore a backup
@@ -368,6 +390,15 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
           >
             Remove the PIN
           </button>
+        ) : cryptoProblem ? (
+          /*
+            The PIN digest needs the same WebCrypto the backup does. Setting one
+            here would create a gate that could never be opened again — so it is
+            refused rather than half-offered.
+          */
+          <p className="hint">
+            A PIN cannot be set on this address: {cryptoProblem}
+          </p>
         ) : (
           <div className="compose">
             <input
