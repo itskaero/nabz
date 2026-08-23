@@ -425,6 +425,20 @@
           and a two-machine clinic edits on the doctor's device only.
         </p>
 
+        <h3>Your work is kept while you edit</h3>
+        <p>
+          The draft is written to this device about a second after you stop typing,
+          so closing the tab or reloading does not lose it. Reopening the builder
+          picks up where you left off and the bar says <strong>recovered</strong> —
+          it will not silently restore old work and let you mistake it for what the
+          app currently prescribes from.
+        </p>
+        <p>
+          Saving or Resetting clears it. This is a convenience, not a backup: it
+          lives in the same browser storage as everything else, so
+          <strong>Export</strong> is still what protects a body of work.
+        </p>
+
         <h3>Export — writes a file</h3>
         <p>
           One <code>.json</code> file holding the pack and both locale packs, named
@@ -443,6 +457,18 @@
           other.
         </div>
         <p>Export before a Reset, before a risky edit, and whenever you finish a body of work.</p>
+        <div class="note">
+          <strong>You can export unfinished work</strong>
+          If the pack still has blocking problems the button reads
+          <strong>Export draft</strong>, the filename gains <code>-draft</code>, and
+          the file records that it was incomplete. Importing it warns, and its
+          problems reappear as gates on the other side.
+          <br><br>
+          Refusing to write a file until a pack is perfect sounds careful and is the
+          opposite — an unfinished pack is the normal state of authoring, and the
+          shipped pack starts with ten unsigned red flags. The gate that matters is
+          Save, which publishes to the prescribing side, and that one stays shut.
+        </div>
 
         <h3>Import — takes part of a file</h3>
         <p>

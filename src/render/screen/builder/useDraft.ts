@@ -8,7 +8,7 @@
  * human is present, which is the only moment the reviewing can actually happen
  * -- so the same warning blocks export. That asymmetry is the point of the tool.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ContentPack } from '@domain/pack.ts';
 import { redFlagWording, unreviewedRedFlags, validateContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
@@ -16,6 +16,8 @@ import { validatePacks } from '@domain/phrases.ts';
 import type { Locale } from '@domain/locale.ts';
 import { LOCALES } from '@domain/locale.ts';
 import type { GenericUsage } from '@domain/generics.ts';
+import * as db from '@storage/db.ts';
+import { APP_CONTENT_VERSION } from '@data/provider.ts';
 import {
   genericVocabulary,
   genericsWithoutDosing,
@@ -40,6 +42,8 @@ export interface Draft {
   /** edit one locale's slice without rebuilding the whole registry by hand */
   editLocale: (locale: Locale, patch: (pack: PackRegistry[Locale]) => PackRegistry[Locale]) => void;
   markClean: () => void;
+  /** true when this session opened onto work recovered from a previous one */
+  restored: boolean;
 
   vocabulary: GenericUsage[];
   gates: Gate[];
@@ -68,6 +72,55 @@ export function useDraft(
   const [pack, setPackState] = useState<ContentPack>(initialPack);
   const [phrases, setPhrasesState] = useState<PackRegistry>(initialPhrases);
   const [dirty, setDirty] = useState(false);
+  const [restored, setRestored] = useState(false);
+
+  /*
+    Bring back whatever was being edited last time.
+
+    The draft used to live only in React state, so closing the tab or reloading
+    threw away the work with nothing to recover it from -- and Export refused to
+    write a file while the pack still had problems, which is precisely when a
+    draft exists. An unfinished pack is the normal state of authoring; losing it
+    should not be.
+  */
+  useEffect(() => {
+    let cancelled = false;
+    void db.loadDraft().then((saved) => {
+      if (cancelled || !saved) return;
+      setPackState(saved.pack);
+      setPhrasesState(saved.phrases);
+      setDirty(true);
+      setRestored(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /*
+    Autosave, debounced. Typing a phrase should not write to IndexedDB on every
+    keystroke, and a second of quiet is short enough that nothing meaningful is
+    ever more than a second from being safe.
+  */
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setTimeout(() => {
+      void db.saveDraft({
+        pack,
+        phrases,
+        basedOn: { packId: pack.id, appVersion: APP_CONTENT_VERSION },
+        updatedAt: new Date().toISOString(),
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [pack, phrases, dirty]);
+
+  /** Forget the stored draft: the edits have been published or thrown away. */
+  const dropDraft = useCallback(() => {
+    setDirty(false);
+    setRestored(false);
+    void db.clearDraft();
+  }, []);
 
   const setPack = useCallback((next: ContentPack) => {
     setPackState(next);
@@ -183,7 +236,8 @@ export function useDraft(
     setPack,
     setPhrases,
     editLocale,
-    markClean: () => setDirty(false),
+    markClean: dropDraft,
+    restored,
     vocabulary,
     gates,
     errors,

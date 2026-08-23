@@ -12,7 +12,13 @@ import { packs as shippedPhrases, packs } from '@data/phrases/index.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import { redFlagWording, unreviewedRedFlags, validateContentPack } from '@domain/pack.ts';
 import { validatePacks } from '@domain/phrases.ts';
-import { mergeSection, sectionSize } from '@render/screen/builder/packFile.ts';
+import {
+  mergeSection,
+  packFilename,
+  parsePackFile,
+  sectionSize,
+  serialisePack,
+} from '@render/screen/builder/packFile.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import {
   editDistance,
@@ -24,7 +30,6 @@ import {
   suggestGenerics,
   unreconciledBrands,
 } from '@domain/generics.ts';
-import { parsePackFile, serialisePack } from '@render/screen/builder/packFile.ts';
 import {
   contentErrors,
   publishContent,
@@ -464,5 +469,48 @@ describe('importing one section of a pack', () => {
       before.pack.formularySeed.length,
     );
     expect(sectionSize(theirs().pack, theirs().phrases, 'formulary')).toBe(1);
+  });
+});
+
+
+describe('saving a pack to a file', () => {
+  /**
+   * Export used to be refused while the pack had blocking problems -- which is
+   * precisely when an author most needs to save. The shipped pack has ten
+   * unsigned red flags, so Export was disabled out of the box: an hour of
+   * authoring had no way out of the browser at all.
+   *
+   * The gate that matters is Save, which publishes to the prescribing side.
+   * That one stays shut. A file can always be written; it just says what it is.
+   */
+  it('writes a file that says it is a draft', () => {
+    const text = serialisePack(paediatrics, shippedPhrases, true);
+    const parsed = parsePackFile(text);
+    expect(parsed.draft).toBe(true);
+    expect(parsed.pack.id).toBe(paediatrics.id);
+  });
+
+  it('leaves the flag off a finished pack', () => {
+    const parsed = parsePackFile(serialisePack(paediatrics, shippedPhrases));
+    expect(parsed.draft).toBeUndefined();
+  });
+
+  it('names a draft file so it is recognisable months later', () => {
+    const when = new Date('2026-08-23T00:00:00Z');
+    expect(packFilename(paediatrics, when, true)).toContain('-draft-');
+    expect(packFilename(paediatrics, when, false)).not.toContain('-draft');
+  });
+
+  it('round-trips a draft through import', () => {
+    // A draft must import like anything else. Its problems reappear as gates on
+    // the importing side, which is where they can actually be fixed.
+    const text = serialisePack(paediatrics, shippedPhrases, true);
+    const parsed = parsePackFile(text);
+    const merged = mergeSection(
+      { pack: structuredClone(paediatrics), phrases: structuredClone(shippedPhrases) },
+      { pack: parsed.pack, phrases: parsed.phrases },
+      'formulary',
+    );
+    expect(merged.pack.formularySeed).toEqual(paediatrics.formularySeed);
   });
 });

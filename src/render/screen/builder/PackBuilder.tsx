@@ -136,6 +136,12 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           </small>
         </div>
         <span className="spacer" />
+        {/*
+          Say so when this session opened onto recovered work. Silently restoring
+          an old draft would be its own trap: someone would assume they were
+          looking at what the app currently prescribes from.
+        */}
+        {draft.restored && <span className="pill">recovered</span>}
         {draft.dirty && <span className="pill">unsaved</span>}
         <span className={errorCount ? 'pill bad' : 'pill good'}>
           {errorCount ? `${errorCount} blocking` : 'ready to export'}
@@ -191,6 +197,14 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
               <p className="hint" style={{ marginTop: 0 }}>
                 {incoming.name} · everything else in your pack is left alone.
               </p>
+              {incoming.file.draft && (
+                <div className="warn-box" style={{ margin: '10px 0' }}>
+                  <strong>This file was exported as a draft.</strong>
+                  It had unresolved problems when it was written — an unsigned red
+                  flag or an uncited dose. Whatever you take from it will show those
+                  problems here, and cannot be saved until they are fixed.
+                </div>
+              )}
               <div className="rows" style={{ marginTop: 10 }}>
                 {(
                   [
@@ -264,11 +278,14 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
         />
         <button
           className="btn ghost"
-          disabled={!draft.exportable}
-          title={draft.exportable ? undefined : 'Fix the blocking problems first'}
-          onClick={() => downloadPack(draft.pack, draft.phrases)}
+          title={
+            draft.exportable
+              ? 'Write this pack to a file'
+              : 'Saves your work so far. The file is marked as a draft.'
+          }
+          onClick={() => downloadPack(draft.pack, draft.phrases, !draft.exportable)}
         >
-          Export
+          {draft.exportable ? 'Export' : 'Export draft'}
         </button>
         <button className="btn quiet danger" onClick={() => setConfirmRevert(true)}>
           Reset

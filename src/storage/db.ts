@@ -499,6 +499,30 @@ export async function saveProfile(profile: DoctorProfile): Promise<void> {
 
 // --- authored content ------------------------------------------------------
 
+/**
+ * The pack builder's work in progress.
+ *
+ * Kept under its own key, separate from the published content, because the two
+ * mean different things: 'current' is what prescriptions are written from, and
+ * 'draft' is what someone is still editing and has not vouched for yet.
+ *
+ * It exists because the draft used to live only in React state. Closing the
+ * tab, reloading, or a browser deciding to reclaim memory threw away an hour of
+ * authoring with nothing to recover from -- and Export refused to write a file
+ * while the pack still had problems, which is exactly when a draft exists.
+ */
+export async function saveDraft(content: StoredContent): Promise<void> {
+  await (await db()).put('content', content, 'draft');
+}
+
+export async function loadDraft(): Promise<StoredContent | undefined> {
+  return (await db()).get('content', 'draft');
+}
+
+export async function clearDraft(): Promise<void> {
+  await (await db()).delete('content', 'draft');
+}
+
 export async function loadContent(): Promise<StoredContent | undefined> {
   return (await db()).get('content', 'current');
 }

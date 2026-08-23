@@ -21,15 +21,31 @@ export interface PackFile {
   magic: typeof MAGIC;
   version: string;
   exportedAt: string;
+  /**
+   * Written when the pack still had blocking problems at export time.
+   *
+   * Exporting used to be refused outright in that state, which sounds careful
+   * and is the opposite: an unfinished pack is the NORMAL state of authoring,
+   * and refusing to write a file is refusing to let someone save their work.
+   * The gate that matters is Save -- publishing to the prescribing side -- and
+   * that one stays closed. A file can always be written; it just says what it
+   * is, and the importing side re-checks everything anyway.
+   */
+  draft?: boolean;
   pack: ContentPack;
   phrases: PackRegistry;
 }
 
-export function serialisePack(pack: ContentPack, phrases: PackRegistry): string {
+export function serialisePack(
+  pack: ContentPack,
+  phrases: PackRegistry,
+  draft = false,
+): string {
   const file: PackFile = {
     magic: MAGIC,
     version: APP_CONTENT_VERSION,
     exportedAt: new Date().toISOString(),
+    ...(draft ? { draft: true } : {}),
     pack,
     phrases,
   };
@@ -181,17 +197,24 @@ export function mergeSection(
   return { pack, phrases };
 }
 
-export function packFilename(pack: ContentPack, now = new Date()): string {
+export function packFilename(pack: ContentPack, now = new Date(), draft = false): string {
   const slug = pack.id.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-  return `nabz-pack-${slug}-${now.toISOString().slice(0, 10)}.json`;
+  // The filename says it too, so an unfinished pack is recognisable in a folder
+  // six months later without opening it.
+  const mark = draft ? '-draft' : '';
+  return `nabz-pack-${slug}${mark}-${now.toISOString().slice(0, 10)}.json`;
 }
 
-export function downloadPack(pack: ContentPack, phrases: PackRegistry): void {
-  const blob = new Blob([serialisePack(pack, phrases)], { type: 'application/json' });
+export function downloadPack(
+  pack: ContentPack,
+  phrases: PackRegistry,
+  draft = false,
+): void {
+  const blob = new Blob([serialisePack(pack, phrases, draft)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = packFilename(pack);
+  a.download = packFilename(pack, new Date(), draft);
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
