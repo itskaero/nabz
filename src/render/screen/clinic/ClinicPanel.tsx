@@ -27,6 +27,7 @@ import {
 import {
   detectSyncMode,
   PairingRequired,
+  SyncMisconfigured,
   pairedCode,
   syncClinicLayer,
 } from '@storage/clinicSync.ts';
@@ -68,7 +69,13 @@ export function ClinicPanel({ onOpenScript }: { onOpenScript: () => void }) {
 
   useEffect(() => {
     const ac = new AbortController();
-    void detectSyncMode(ac.signal).then((mode) => setSharedOrigin(mode === 'clinic'));
+    void detectSyncMode(ac.signal)
+      .then((mode) => setSharedOrigin(mode === 'clinic'))
+      .catch((err: unknown) => {
+        // Wrong address rather than absent station. Say it here, on the queue,
+        // because this is the screen where someone notices rows going nowhere.
+        if (err instanceof SyncMisconfigured) setSyncNote(err.message);
+      });
     return () => ac.abort();
   }, []);
 

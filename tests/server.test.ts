@@ -396,17 +396,44 @@ describe('TLS on the clinic station', () => {
     expect(await res.text()).toContain('BEGIN CERTIFICATE');
   });
 
-  it('CLOSES the plain port to everything else, including the queue', async () => {
-    // The queue carries patient identity. Serving it unencrypted beside an
-    // encrypted copy would leave a second door open on the clinic wifi for no
-    // reason -- nothing legitimate uses it, because the app is HTTPS-only.
-    const api = await fetch(`http://127.0.0.1:${HTTP_PORT}/api/clinic`);
-    expect(await api.text()).not.toContain('queue');
+  it('REDIRECTS the plain port rather than answering it', async () => {
+    /*
+      The bug this replaces, found on a real two-device setup: the plain port
+      answered EVERY path with the certificate page, so a device still on
+      http:// asked /api/mode, got HTML, failed to parse it, and quietly decided
+      the station shares no queue. The front desk added patients the doctor's
+      device never saw, and nothing on either screen said why.
+    */
+    const res = await fetch(`http://127.0.0.1:${HTTP_PORT}/api/mode`, {
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(308);
+    expect(res.headers.get('location')).toBe(
+      `https://127.0.0.1:${TLS_PORT}/api/mode`,
+    );
+  });
 
-    const app = await fetch(`http://127.0.0.1:${HTTP_PORT}/`);
-    const html = await app.text();
+  it('keeps the host the client asked for, so localhost still works', async () => {
+    // The certificate covers localhost, 127.0.0.1 and the LAN addresses alike.
+    // Rewriting the host would break the one path that already worked.
+    const res = await fetch(`http://localhost:${HTTP_PORT}/api/clinic`, {
+      redirect: 'manual',
+    });
+    expect(res.headers.get('location')).toBe(
+      `https://localhost:${TLS_PORT}/api/clinic`,
+    );
+  });
+
+  it('still serves what a device needs BEFORE it can trust the cert', async () => {
+    // A device that cannot yet validate the certificate cannot follow a
+    // redirect to it, so these two paths must answer in the clear.
+    const page = await fetch(`http://127.0.0.1:${HTTP_PORT}/`);
+    const html = await page.text();
     expect(html).toContain('Set up this device');
     expect(html).not.toContain('<div id="root">');
+
+    const cert = await fetch(`http://127.0.0.1:${HTTP_PORT}/ca.crt`);
+    expect(cert.status).toBe(200);
   });
 });
 

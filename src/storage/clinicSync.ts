@@ -81,6 +81,18 @@ function rememberSync(at: string | undefined): void {
   }
 }
 
+/**
+ * The address answers, but not with the app. Distinct from "this host has no
+ * queue", which is an ordinary state, and from "the station is off", which is
+ * also ordinary. This one means someone is looking at the wrong URL.
+ */
+export class SyncMisconfigured extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SyncMisconfigured';
+  }
+}
+
 export class PairingRequired extends Error {
   constructor() {
     super('This device is not paired with the clinic station yet.');
@@ -101,9 +113,29 @@ export async function detectSyncMode(signal?: AbortSignal): Promise<SyncMode> {
     const init: RequestInit = signal ? { signal } : {};
     const res = await fetch('/api/mode', init);
     if (!res.ok) return 'serve';
-    const body = (await res.json()) as { mode?: string };
-    return body.mode === 'clinic' ? 'clinic' : 'serve';
-  } catch {
+    const text = await res.text();
+    try {
+      const body = JSON.parse(text) as { mode?: string };
+      return body.mode === 'clinic' ? 'clinic' : 'serve';
+    } catch {
+      /*
+        A reply that is not JSON is NOT the same as a host with no queue, and
+        treating it as one hid a real failure: with TLS on, the station's plain
+        port answered every path with its certificate page, so a device still on
+        http:// parsed HTML, concluded "no shared queue", and stopped syncing
+        without a word. The front desk kept adding patients the doctor never saw.
+
+        Something is answering at this address and it is not the app we expect,
+        so say so rather than degrading into a silent solo mode.
+      */
+      throw new SyncMisconfigured(
+        text.includes('Set up this device')
+          ? 'This address is the certificate setup page, not the app. Open the https:// address the clinic station prints.'
+          : 'Something other than the Nabz station answered at this address.',
+      );
+    }
+  } catch (err) {
+    if (err instanceof SyncMisconfigured) throw err;
     // Offline, or a plain static host. Either way: no sharing.
     return 'serve';
   }

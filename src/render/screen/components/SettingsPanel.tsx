@@ -50,7 +50,9 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
   const [sharedOrigin, setSharedOrigin] = useState(false);
   useEffect(() => {
     const ac = new AbortController();
-    void detectSyncMode(ac.signal).then((mode) => setSharedOrigin(mode === 'clinic'));
+    void detectSyncMode(ac.signal)
+      .then((mode) => setSharedOrigin(mode === 'clinic'))
+      .catch(() => setSharedOrigin(false));
     return () => ac.abort();
   }, []);
 

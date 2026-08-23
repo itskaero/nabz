@@ -321,14 +321,25 @@ const handler = async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
 
   /*
-    Once TLS is running, the plain port does ONE job: hand over the certificate
-    and explain how to trust it.
+    Once TLS is running, the plain port stops serving the app and the queue.
+    The queue carries patient identity, and serving it unencrypted beside an
+    encrypted copy leaves a second door open on the clinic wifi; handing out an
+    insecure copy of the app is worse still, since that origin cannot encrypt a
+    backup.
 
-    It deliberately sits above the API. The queue carries patient identity, and
-    serving it over plain HTTP beside an encrypted copy leaves a second door
-    open on the clinic wifi for no reason -- nothing legitimate uses it, because
-    the app itself is only served over HTTPS. Handing out an insecure copy of
-    the app is worse still: that origin cannot encrypt a backup.
+    But it must REDIRECT rather than answer, and that distinction cost a real
+    bug: answering every path with the setup page meant a device already on
+    http:// asked /api/mode, got HTML, failed to parse it, and silently
+    concluded the station shares no queue. A front desk added patients that the
+    doctor's device never saw, with nothing on screen to say why.
+
+    Two paths stay served, because they are what a device needs BEFORE it can
+    trust the certificate and therefore before it can follow a redirect.
+
+    The redirect keeps the host the client asked for -- localhost stays
+    localhost -- because the certificate covers localhost, 127.0.0.1 and the LAN
+    addresses alike, and rewriting the host would break the one that already
+    worked.
   */
   if (TLS && !req.socket.encrypted && url.pathname !== '/healthz') {
     if (url.pathname === '/ca.crt') {
@@ -339,7 +350,15 @@ const handler = async (req, res) => {
       });
       return res.end(TLS.caPem);
     }
-    return send(res, 200, certSetupPage(TLS.url), 'text/html; charset=utf-8');
+    if (url.pathname === '/' || url.pathname === '/setup') {
+      return send(res, 200, certSetupPage(TLS.url), 'text/html; charset=utf-8');
+    }
+    const host = (req.headers.host ?? '').split(':')[0] || 'localhost';
+    res.writeHead(308, {
+      location: `https://${host}:${HTTPS_PORT}${req.url ?? '/'}`,
+      'cache-control': 'no-store',
+    });
+    return res.end();
   }
 
   if (url.pathname === '/healthz') {
