@@ -139,10 +139,26 @@ async function main() {
 const READ_ME = `Nabz - clinic station
 =====================
 
-Double-click nabz-clinic.exe. It prints two addresses:
+Double-click nabz-clinic.exe and leave the window open. Closing it stops the
+station. It prints the exact addresses for this machine; they look like this:
 
-  http://localhost:8080          this computer
-  http://<this-pc-ip>:8080       any tablet or phone on the same wi-fi
+  https://<this-pc-ip>:8443     the app -- use this one
+  http://<this-pc-ip>:8080      first-time setup only
+
+FIRST TIME ON EACH PHONE, TABLET OR LAPTOP
+  Open the http:// address and follow it. It installs this clinic's
+  certificate, which takes a minute and only has to be done once per device.
+
+  It is not optional. Without it the browser silently switches off encrypted
+  backup, the PIN and offline use -- on the very device that holds every
+  clinical record. On an iPhone it is TWO steps: install the profile, then
+  Settings > General > About > Certificate Trust Settings, and switch it on.
+
+  Afterwards, always use the https:// address.
+
+PAIRING
+  The window prints a six-digit code. Type it into each doctor device once,
+  on the Queue screen. The queue then syncs both ways on its own.
 
 WHAT THIS MACHINE HOLDS
   The queue: names, ages, tokens, and whether each person has paid.
@@ -152,13 +168,24 @@ WHAT IT DOES NOT HOLD
   device and are never sent here. The server refuses to store them even if
   something asks it to.
 
-The queue is written to a folder called .clinic-data next to this file. Back it
-up like any other clinic record. Closing the window stops the server; anyone
-mid-consultation keeps working, because the prescription itself lives in their
-own browser.
+RESERVE THIS PC'S IP ON YOUR ROUTER
+  Do this before setting up any doctor device. A browser files what it stores
+  under the address it came from, so if the router gives this PC a different
+  address later, the doctor's device opens an empty app. Nothing is deleted;
+  it is simply behind an address that no longer exists.
 
-To use a different port:  set PORT=9000 before running.
-`;
+BACKUPS
+  The doctor's device holds the only copy of every clinical record. Use
+  Settings > Export my data there, regularly, and keep the file elsewhere.
+
+  This machine's own folder holds the queue and the certificate. Copy it to a
+  USB stick occasionally.
+
+The queue is written to a folder called .clinic-data next to this file.
+
+To use different ports:  set PORT=9000 and NABZ_HTTPS_PORT=9443 before running.
+
+Full guide: https://itskaero.github.io/nabz/setup.html`;
 
 main().catch((err) => {
   console.error('\nbuild:exe failed:', err.message);

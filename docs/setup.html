@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setting up the clinic station — Nabz</title>
+<meta name="description" content="Install the Nabz clinic station on a reception PC, trust its certificate on a phone or tablet, and pair the doctor's device.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="tint"></div>
+
+<div class="navshell">
+  <div class="nav">
+    <a href="index.html"><img src="assets/logo.svg" alt="Nabz"></a>
+    <div class="links">
+      <a href="index.html">Overview</a>
+      <a href="setup.html" style="color:var(--teal-ink)">Setup</a>
+      <a href="builder.html">Content builder</a>
+    </div>
+    <a class="cta" href="https://github.com/itskaero/nabz">GitHub</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="pagehead">
+    <div class="crumb"><a href="index.html">Nabz</a> → Setting up</div>
+    <h1>Setting up the clinic station</h1>
+    <p class="lead">
+      From one file on a reception PC to a doctor's phone that can write, print and
+      back up. Every step here exists because something goes wrong without it — the
+      reasons are given, not just the instructions.
+    </p>
+  </div>
+
+  <div class="doc">
+    <nav class="toc" aria-label="On this page">
+      <h4>On this page</h4>
+      <ol>
+        <li><a href="#which">Which setup do I need?</a></li>
+        <li><a href="#solo">Solo — one device</a></li>
+        <li><a href="#station">1 · Run the station</a></li>
+        <li><a href="#firewall">2 · Firewall</a></li>
+        <li><a href="#ip">3 · Reserve the IP</a></li>
+        <li><a href="#roles">4 · Device roles</a></li>
+        <li><a href="#cert">5 · The certificate</a></li>
+        <li><a href="#pair">6 · Pair the doctor's device</a></li>
+        <li><a href="#daily">Daily use</a></li>
+        <li><a href="#backup">Backups</a></li>
+        <li><a href="#trouble">When it does not work</a></li>
+        <li><a href="#limits">Honest limitations</a></li>
+      </ol>
+    </nav>
+
+    <div>
+
+      <section id="which">
+        <h2>Which setup do I need?</h2>
+        <p>
+          Two shapes, and the smaller one is the common one. Nothing about the
+          two-machine setup is required to use Nabz.
+        </p>
+        <table>
+          <tr><th>You have</th><th>What to do</th></tr>
+          <tr>
+            <td><strong>One device</strong><br>You see patients and write scripts yourself</td>
+            <td>Open the app, fill in your details, set a backup passphrase.
+                <a href="#solo">Two steps</a>, and you are finished. The queue stays
+                switched off and you never meet it.</td>
+          </tr>
+          <tr>
+            <td><strong>Two machines</strong><br>Someone at a front desk, you in a room</td>
+            <td>Run the station on the reception PC and follow steps
+                <a href="#station">1</a>–<a href="#pair">6</a>. Around fifteen minutes,
+                once.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section id="solo">
+        <h2>Solo — one device</h2>
+        <ol class="steps">
+          <li>
+            <strong>Open the app and fill in your details</strong>
+            <p>Settings → Your details. Name, qualifications, registration number and
+               clinic. Choose A4 or Letter, and whether you print on plain paper or
+               a pre-printed pad — if you use a pad, the app leaves your letterhead
+               zone blank instead of printing over it.</p>
+          </li>
+          <li>
+            <strong>Set a backup passphrase and export today</strong>
+            <p>Settings → Your records live only on this device. Pick a passphrase of
+               at least eight characters and press <em>Export my data</em>. Keep the
+               file somewhere that is not this device.</p>
+          </li>
+        </ol>
+        <div class="note bad">
+          <strong>There is no password reset</strong>
+          The backup is encrypted with your passphrase and nothing about it is held
+          anywhere else. If you forget it, the file cannot be opened — not by us,
+          not by anyone. Write it down somewhere you would keep a bank card PIN.
+        </div>
+      </section>
+
+      <section id="station">
+        <h2>1 · Run the station on the reception PC</h2>
+        <p>
+          The station is <strong>one file</strong>. The whole app is inside it — the
+          HTML, the typesetting engine, the Nastaliq font — so there is nothing to
+          install and no runtime to set up first.
+        </p>
+        <ol class="steps">
+          <li>
+            <strong>Copy <code>nabz-clinic.exe</code> onto the reception PC</strong>
+            <p>Somewhere it can stay, such as <code>C:\Nabz\</code>. It writes the
+               queue into a folder beside itself, so keep it out of Downloads.</p>
+          </li>
+          <li>
+            <strong>Double-click it</strong>
+            <p>Windows will warn that the publisher is unknown: <em>More info →
+               Run anyway</em>. That warning is accurate — the binary is not
+               code-signed, which is listed under <a href="#limits">limitations</a>.</p>
+          </li>
+          <li>
+            <strong>Leave the window open</strong>
+            <p>Closing it stops the station. Minimise it instead. Everything it needs
+               to tell you is printed in that window.</p>
+          </li>
+        </ol>
+        <p>On first run it prints something like this, and creates its own certificate:</p>
+<pre><code>  Nabz - clinic station
+  ---------------------
+
+  On this computer:      https://192.168.0.159:8443
+
+  FIRST TIME on a phone or tablet, open this and follow it:
+     http://192.168.0.159:8080
+  It installs the clinic certificate. Without it the browser
+  switches off backup, the PIN and offline use.
+
+  Afterwards, open:      https://192.168.0.159:8443
+
+  This machine holds the queue: names, ages, tokens, payment.
+  It does NOT hold prescriptions, examinations or growth records
+  - those stay on the doctor's own device.
+
+  Pairing code for a new device:  203329</code></pre>
+        <div class="note">
+          <strong>Write down that pairing code</strong>
+          You need it once per device. It is kept in the station's data folder, so
+          it survives restarts — you can always read it again from the window.
+        </div>
+      </section>
+
+      <section id="firewall">
+        <h2>2 · Let it through the firewall</h2>
+        <p>
+          Windows asks the first time the station starts. Tick <strong>Private
+          networks</strong> and leave <strong>Public networks</strong> unticked.
+        </p>
+        <p>
+          Private means "the network I trust", which is what a clinic's own wifi is.
+          Public is the setting for an airport or a café, and it blocks the incoming
+          connections the doctor's device needs to make.
+        </p>
+        <div class="note">
+          <strong>If you missed the prompt, or clicked the wrong thing</strong>
+          Windows Security → Firewall &amp; network protection → Allow an app through
+          firewall → find <strong>Node.js</strong> or <strong>nabz-clinic</strong>,
+          and make sure <em>Private</em> is ticked.
+        </div>
+        <p>
+          Also check the network itself is marked private: Settings → Network &amp;
+          Internet → your connection → <strong>Private network</strong>. A clinic LAN
+          classified as Public will keep blocking things no matter what else you do.
+        </p>
+      </section>
+
+      <section id="ip">
+        <h2>3 · Reserve the station's IP address</h2>
+        <p>
+          <strong>This step is not optional, and skipping it is the way this setup
+          loses records.</strong>
+        </p>
+        <p>
+          A browser files what it stores under the address the page came from.
+          <code>https://192.168.0.159:8443</code> and
+          <code>https://192.168.0.42:8443</code> are, to a browser, two unrelated
+          applications with two separate databases. If the router hands the station a
+          different address next week, the doctor's device opens an empty app. Nothing
+          is deleted — it is behind an address that no longer exists.
+        </p>
+        <ol class="steps">
+          <li>
+            <strong>Find the station's address and its MAC</strong>
+            <p>On the reception PC open Command Prompt and run
+               <code>ipconfig /all</code>. Note the IPv4 Address and the Physical
+               Address of the adapter that is actually connected.</p>
+          </li>
+          <li>
+            <strong>Open your router's admin page</strong>
+            <p>Usually <code>http://192.168.0.1</code> or <code>http://192.168.1.1</code>.
+               Look for DHCP Reservation, Address Reservation, or Static Lease.</p>
+          </li>
+          <li>
+            <strong>Pin that MAC to that IP, and save</strong>
+            <p>Then on the PC run <code>ipconfig /release</code> followed by
+               <code>ipconfig /renew</code>. Confirm it comes back with the address
+               you reserved. A reservation usually only takes effect at the next
+               lease renewal, so without this the address can stay wrong for hours.</p>
+          </li>
+        </ol>
+        <div class="note bad">
+          <strong>Reserve the right adapter</strong>
+          A laptop has both wifi and Ethernet, each with its own MAC. Reserving the
+          wifi address while the PC is plugged into Ethernet reserves nothing.
+          Ignore any adapter named VirtualBox, VMware, Hyper-V or WSL — those are
+          virtual and unreachable from other devices.
+        </div>
+      </section>
+
+      <section id="roles">
+        <h2>4 · Tell each machine what it is for</h2>
+        <p>
+          The first time the app opens on a fresh device it asks one question. The
+          answer decides what that machine is allowed to hold.
+        </p>
+        <div class="field-note">
+          <span class="key">Front desk</span>
+          <p>Shows the queue and nothing else. Prescriptions, examinations, growth
+             records and history are not merely hidden — the app <strong>refuses to
+             save a prescription</strong> on this device at all. That is what makes
+             "the receptionist cannot read clinical records" a fact about the machine
+             rather than a promise.</p>
+        </div>
+        <div class="field-note">
+          <span class="key">Doctor's device</span>
+          <p>Everything. This device holds the only copy of every clinical record,
+             which is why the backup step matters more here than anywhere else.</p>
+        </div>
+        <p>
+          You can change it later in <strong>Settings → What this computer is for</strong>.
+          Switching a device that already holds records does not delete them; it tells
+          you how many there are first, and switching back finds them intact.
+        </p>
+        <p>
+          Choosing <em>Front desk</em> also switches the queue on, since that is the
+          only thing that machine does.
+        </p>
+      </section>
+
+      <section id="cert">
+        <h2>5 · Install the clinic certificate</h2>
+        <p>
+          Do this on <strong>every doctor device</strong> — phone, tablet or laptop.
+          It takes two minutes and it is the difference between a working app and a
+          crippled one.
+        </p>
+
+        <h3>Why it is necessary</h3>
+        <p>
+          Browsers switch off a set of capabilities on any address that is not
+          secure. A plain <code>http://192.168.…</code> address is not secure, so on
+          that address the browser silently removes:
+        </p>
+        <ul>
+          <li><strong>Encrypted backup and restore</strong> — the only recovery path
+              for records that exist on one device</li>
+          <li><strong>The PIN lock</strong></li>
+          <li><strong>Offline use</strong> — the app stops working when the station
+              is off</li>
+        </ul>
+        <p>
+          None of that announces itself. The app looks fine and quietly cannot back
+          itself up. Nabz shows a banner when it detects this, but the fix is the
+          certificate.
+        </p>
+        <div class="note">
+          <strong>Clicking through a browser warning does not work</strong>
+          A certificate the device does not trust fails exactly the same way plain
+          <code>http://</code> does. The device has to genuinely trust the issuer,
+          which is what installing this does.
+        </div>
+
+        <h3>Install it</h3>
+        <ol class="steps">
+          <li>
+            <strong>Open the station's plain address</strong>
+            <p>The <code>http://…:8080</code> one from the station window. That
+               address now serves only a setup page — the app itself is on
+               <code>https://</code>.</p>
+          </li>
+          <li>
+            <strong>Tap "Download certificate"</strong>
+            <p>Then follow the instructions for your device below.</p>
+          </li>
+        </ol>
+
+        <div class="platform">
+          <div class="p">
+            <h4>iPhone / iPad</h4>
+            <ol>
+              <li>Settings → <em>Profile Downloaded</em> → Install</li>
+              <li>Settings → General → About → <strong>Certificate Trust
+                  Settings</strong></li>
+              <li>Switch on <em>Nabz Clinic Station CA</em></li>
+            </ol>
+            <p style="margin:9px 0 0;font-size:13.6px;color:var(--ink-faint)">
+              Step 2 is separate from step 1 and is the one everybody misses. Without
+              it nothing changes.
+            </p>
+          </div>
+          <div class="p">
+            <h4>Android</h4>
+            <ol>
+              <li>Settings → Security</li>
+              <li>Encryption &amp; credentials → Install a certificate</li>
+              <li>Choose <strong>CA certificate</strong>, accept the warning, pick
+                  the downloaded file</li>
+            </ol>
+            <p style="margin:9px 0 0;font-size:13.6px;color:var(--ink-faint)">
+              Wording varies by manufacturer. Searching Settings for "certificate"
+              usually finds it.
+            </p>
+          </div>
+          <div class="p">
+            <h4>Windows / macOS</h4>
+            <ol>
+              <li>Double-click the downloaded file</li>
+              <li>Windows: Install Certificate → Local Machine → place in
+                  <em>Trusted Root Certification Authorities</em></li>
+              <li>macOS: add to the System keychain, then set it to
+                  <em>Always Trust</em></li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="note">
+          <strong>What you are agreeing to, and how to undo it</strong>
+          A certificate authority can vouch for any site to that device, so this is a
+          real decision. This one was generated on the clinic's own computer and its
+          private key never leaves it. To reverse it, remove <em>Nabz Clinic Station
+          CA</em> from the same settings screen you installed it in.
+        </div>
+        <p>
+          If the station's address changes later, it reissues its certificate
+          automatically and <strong>no device has to trust anything again</strong> —
+          the authority stays the same, only the certificate under it is replaced.
+        </p>
+      </section>
+
+      <section id="pair">
+        <h2>6 · Pair the doctor's device</h2>
+        <ol class="steps">
+          <li>
+            <strong>Open the <code>https://…:8443</code> address</strong>
+            <p>No certificate warning should appear. If one does, the certificate did
+               not install — go back to <a href="#cert">step 5</a>, and on iPhone
+               check the Certificate Trust Settings half.</p>
+          </li>
+          <li>
+            <strong>Add it to the home screen</strong>
+            <p>Safari: Share → Add to Home Screen. Chrome: menu → Install app. It
+               then opens like an app and keeps working when the station is off.</p>
+          </li>
+          <li>
+            <strong>Open the Queue tab and enter the pairing code</strong>
+            <p>Six digits, once. After that the queue syncs both ways on its own.</p>
+          </li>
+          <li>
+            <strong>Fill in your details and export a backup</strong>
+            <p>Same as the <a href="#solo">solo setup</a>. This device holds the only
+               copy of every record.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="daily">
+        <h2>Daily use</h2>
+        <p>Once set up, nobody touches any of the above again.</p>
+        <table>
+          <tr><th>At the front desk</th><th>In the room</th></tr>
+          <tr>
+            <td>
+              Type name, age, sex and fee → <strong>Add</strong>. The patient gets
+              today's next token.<br><br>
+              Mark <code>paid</code>, <code>unpaid</code> or <code>waived</code> as
+              money changes hands.<br><br>
+              Added by mistake? <strong>Remove</strong> works while the row is still
+              waiting.
+            </td>
+            <td>
+              The row appears within about ten seconds, without pressing anything.<br><br>
+              <strong>Open script</strong> → confirm it is the right child → the row
+              moves to <em>in room</em> and their details carry into the
+              prescription.<br><br>
+              <strong>Save</strong> closes the visit: the row goes to <em>done</em>
+              and you are returned to the queue.
+            </td>
+          </tr>
+        </table>
+        <p>
+          The day's figures sit at the top of the queue: waiting, seen, collected and
+          outstanding. Collected and outstanding are kept apart deliberately — a
+          single "revenue" number that quietly included money nobody has handed over
+          is exactly the number that gets believed.
+        </p>
+        <p>
+          Syncing continues while you are writing a script, not only while the queue
+          is on screen, and it catches up immediately whenever you switch back to the
+          app.
+        </p>
+      </section>
+
+      <section id="backup">
+        <h2>Backups</h2>
+        <p>
+          <strong>The doctor's device holds the only copy of every clinical record.</strong>
+          Nothing is on the station, nothing is on any server. A lost phone or a
+          cleared browser is a lost record unless a backup exists.
+        </p>
+        <ul>
+          <li>Settings → set a passphrase → <strong>Export my data</strong></li>
+          <li>The file is encrypted; keep it somewhere that is not the device itself</li>
+          <li>The app nags after seven days without one, deliberately and repeatedly</li>
+          <li>Restore with <strong>Restore a backup</strong> and the same passphrase</li>
+        </ul>
+        <p>
+          The station's own folder is worth copying to a USB stick occasionally too.
+          It holds only the queue — no clinical content — but it is where the day's
+          takings live.
+        </p>
+      </section>
+
+      <section id="trouble">
+        <h2>When it does not work</h2>
+        <table>
+          <tr><th>What you see</th><th>What it is</th></tr>
+          <tr>
+            <td>The address does not load on the phone at all</td>
+            <td>Check the phone is on the clinic wifi and not mobile data, and not on
+                a Guest network. Then try the router's own admin page from the phone:
+                if that loads and the station does not, the router has client
+                isolation switched on — look for "AP Isolation" or "Client
+                Isolation" and turn it off.</td>
+          </tr>
+          <tr>
+            <td>It worked yesterday, today it does not</td>
+            <td>The station's address changed. Read the current one from the station
+                window, and do <a href="#ip">step 3</a> properly this time.</td>
+          </tr>
+          <tr>
+            <td>"This device cannot back itself up"</td>
+            <td>You are on the <code>http://</code> address. Install the certificate
+                and use the <code>https://</code> one — <a href="#cert">step 5</a>.</td>
+          </tr>
+          <tr>
+            <td>Certificate warning on the https address</td>
+            <td>The certificate is not installed or, on iPhone, not switched on in
+                Certificate Trust Settings.</td>
+          </tr>
+          <tr>
+            <td>The queue is not updating between devices</td>
+            <td>Check the doctor's device is paired — the Queue tab shows a pairing
+                box if not. Press <strong>Sync now</strong> once. If the message says
+                the address is a setup page, you are on <code>http://</code> instead
+                of <code>https://</code>.</td>
+          </tr>
+          <tr>
+            <td>The station lists several addresses</td>
+            <td>Use the one it recommends first. The others are virtual adapters that
+                exist only inside that PC and can never work from another device.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section id="limits">
+        <h2>Honest limitations</h2>
+        <ul>
+          <li><strong>The station binary is not code-signed.</strong> Windows will
+              warn about an unknown publisher every time a new copy is run.</li>
+          <li><strong>No tray icon, no auto-start, no updater.</strong> The window
+              must stay open, and a new version means replacing the file.</li>
+          <li><strong>The pairing code is not encryption.</strong> It stops a phone
+              on the clinic wifi from reading the queue by guessing a URL. The TLS
+              certificate is what protects the traffic itself.</li>
+          <li><strong>The station must be running for the queue to sync.</strong> The
+              doctor's app keeps working offline regardless, because the records are
+              on that device.</li>
+        </ul>
+      </section>
+
+      <div class="next">
+        <a href="builder.html">
+          <span class="k">Next</span>
+          Editing the medicines, doses and advice the app offers
+        </a>
+        <a href="index.html">
+          <span class="k">Back</span>
+          What Nabz is and what it prints
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footrow">
+      <img src="assets/logo.svg" alt="Nabz">
+      <span>Bilingual clinical prescriptions.</span>
+      <a href="https://github.com/itskaero/nabz" style="margin-left:auto">Source on GitHub</a>
+    </div>
+    <p style="margin:16px 0 0;max-width:70ch">
+      Not a medical device. Clinical content is authored and reviewed by a clinician
+      before use — the app can validate that a translation exists, never that it is
+      right.
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Highlight the section currently on screen in the contents list.
+  const links = [...document.querySelectorAll('.toc a')];
+  const byId = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      links.forEach((a) => a.classList.remove('on'));
+      byId.get(e.target.id)?.classList.add('on');
+    }
+  }, { rootMargin: '-100px 0px -70% 0px' });
+  document.querySelectorAll('.doc section[id]').forEach((s) => io.observe(s));
+</script>
+
+</body>
+</html>

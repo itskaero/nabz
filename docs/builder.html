@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The content builder — Nabz</title>
+<meta name="description" content="Edit the medicines, doses, phrases, advice, examination chips and investigations that Nabz offers — and understand the checks that stop a half-finished pack reaching a patient.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="tint"></div>
+
+<div class="navshell">
+  <div class="nav">
+    <a href="index.html"><img src="assets/logo.svg" alt="Nabz"></a>
+    <div class="links">
+      <a href="index.html">Overview</a>
+      <a href="setup.html">Setup</a>
+      <a href="builder.html" style="color:var(--teal-ink)">Content builder</a>
+    </div>
+    <a class="cta" href="https://github.com/itskaero/nabz">GitHub</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="pagehead">
+    <div class="crumb"><a href="index.html">Nabz</a> → Content builder</div>
+    <h1>The content builder</h1>
+    <p class="lead">
+      Everything the app offers you — every brand, dose, phrase, chip and advice
+      line — is editable, and none of it is buried in code. This is where you change
+      it, and where a set of deliberate refusals stop a half-finished pack from ever
+      reaching a patient.
+    </p>
+  </div>
+
+  <div class="doc">
+    <nav class="toc" aria-label="On this page">
+      <h4>On this page</h4>
+      <ol>
+        <li><a href="#what">What it is for</a></li>
+        <li><a href="#open">Opening it safely</a></li>
+        <li><a href="#medicines">Medicines</a></li>
+        <li><a href="#doses">Doses</a></li>
+        <li><a href="#phrases">Phrases</a></li>
+        <li><a href="#advice">Advice &amp; red flags</a></li>
+        <li><a href="#exam">Exam chips</a></li>
+        <li><a href="#tests">Investigations</a></li>
+        <li><a href="#review">Review &amp; export</a></li>
+        <li><a href="#gates">Why export is blocked</a></li>
+        <li><a href="#share">Sharing a pack</a></li>
+      </ol>
+    </nav>
+
+    <div>
+
+      <section id="what">
+        <h2>What it is for</h2>
+        <p>
+          Nabz ships one content pack: paediatrics. It holds around 150 brands, the
+          doses that carry citations, both locale packs, the examination chips and
+          the investigation list. <strong>All of it is data</strong>, and this is the
+          editor for it.
+        </p>
+        <p>Three jobs, in rough order of how often they come up:</p>
+        <ul>
+          <li><strong>Make it yours.</strong> Add the brands you actually prescribe,
+              rename a chip to the phrase you use, write advice in your own words.</li>
+          <li><strong>Finish what ships unfinished.</strong> The seeded rows are
+              honestly marked as unverified. Confirming them is clinical work only a
+              clinician can do.</li>
+          <li><strong>Build a different specialty.</strong> The schema is open. A
+              cardiology or ENT pack is a content exercise, not a code change.</li>
+        </ul>
+        <div class="note">
+          <strong>The rule the whole thing is built around</strong>
+          The library suggests; the prescriber confirms. Nothing here writes a dose,
+          a frequency or a duration onto a script by itself. The builder decides what
+          is <em>offered</em>, never what is <em>entered</em>.
+        </div>
+      </section>
+
+      <section id="open">
+        <h2>Opening it safely</h2>
+        <p>
+          <strong>Settings → Content builder.</strong> It opens on a copy, so nothing
+          you do takes effect until you press Save — and while you are in it the
+          prescribing side keeps running on the content it already had.
+        </p>
+        <div class="field-note">
+          <span class="key">Save</span>
+          <p>Publishes the draft. Every script written from that moment uses it. The
+             button stays disabled while anything blocking is outstanding.</p>
+        </div>
+        <div class="field-note">
+          <span class="key">Export</span>
+          <p>Writes the whole pack to a <code>.json</code> file — your backup, and how
+             you move content to another device or hand it to a colleague.</p>
+        </div>
+        <div class="field-note">
+          <span class="key">Revert</span>
+          <p>Throws your edits away and returns to what this build shipped with. It
+             asks first, and it is the one action here you cannot undo. Export before
+             using it.</p>
+        </div>
+        <div class="note bad">
+          <strong>Content is per device</strong>
+          Edits live on the device that made them and do not travel with the queue.
+          A two-machine clinic edits on the doctor's device; the front desk never
+          needs this screen.
+        </div>
+      </section>
+
+      <section id="medicines">
+        <h2>Medicines — the catalogue</h2>
+        <p>
+          Brand, generic, strength and form. This is the list that autocompletes when
+          you start typing a drug name.
+        </p>
+        <p>
+          <strong>The generic is the join.</strong> A dose is attached to a generic,
+          not to a brand, so every brand of amoxicillin shares one cited dose. That
+          only works if the spelling matches exactly — and the builder refuses to
+          export when it does not, because two spellings of one generic split its
+          dosing in half and neither side is obviously wrong on screen.
+        </p>
+
+        <h3>Provenance, and why rows say "not verified"</h3>
+        <p>
+          Every shipped row is marked <code>manual</code> and carries no DRAP
+          registration number. That is the honest state of it: a starting vocabulary
+          for the autocomplete, not a checked extract of the national registry.
+        </p>
+        <p>
+          Reconciling a row means finding it in DRAP's public index, confirming the
+          registration number, and marking it <code>DRAP</code>. The validator will
+          not accept a row that claims DRAP provenance without a number, so the
+          upgrade cannot be done carelessly.
+        </p>
+        <div class="note">
+          <strong>Verify against DRAP yourself, one row at a time</strong>
+          Automated matching by brand name is not safe enough to do this for you.
+          Tried on the shipped list, it matched <em>Curam</em> to a different
+          manufacturer's <em>Curamin</em>, plain <em>Panadol</em> to <em>Panadol
+          Night</em> (which adds a second drug), and a tablet to an injection — each
+          time as the only result the registry returned. A wrong registration number
+          is worse than none, because it looks verified.
+        </div>
+
+        <h3>Importing a list</h3>
+        <p>
+          <strong>Import CSV</strong> takes a file with at least a <code>brand</code>
+          and a <code>generic</code> column; <code>strength</code> and
+          <code>form</code> are used when present. Everything imported arrives marked
+          <code>manual</code> and unverified — nothing is laundered into looking
+          authoritative by having been in a spreadsheet.
+        </p>
+        <p>
+          After an import, check the near-duplicate warnings. "Amoxycillin" and
+          "Amoxicillin" are the failure this catches.
+        </p>
+      </section>
+
+      <section id="doses">
+        <h2>Doses — the evidence</h2>
+        <p>
+          A separate table, keyed on generic. Kept apart from the catalogue on
+          purpose: commercial drug listings are useful for names and prices and are
+          not evidence of anything, so their data can never drift into this table.
+        </p>
+        <div class="field-note">
+          <span class="key">reference</span>
+          <p><strong>Required, and enforced.</strong> Source, edition and section —
+             for example "WHO Pocket Book of Hospital Care for Children, 2nd ed.,
+             Annex 2". A row with an empty citation blocks export outright. The
+             citation is both the legal cover and the sanity check the prescriber
+             reads before signing.</p>
+        </div>
+        <div class="field-note">
+          <span class="key">verified</span>
+          <p>Says a clinician has personally checked this row against that source.
+             Seeded rows ship <code>false</code>, and the prescribing screen labels
+             them as unverified — a citation nobody has confirmed must not wear the
+             same authority as one that has been.</p>
+        </div>
+        <p>
+          A dose whose generic matches no medicine in the catalogue can never be
+          suggested, so that blocks export too. It is almost always a spelling
+          difference. The reverse — a generic with brands but no dose — is only a
+          warning: it means no suggestion appears for that drug, which is a
+          limitation rather than a hazard.
+        </p>
+        <div class="note bad">
+          <strong>Do not bulk-extract from copyrighted references</strong>
+          BNFC, Nelson, Harriet Lane and similar are consult-and-cite: a person reads
+          the source and writes the entry, and the app stores the citation. WHO
+          material is openly licensed and is the exception.
+        </div>
+      </section>
+
+      <section id="phrases">
+        <h2>Phrases — how instructions are built</h2>
+        <p>
+          This is where the bilingual output actually comes from. An instruction is
+          not a sentence someone typed; it is a template with slots, filled per
+          language.
+        </p>
+<pre><code>en     {administer} {dose} {frequency}[ {timing}][ for {duration}]
+       → Give 5 ml twice a day after food for 7 days</code></pre>
+        <p>
+          Square brackets mark an optional part: it disappears when the doctor leaves
+          that slot empty. Curly braces are slots filled from the prescription.
+        </p>
+        <div class="note">
+          <strong>Each language is written, never translated</strong>
+          The Urdu template is not the English with the words rearranged — it has its
+          own word order and ends where Urdu ends, on the verb. This is the single
+          most important thing about the app, and it is why the builder never offers
+          to fill one language from another.
+        </div>
+        <p>
+          The tabs also hold <strong>vocabulary</strong> — the words that fill the
+          slots, like <code>BID</code> → "twice a day" / "دن میں دو بار" —
+          <strong>units</strong> with their plural forms, and the
+          <strong>printed labels</strong> for section headings.
+        </p>
+        <p>
+          <strong>Adding a word or a template</strong> writes the English and leaves
+          the Urdu blank deliberately. A blank is caught and blocks export; a copy of
+          the English would validate, look finished, and hand a patient a line in a
+          script they cannot read.
+        </p>
+        <p>
+          The builder also compares slots across languages. If the English has
+          <code>{n}</code> and the Urdu does not, one of them is silently dropping a
+          number the doctor typed — that is an error, not a warning.
+        </p>
+      </section>
+
+      <section id="advice">
+        <h2>Advice and red flags</h2>
+        <p>Two tiers, and they are held to different standards.</p>
+
+        <h3>Tier 1 — everyday advice</h3>
+        <p>
+          "Complete the full course", "return if the fever lasts more than
+          {'{'}n{'}'} days". One tap on the prescribing screen, both languages
+          pre-written. Add your own with the box at the top of the section; retire one
+          you never use with <strong>Retire</strong>.
+        </p>
+        <p>
+          Retiring keeps the wording in the locale packs. A prescription already
+          written referenced that line, and history should still show what the patient
+          was actually handed.
+        </p>
+
+        <h3>Tier 2 — red flags</h3>
+        <p>
+          "Come back at once if the child is drowsy, not feeding, or struggling to
+          breathe." These are the lines a frightened parent acts on at two in the
+          morning.
+        </p>
+        <div class="note bad">
+          <strong>Every red flag needs a person's name against it</strong>
+          Nothing automatic can tell whether a translation is <em>correct</em> — only
+          that one exists. So a red flag carries the same discipline a dose does: a
+          named human, on a date, saying they read it and it says what it should.
+          Until every one is signed off, the pack will not export.
+        </div>
+        <p>
+          Type your name in <em>Reviewed by</em>, then confirm each line — or all of
+          them at once when you have read them all. <strong>Editing the wording
+          afterwards clears the signature</strong>, because a sign-off is on a
+          sentence, not on a name in a list.
+        </p>
+        <p>
+          Free text is not available in tier 2 on the prescribing screen at all. A red
+          flag can only be chosen from this reviewed list.
+        </p>
+      </section>
+
+      <section id="exam">
+        <h2>Examination chips</h2>
+        <p>
+          Systems, each with the findings offered as tap-chips. The easy tab, because
+          examination is English-only — nobody translates it, so there is no bidi and
+          no plural grammar to get right.
+        </p>
+        <div class="field-note">
+          <span class="key">+value</span>
+          <p>Turns a chip into one that carries a modifier: "hepatomegaly
+             <em>3cm</em>", "tachypnoea <em>46/min</em>". The hint you set appears as
+             the placeholder.</p>
+        </div>
+        <p>
+          Chips are also self-growing: the app notices findings you type by hand
+          repeatedly and offers to promote them, so the palette drifts toward your
+          own practice without anyone maintaining it.
+        </p>
+      </section>
+
+      <section id="tests">
+        <h2>Investigations</h2>
+        <p>
+          Categories — Haematology, Biochemistry, Microbiology, Imaging — each holding
+          the tests offered. Same chip control as examination, and English-only for a
+          blunt reason: a laboratory technician reads "CBC", so a transliterated test
+          name would hand the patient a slip nobody at the lab can act on.
+        </p>
+        <div class="field-note">
+          <span class="key">+detail</span>
+          <p>A qualifier field: "Chest X-ray <em>PA view</em>", "Ultrasound abdomen
+             <em>full bladder</em>".</p>
+        </div>
+        <div class="field-note">
+          <span class="key">fasting</span>
+          <p>Marks a test that needs fasting. It <em>offers</em> the matching advice
+             line when you order that test — it never adds one silently, and the
+             patient-facing wording lives in tier-1 advice where the Urdu has been
+             reviewed.</p>
+        </div>
+        <div class="note">
+          <strong>Nothing here reacts to a diagnosis</strong>
+          The palette offers what the specialty commonly orders. Proposing an
+          investigation from a working diagnosis would be clinical decision support,
+          which this product does not do.
+        </div>
+      </section>
+
+      <section id="review">
+        <h2>Review &amp; export</h2>
+        <p>
+          Everything blocking, and everything worth knowing, in one list. Errors stop
+          the export; warnings do not, but each one is telling you something is less
+          useful than you think.
+        </p>
+        <p>
+          The tab also carries the pack's authorship — who wrote this content and
+          when. That is not decoration: a pack is a clinical artefact and should say
+          whose judgement is in it.
+        </p>
+      </section>
+
+      <section id="gates">
+        <h2>Why export is blocked</h2>
+        <p>
+          The checks are stricter here than at load time, and deliberately so. When
+          the app loads a pack it degrades as gracefully as it can, because a doctor
+          mid-consultation needs something that works. When you are <em>authoring</em>,
+          a person is present who can fix the problem — so this is the moment to
+          insist.
+        </p>
+        <table>
+          <tr><th>Blocks export</th><th>Because</th></tr>
+          <tr>
+            <td>A dose with no citation</td>
+            <td>The citation is what makes a suggestion checkable. Without it the app
+                would be asserting a dose on its own authority.</td>
+          </tr>
+          <tr>
+            <td>A red flag nobody has signed off</td>
+            <td>Or one whose wording changed after sign-off. Nothing automatic can
+                catch a wrong translation of a return precaution.</td>
+          </tr>
+          <tr>
+            <td>A phrase missing or blank in a language</td>
+            <td>The patient gets an empty line, or a line in a script they cannot
+                read.</td>
+          </tr>
+          <tr>
+            <td>Languages using different slots</td>
+            <td>One version is dropping a number the doctor typed.</td>
+          </tr>
+          <tr>
+            <td>Two spellings of one generic</td>
+            <td>The dosing join splits in half and neither side looks wrong.</td>
+          </tr>
+          <tr>
+            <td>A dose for a generic no medicine uses</td>
+            <td>It can never be suggested. Nearly always a spelling difference.</td>
+          </tr>
+          <tr>
+            <td>A brand claiming DRAP provenance with no registration number</td>
+            <td>It would look verified without being verifiable.</td>
+          </tr>
+          <tr>
+            <td>A sig template offered but not written in a language</td>
+            <td>Choosing it would produce nothing in that language.</td>
+          </tr>
+        </table>
+        <p>
+          Warnings are worth reading too — a generic with brands but no cited dose
+          means no suggestion will ever appear for it, and a category with no tests
+          will only ever be free text.
+        </p>
+      </section>
+
+      <section id="share">
+        <h2>Sharing a pack</h2>
+        <p>
+          <strong>Export</strong> writes one <code>.json</code> file holding the pack
+          and both locale packs. Another device imports it from the same screen.
+        </p>
+        <p>Use it to:</p>
+        <ul>
+          <li>Back up your content before a risky edit or a Revert</li>
+          <li>Move your setup to a new phone or laptop</li>
+          <li>Hand a finished specialty pack to a colleague</li>
+        </ul>
+        <p>
+          The file carries no patient data of any kind — it is content, not records.
+          Your prescriptions are in the encrypted backup, which is a separate thing
+          entirely, on <a href="setup.html#backup">the setup page</a>.
+        </p>
+        <div class="note">
+          <strong>A pack you did not write is clinical content you are adopting</strong>
+          Imported red flags arrive with whoever signed them off recorded against
+          them. Read them before you use them; your name goes on the prescription,
+          not theirs.
+        </div>
+      </section>
+
+      <div class="next">
+        <a href="setup.html">
+          <span class="k">Also</span>
+          Setting up the clinic station and installing the certificate
+        </a>
+        <a href="index.html">
+          <span class="k">Back</span>
+          What Nabz is and what it prints
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footrow">
+      <img src="assets/logo.svg" alt="Nabz">
+      <span>Bilingual clinical prescriptions.</span>
+      <a href="https://github.com/itskaero/nabz" style="margin-left:auto">Source on GitHub</a>
+    </div>
+    <p style="margin:16px 0 0;max-width:70ch">
+      Not a medical device. Clinical content is authored and reviewed by a clinician
+      before use — the app can validate that a translation exists, never that it is
+      right.
+    </p>
+  </div>
+</footer>
+
+<script>
+  const links = [...document.querySelectorAll('.toc a')];
+  const byId = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      links.forEach((a) => a.classList.remove('on'));
+      byId.get(e.target.id)?.classList.add('on');
+    }
+  }, { rootMargin: '-100px 0px -70% 0px' });
+  document.querySelectorAll('.doc section[id]').forEach((s) => io.observe(s));
+</script>
+
+</body>
+</html>
