@@ -53,6 +53,10 @@ beforeAll(async () => {
     env: {
       ...process.env,
       NABZ_MODE: 'clinic',
+      // These tests are about the clinic-layer boundary, not TLS. With HTTPS on
+      // the plain port serves only the certificate setup page, so the API would
+      // be unreachable here -- which is itself asserted, separately, below.
+      NABZ_NO_TLS: 'yes',
       PORT: String(PORT),
       HOST: '127.0.0.1',
       NABZ_DATA: dataDir,
@@ -293,6 +297,116 @@ describe('two stations disagreeing', () => {
     // The watermark comes back from the station's clock, not the device's --
     // a fast local clock would otherwise skip other people's edits.
     expect(typeof delta.serverTime).toBe('string');
+  });
+});
+
+/**
+ * HTTPS, which is what makes a doctor's phone able to hold records at all.
+ *
+ * Over plain http:// on a LAN address the browser withholds crypto.subtle, so
+ * the encrypted backup, the PIN and the service worker all disappear -- on the
+ * one device that holds every clinical record. A cert the device has not
+ * TRUSTED does not help: a certificate error disqualifies the origin exactly as
+ * plain HTTP does. Hence a local CA, and hence these tests.
+ */
+describe('TLS on the clinic station', () => {
+  const TLS_PORT = 8794;
+  const HTTP_PORT = 8795;
+  let tlsChild: ChildProcess;
+  let tlsDir: string;
+
+  beforeAll(async () => {
+    tlsDir = await mkdtemp(join(tmpdir(), 'nabz-tls-'));
+    tlsChild = spawn(process.execPath, ['server/index.mjs'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        NABZ_MODE: 'clinic',
+        PORT: String(HTTP_PORT),
+        NABZ_HTTPS_PORT: String(TLS_PORT),
+        HOST: '127.0.0.1',
+        NABZ_DATA: tlsDir,
+      },
+      stdio: 'ignore',
+    });
+    for (let i = 0; i < 90; i += 1) {
+      try {
+        if ((await fetch(`http://127.0.0.1:${HTTP_PORT}/healthz`)).ok) break;
+      } catch {
+        /* not up */
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }, 60000);
+
+  afterAll(async () => {
+    tlsChild?.kill();
+    if (tlsDir) await rm(tlsDir, { recursive: true, force: true });
+  });
+
+  it('generates a CA and a leaf that names this machine', async () => {
+    const caPem = await readFile(join(tlsDir, 'tls', 'ca.crt'), 'utf8');
+    const leafPem = await readFile(join(tlsDir, 'tls', 'station.crt'), 'utf8');
+    expect(caPem).toContain('BEGIN CERTIFICATE');
+    expect(leafPem).toContain('BEGIN CERTIFICATE');
+
+    const forge = (await import('node-forge')).default;
+    const leaf = forge.pki.certificateFromPem(leafPem);
+    const san = leaf.extensions.find((e: { name: string }) => e.name === 'subjectAltName');
+    const names = san.altNames.map((a: { ip?: string; value?: string }) => a.ip ?? a.value);
+    // Browsers ignore commonName and match on SAN, so a cert without these
+    // fails outright no matter what the CN says.
+    expect(names).toContain('127.0.0.1');
+    expect(names).toContain('localhost');
+
+    // And the CA must actually vouch for it, or trusting the CA buys nothing.
+    const store = forge.pki.createCaStore([forge.pki.certificateFromPem(caPem)]);
+    expect(() => forge.pki.verifyCertificateChain(store, [leaf])).not.toThrow();
+  });
+
+  it('serves the app over HTTPS', async () => {
+    const caPem = await readFile(join(tlsDir, 'tls', 'ca.crt'), 'utf8');
+    const https = await import('node:https');
+    const body = await new Promise<string>((resolve, reject) => {
+      https
+        .get(
+          {
+            hostname: '127.0.0.1',
+            port: TLS_PORT,
+            path: '/healthz',
+            // Trust ONLY the clinic CA: this proves a real client validates the
+            // chain and the address, not that we skipped verification.
+            agent: new https.Agent({ ca: caPem }),
+          },
+          (res) => {
+            let b = '';
+            res.on('data', (c) => (b += c));
+            res.on('end', () => resolve(b));
+          },
+        )
+        .on('error', reject);
+    });
+    expect(JSON.parse(body)).toMatchObject({ ok: true, mode: 'clinic' });
+  });
+
+  it('hands out the certificate on the plain port', async () => {
+    const res = await fetch(`http://127.0.0.1:${HTTP_PORT}/ca.crt`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('x509');
+    expect(await res.text()).toContain('BEGIN CERTIFICATE');
+  });
+
+  it('CLOSES the plain port to everything else, including the queue', async () => {
+    // The queue carries patient identity. Serving it unencrypted beside an
+    // encrypted copy would leave a second door open on the clinic wifi for no
+    // reason -- nothing legitimate uses it, because the app is HTTPS-only.
+    const api = await fetch(`http://127.0.0.1:${HTTP_PORT}/api/clinic`);
+    expect(await api.text()).not.toContain('queue');
+
+    const app = await fetch(`http://127.0.0.1:${HTTP_PORT}/`);
+    const html = await app.text();
+    expect(html).toContain('Set up this device');
+    expect(html).not.toContain('<div id="root">');
   });
 });
 

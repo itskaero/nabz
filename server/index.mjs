@@ -25,6 +25,7 @@
  * operator saying so explicitly.
  */
 import { createServer } from 'node:http';
+import { createServer as createSecureServer } from 'node:https';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname, join, normalize, dirname } from 'node:path';
@@ -34,7 +35,8 @@ import { networkInterfaces } from 'node:os';
 import { spawn } from 'node:child_process';
 import { randomInt } from 'node:crypto';
 import { mergeCollection, purgeTombstones, changedSince, QUEUE_CONTESTED } from './merge.mjs';
-import { addressLines } from './addresses.mjs';
+import { addressLines, stationAddresses } from './addresses.mjs';
+import { ensureCertificates } from './tls.mjs';
 
 /**
  * Where this file lives -- when it lives anywhere.
@@ -108,6 +110,16 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 const DATA =
   process.env.NABZ_DATA ?? join(PACKAGED ? dirname(process.execPath) : root, '.clinic-data');
 const ALLOW_PUBLIC = process.env.NABZ_ALLOW_PUBLIC === 'yes';
+const HTTPS_PORT = Number(process.env.NABZ_HTTPS_PORT ?? 8443);
+/**
+ * HTTPS is what makes a doctor's phone a real device.
+ *
+ * Over plain http:// on a LAN address the browser withholds crypto.subtle, so
+ * the encrypted backup, the PIN and offline all vanish -- silently, on the one
+ * device holding every clinical record. Only clinic mode needs it: `serve` mode
+ * is a public host that already has TLS in front of it.
+ */
+const USE_TLS = MODE === 'clinic' && process.env.NABZ_NO_TLS !== 'yes';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -235,8 +247,100 @@ function readBody(req, limitBytes = 4_000_000) {
   });
 }
 
-const server = createServer(async (req, res) => {
+
+/**
+ * The page the plain-HTTP port serves once TLS is on.
+ *
+ * A device that has not trusted the CA cannot usefully load the HTTPS site --
+ * it gets a certificate warning, and clicking through does NOT restore a secure
+ * context. So the http:// address becomes the place people land to install the
+ * certificate, rather than a second copy of the app.
+ *
+ * Written for whoever is holding the phone. The iOS two-step is spelled out
+ * because everybody misses the second half and then reports that it did not
+ * work.
+ */
+function certSetupPage(httpsUrl) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set up this device &mdash; Nabz</title>
+<style>
+  body{font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;margin:0;
+       background:#eef1f2;color:#1d2b2a}
+  main{max-width:34rem;margin:0 auto;padding:20px 18px 60px}
+  h1{font-size:20px;margin:18px 0 4px} h2{font-size:15px;margin:22px 0 6px}
+  .card{background:#fff;border:1px solid #d8e0e0;border-radius:12px;padding:16px;margin:14px 0}
+  a.btn{display:block;text-align:center;background:#0f766e;color:#fff;
+        text-decoration:none;padding:13px;border-radius:10px;font-weight:600}
+  ol{padding-left:20px;margin:6px 0} li{margin:4px 0}
+  code{background:#eef1f2;padding:1px 5px;border-radius:4px;font-size:14px}
+  .why{color:#5b6b6a;font-size:14px}
+</style></head><body><main>
+<h1>Set up this device</h1>
+<p class="why">This clinic&rsquo;s computer issues its own certificate. Installing
+it once lets your phone use Nabz securely &mdash; which is what allows encrypted
+backups, the PIN, and working offline. Without it the browser switches all three off.</p>
+
+<div class="card">
+  <h2>Step 1 &mdash; download the certificate</h2>
+  <p><a class="btn" href="/ca.crt" download="nabz-clinic.crt">Download certificate</a></p>
+</div>
+
+<div class="card">
+  <h2>Step 2 &mdash; trust it</h2>
+  <p><strong>iPhone / iPad &mdash; this is two steps and the second is easy to miss:</strong></p>
+  <ol>
+    <li>Settings &rarr; <em>Profile Downloaded</em> &rarr; Install</li>
+    <li>Settings &rarr; General &rarr; About &rarr; <strong>Certificate Trust
+        Settings</strong> &rarr; switch on <em>Nabz Clinic Station CA</em></li>
+  </ol>
+  <p><strong>Android:</strong> Settings &rarr; Security &rarr; Encryption &amp;
+     credentials &rarr; Install a certificate &rarr; <strong>CA certificate</strong>.</p>
+  <p><strong>Windows:</strong> double-click the file &rarr; Install Certificate
+     &rarr; Local Machine &rarr; Place in <em>Trusted Root Certification Authorities</em>.</p>
+</div>
+
+<div class="card">
+  <h2>Step 3 &mdash; open Nabz</h2>
+  <p><a class="btn" href="${httpsUrl}">${httpsUrl}</a></p>
+  <p class="why">Add it to your home screen from there, so it opens like an app
+     and keeps working when this computer is off.</p>
+</div>
+
+<p class="why">Installing a certificate authority is a real decision: this one can
+vouch for any site to this device. It was generated on the clinic&rsquo;s own
+computer and its private key never leaves it. To undo this, remove
+&ldquo;Nabz Clinic Station CA&rdquo; from the same settings screen.</p>
+</main></body></html>`;
+}
+
+/** Set once TLS is ready, so the HTTP port knows where to send people. */
+let TLS = null;
+
+const handler = async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
+
+  /*
+    Once TLS is running, the plain port does ONE job: hand over the certificate
+    and explain how to trust it.
+
+    It deliberately sits above the API. The queue carries patient identity, and
+    serving it over plain HTTP beside an encrypted copy leaves a second door
+    open on the clinic wifi for no reason -- nothing legitimate uses it, because
+    the app itself is only served over HTTPS. Handing out an insecure copy of
+    the app is worse still: that origin cannot encrypt a backup.
+  */
+  if (TLS && !req.socket.encrypted && url.pathname !== '/healthz') {
+    if (url.pathname === '/ca.crt') {
+      res.writeHead(200, {
+        'content-type': 'application/x-x509-ca-cert',
+        'content-disposition': 'attachment; filename="nabz-clinic.crt"',
+        'cache-control': 'no-store',
+      });
+      return res.end(TLS.caPem);
+    }
+    return send(res, 200, certSetupPage(TLS.url), 'text/html; charset=utf-8');
+  }
 
   if (url.pathname === '/healthz') {
     return send(res, 200, { ok: true, mode: MODE });
@@ -301,8 +405,11 @@ const server = createServer(async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return send(res, 405, { error: 'method not allowed' });
   }
+
   return serveStatic(req, res);
-});
+};
+
+const server = createServer(handler);
 
 if (MODE === 'clinic' && HOST === '0.0.0.0' && !ALLOW_PUBLIC && process.env.RAILWAY_ENVIRONMENT) {
   console.error(
@@ -318,16 +425,63 @@ if (MODE === 'clinic' && HOST === '0.0.0.0' && !ALLOW_PUBLIC && process.env.RAIL
 // format needs a CommonJS entry, and CommonJS has no top-level await.
 const ready = MODE === 'clinic' ? pairingCode().then((code) => { PAIRING = code; }) : Promise.resolve();
 
-ready.then(() => server.listen(PORT, HOST, () => {
-  if (PACKAGED) return announceStation();
-  console.log(`nabz ${MODE} mode on http://${HOST}:${PORT}`);
-  if (MODE === 'clinic') {
-    console.log(`clinic layer (patients + queue only) stored in ${DATA}`);
-    console.log(`pairing code: ${PAIRING}`);
-  } else {
-    console.log('serving the app only - no patient data touches this process');
+/**
+ * Bring up TLS, then listen.
+ *
+ * The certificate names this machine's current LAN addresses, so it is built
+ * after the addresses are known and rebuilt whenever they move. Failure here is
+ * not fatal: a station that cannot make a certificate should still serve the
+ * queue over HTTP rather than refuse to start, and the app's own banner already
+ * tells the doctor what that costs them.
+ */
+const tlsReady = ready.then(async () => {
+  if (!USE_TLS) return null;
+  try {
+    const { best, others } = stationAddresses(networkInterfaces());
+    const addresses = [best, ...others].filter(Boolean).map((a) => a.address);
+    const certs = await ensureCertificates(join(DATA, 'tls'), addresses);
+    TLS = {
+      ...certs,
+      url: `https://${best ? best.address : 'localhost'}:${HTTPS_PORT}`,
+    };
+    return TLS;
+  } catch (err) {
+    console.error('Could not set up HTTPS, falling back to plain HTTP:', err.message);
+    return null;
   }
-}));
+});
+
+tlsReady.then((tls) => {
+  if (tls) {
+    createSecureServer({ key: tls.key, cert: tls.cert }, handler).listen(
+      HTTPS_PORT,
+      HOST,
+      () => {
+        if (!PACKAGED) {
+          console.log(`nabz clinic mode on ${tls.url}`);
+          if (tls.created) console.log('a new clinic certificate authority was created');
+          if (tls.reissued) console.log('certificate reissued for a changed address');
+        }
+      },
+    );
+  }
+
+  server.listen(PORT, HOST, () => {
+    if (PACKAGED) return announceStation();
+    if (MODE === 'clinic') {
+      console.log(
+        tls
+          ? `certificate setup page on http://${HOST}:${PORT}`
+          : `nabz clinic mode on http://${HOST}:${PORT} (no TLS)`,
+      );
+      console.log(`clinic layer (patients + queue only) stored in ${DATA}`);
+      console.log(`pairing code: ${PAIRING}`);
+    } else {
+      console.log(`nabz ${MODE} mode on http://${HOST}:${PORT}`);
+      console.log('serving the app only - no patient data touches this process');
+    }
+  });
+});
 
 /**
  * What the .exe prints when someone double-clicks it.
@@ -344,7 +498,18 @@ function announceStation() {
   console.log('');
   // ONE recommended address, because a list of three is how someone picks the
   // VirtualBox one and concludes the product is broken. See addresses.mjs.
-  for (const line of addressLines(networkInterfaces(), PORT)) console.log(line);
+  if (TLS) {
+    console.log('  On this computer:      ' + TLS.url);
+    console.log('');
+    console.log('  FIRST TIME on a phone or tablet, open this and follow it:');
+    console.log('     http://' + (TLS.addresses[0] ?? 'localhost') + ':' + PORT);
+    console.log('  It installs the clinic certificate. Without it the browser');
+    console.log('  switches off backup, the PIN and offline use.');
+    console.log('');
+    console.log('  Afterwards, open:      ' + TLS.url);
+  } else {
+    for (const line of addressLines(networkInterfaces(), PORT)) console.log(line);
+  }
   console.log('');
   console.log('  This machine holds the queue: names, ages, tokens, payment.');
   console.log('  It does NOT hold prescriptions, examinations or growth records');

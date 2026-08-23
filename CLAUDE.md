@@ -40,6 +40,13 @@
   reach for a heavy i18n lib that assumes simple string swaps — our medication
   strings are *composed templates with per-locale word order*, which most i18n
   libs handle badly. A small custom resolver is likely cleaner.
+- **TLS (clinic mode):** the station issues its own certificate with
+  **node-forge** -- stock Windows has no `openssl` and the packaged .exe has no
+  shell to call one from, and `node:crypto` can generate keypairs but cannot
+  sign X.509. A long-lived **CA** is trusted once per device; the **leaf** is
+  reissued whenever the machine's LAN addresses change, so DHCP movement costs
+  nobody a re-trust. Certificates live in `.clinic-data/tls/`; delete that
+  folder to start over (every device must then re-trust).
 - **Fonts:** bundle **Noto Nastaliq Urdu** (or equivalent Nastaʿlīq face) as an
   embedded asset for both screen and PDF.
 

@@ -114,6 +114,9 @@ not a hardcode. See §6.
 - Investigations / labs section (§8a), seeded per specialty and editable.
 - Device role (§13a): a machine is set up once as the doctor's device or the
   front desk, and a front desk cannot store clinical records at all.
+- HTTPS on the clinic station, so a doctor's phone is a real device: a plain
+  http:// LAN address is not a secure context, and the browser silently
+  withholds the encrypted backup, the PIN and offline use there.
 - Five-section prescription: Problems, Examination, Diagnosis, Medications, Advice/Follow-up.
 - Locale-keyed **approved phrase library** for medication instructions (`en`, `ur-PK`).
 - **Free-text drug entry** with a brand→generic→strength **autocomplete library** (name only auto-filled).
