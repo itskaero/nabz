@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=52cf6457">
 </head>
 <body>
 
@@ -18,14 +18,18 @@
 <div class="navshell">
   <div class="nav">
     <img src="assets/logo.svg" alt="Nabz">
-    <div class="links">
+    <div class="links" id="navlinks">
       <a href="#output">Output</a>
       <a href="#layers">Where data lives</a>
       <a href="setup.html">Setup</a>
       <a href="builder.html">Content builder</a>
       <a href="#download">Download</a>
+      <a class="ghlink" href="https://github.com/itskaero/nabz">GitHub</a>
     </div>
     <a class="cta" href="https://github.com/itskaero/nabz">GitHub</a>
+    <button class="navtoggle" aria-label="Menu" aria-expanded="false" aria-controls="navlinks">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </div>
 
@@ -347,5 +351,6 @@ npm run build:exe      <span class="c"># -&gt; release/nabz-clinic.exe, one self
   </div>
 </footer>
 
+<script src="assets/nav.js?v=a2ecd1ca"></script>
 </body>
 </html>

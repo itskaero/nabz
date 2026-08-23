@@ -55,7 +55,57 @@
     padding:9px 20px;border-radius:999px;text-decoration:none;white-space:nowrap;
   }
   .nav .cta:hover{background:var(--teal-ink)}
-  @media(max-width:820px){ .nav .links{display:none} .nav{padding-left:16px} }
+  /* The menu button only exists below the breakpoint. */
+  .navtoggle{
+    display:none;align-items:center;justify-content:center;gap:5px;
+    width:42px;height:38px;border:1px solid var(--line);border-radius:999px;
+    background:var(--surface);cursor:pointer;padding:0;flex:0 0 auto;
+  }
+  /* Explicit gap, because the cross below is drawn against it: the bars are
+     1.8px tall with 4px between, so each outer bar travels 5.8px to meet in
+     the middle. Left to the default gap they met off-centre and the "X" came
+     out as a chevron. */
+  .navtoggle span{
+    display:block;width:16px;height:1.8px;background:var(--ink-soft);
+    border-radius:2px;transition:transform .18s, opacity .12s;
+  }
+  .navtoggle{gap:4px}
+  .navtoggle[aria-expanded="true"] span:nth-child(1){transform:translateY(5.8px) rotate(45deg)}
+  .navtoggle[aria-expanded="true"] span:nth-child(2){opacity:0}
+  .navtoggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-5.8px) rotate(-45deg)}
+
+  /*
+    Below the breakpoint the links used to be display:none with nothing in
+    their place, so a phone could reach the logo and GitHub and no page of the
+    site at all -- Setup, Content builder and Download simply did not exist.
+    They now collapse into a panel under the pill.
+  */
+  @media(max-width:820px){
+    .nav{padding:9px 10px 9px 16px;gap:10px}
+    .navtoggle{display:flex;flex-direction:column}
+    .nav .cta{display:none}
+    .nav .links{
+      position:absolute;top:calc(100% + 8px);left:0;right:0;
+      margin-left:auto;flex-direction:column;gap:2px;
+      background:var(--surface);border:1px solid var(--line);border-radius:18px;
+      padding:10px;box-shadow:var(--shadow);
+      /* Collapsed by default, and genuinely gone -- not merely invisible, so
+         it cannot be tabbed into while closed. */
+      display:none;
+    }
+    .nav .links.open{display:flex}
+    .nav .links a{padding:11px 14px;border-radius:11px;font-size:15px}
+    .nav .links a:hover,.nav .links a:focus{background:var(--bg)}
+    .nav .links a.ghlink{
+      margin-top:4px;border-top:1px solid var(--line-soft);
+      border-radius:0 0 11px 11px;color:var(--teal-ink);font-weight:600;
+    }
+    .navshell{padding:12px 16px}
+  }
+  /* The pill is the positioning context for the dropdown. */
+  .nav{position:relative}
+  .ghlink{display:none}
+  @media(max-width:820px){ .ghlink{display:block} }
 
   /* ---------- hero ---------- */
   .hero{text-align:center;padding:70px 0 0}
