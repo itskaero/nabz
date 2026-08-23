@@ -53,7 +53,7 @@
         <li><a href="#tests">Investigations</a></li>
         <li><a href="#review">Review &amp; export</a></li>
         <li><a href="#gates">Why export is blocked</a></li>
-        <li><a href="#share">Sharing a pack</a></li>
+        <li><a href="#share">Saving, exporting, importing</a></li>
       </ol>
     </nav>
 
@@ -103,7 +103,13 @@
              you move content to another device or hand it to a colleague.</p>
         </div>
         <div class="field-note">
-          <span class="key">Revert</span>
+          <span class="key">Import</span>
+          <p>Takes <strong>one part</strong> of a pack file — just the medicines, just
+             the phrases — and leaves the rest of yours alone. See
+             <a href="#share">saving, exporting and importing</a>.</p>
+        </div>
+        <div class="field-note">
+          <span class="key">Reset</span>
           <p>Throws your edits away and returns to what this build shipped with. It
              asks first, and it is the one action here you cannot undo. Export before
              using it.</p>
@@ -401,27 +407,110 @@
       </section>
 
       <section id="share">
-        <h2>Sharing a pack</h2>
+        <h2>Saving, exporting and importing</h2>
         <p>
-          <strong>Export</strong> writes one <code>.json</code> file holding the pack
-          and both locale packs. Another device imports it from the same screen.
+          Three different actions that are easy to confuse. They do quite
+          different things, and only one of them is destructive.
         </p>
-        <p>Use it to:</p>
-        <ul>
-          <li>Back up your content before a risky edit or a Revert</li>
-          <li>Move your setup to a new phone or laptop</li>
-          <li>Hand a finished specialty pack to a colleague</li>
-        </ul>
+
+        <h3>Save — makes your edits live</h3>
         <p>
-          The file carries no patient data of any kind — it is content, not records.
-          Your prescriptions are in the encrypted backup, which is a separate thing
-          entirely, on <a href="setup.html#backup">the setup page</a>.
+          Writes the draft into this device's storage. Every script written from
+          that moment uses it. Nothing leaves the device and no file is produced.
         </p>
+        <p>
+          The button stays disabled while anything blocking is outstanding, so a
+          half-finished pack cannot become the one you prescribe from. Content saved
+          this way is <strong>per device</strong> — it does not travel with the queue,
+          and a two-machine clinic edits on the doctor's device only.
+        </p>
+
+        <h3>Export — writes a file</h3>
+        <p>
+          One <code>.json</code> file holding the pack and both locale packs, named
+          for the pack and the date. It is plain JSON, not encrypted, and that is
+          deliberate: it contains drug names, chip labels and phrase templates and
+          <strong>nothing about any patient</strong>. Encrypting it would protect
+          nothing and prevent the one thing it exists for, which is handing it to
+          a colleague.
+        </p>
+        <div class="note">
+          <strong>This is not your records backup</strong>
+          Prescriptions, growth charts and history are in the encrypted export under
+          <a href="setup.html#backup">Settings → backups</a>. That one <em>is</em>
+          encrypted, because it holds patient data. A pack file and a records backup
+          are different files for different purposes; do not use one expecting the
+          other.
+        </div>
+        <p>Export before a Reset, before a risky edit, and whenever you finish a body of work.</p>
+
+        <h3>Import — takes part of a file</h3>
+        <p>
+          Choose a <code>.json</code> pack and the builder asks <strong>which part of
+          it to take</strong>. Everything outside that part is left exactly as it was.
+        </p>
+        <p>
+          Each option says how many rows are coming in and how many of yours it would
+          replace, because this is destructive for the section you pick and there is
+          no undo short of a Reset:
+        </p>
+<pre><code>What should be taken from this file?
+colleague-pack.json - everything else in your pack is left alone.
+
+  Medicines          2 coming in  - replaces 150 of yours   [ Take this ]
+  Doses             10 coming in  - replaces  10 of yours   [ Take this ]
+  Phrases           10 coming in  - replaces  10 of yours   [ Take this ]
+  Advice &amp; red flags 24 coming in - replaces  24 of yours   [ Take this ]
+  Exam chips        73 coming in  - replaces  73 of yours   [ Take this ]
+  Investigations    36 coming in  - replaces  36 of yours   [ Take this ]
+  Everything        12 coming in  - replaces 160 of yours   [ Take this ]</code></pre>
+        <p>
+          The section matching the tab you were on is offered first, since that is
+          almost always what you meant.
+        </p>
+
+        <h3>What travels with what</h3>
+        <p>Two pairings are deliberate and worth knowing before you rely on them.</p>
+        <div class="field-note">
+          <span class="key">Advice</span>
+          <p>Moves the tier lists, the wording in both languages, <strong>and the
+             red-flag sign-offs</strong>, together. Splitting them would leave advice
+             ids with no text, or reviewed wording attached to lines that are no
+             longer offered.</p>
+        </div>
+        <div class="field-note">
+          <span class="key">Phrases</span>
+          <p>Moves templates, vocabulary, units and printed labels — but
+             <strong>never advice wording</strong>. If it did, importing a phrase set
+             would silently replace reviewed return precautions with someone else's
+             words while the sign-off still carried your name.</p>
+        </div>
+        <p>
+          Imports do not merge row by row. Taking Medicines replaces your catalogue
+          with theirs; it does not add theirs to yours. To combine two lists, export
+          yours, edit the two files together, and import the result — or use
+          <strong>Import CSV</strong> on the Medicines tab, which does append.
+        </p>
+
+        <h3>Reset</h3>
+        <p>
+          Throws the draft away and returns to the content this build shipped with.
+          It asks first. It is the only action here you cannot undo, so export before
+          using it.
+        </p>
+
+        <h3>Moving your setup to a new device</h3>
+        <ol class="steps">
+          <li><strong>On the old device</strong><p>Builder → Export. Keep the file.</p></li>
+          <li><strong>On the new device</strong><p>Builder → Import → <em>Everything</em> → Save.</p></li>
+          <li><strong>Then the records, separately</strong><p>Settings → Export my data on the old device, Restore a backup on the new one. Content and records are two different files.</p></li>
+        </ol>
+
         <div class="note">
           <strong>A pack you did not write is clinical content you are adopting</strong>
           Imported red flags arrive with whoever signed them off recorded against
-          them. Read them before you use them; your name goes on the prescription,
-          not theirs.
+          them. Read them before prescribing from them; your name goes on the
+          prescription, not theirs.
         </div>
       </section>
 

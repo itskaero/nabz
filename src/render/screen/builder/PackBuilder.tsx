@@ -16,7 +16,15 @@ import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.tsx';
 import { forkForEditing, publishContent, revertToShipped, shippedContent } from '@data/provider.ts';
 import { useDraft } from './useDraft.ts';
-import { downloadPack, parsePackFile, serialisePack } from './packFile.ts';
+import type { PackFile, PackSection } from './packFile.ts';
+import {
+  downloadPack,
+  mergeSection,
+  parsePackFile,
+  SECTION_LABEL,
+  sectionSize,
+  serialisePack,
+} from './packFile.ts';
 import { ExamTab } from './tabs/ExamTab.tsx';
 import { LabsTab } from './tabs/LabsTab.tsx';
 import { FormularyTab } from './tabs/FormularyTab.tsx';
@@ -26,6 +34,11 @@ import { PhrasesTab } from './tabs/PhrasesTab.tsx';
 import { ReviewTab } from './tabs/ReviewTab.tsx';
 
 type Tab = 'exam' | 'labs' | 'formulary' | 'dosing' | 'advice' | 'phrases' | 'review';
+
+/** Which slice of a pack each tab owns. Review owns none of them. */
+function tabSection(tab: Tab): PackSection | null {
+  return tab === 'review' ? null : (tab as PackSection);
+}
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'formulary', label: 'Medicines' },
@@ -48,6 +61,8 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
   const [status, setStatus] = useState<string | null>(null);
   const [confirmRevert, setConfirmRevert] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  /** A parsed file waiting for someone to say which part of it to take. */
+  const [incoming, setIncoming] = useState<{ name: string; file: PackFile } | null>(null);
 
   const save = async () => {
     const result = await publishContent(draft.pack, draft.phrases);
@@ -61,16 +76,41 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
     setStatus('Saved. Every script you write from now on uses this content.');
   };
 
-  const importFile = async (file: File) => {
+  /*
+    Read the file, then ASK which part of it to take.
+
+    Import used to replace the whole pack and both locale packs in one go, which
+    made the ordinary case impossible: taking a colleague's formulary while
+    keeping your own advice, or pulling in reviewed Urdu without losing the
+    medicines you spent months reconciling against DRAP. It is also destructive
+    and irreversible short of a Revert, so it says what it is about to replace
+    and with how much before doing it.
+  */
+  const readFile = async (file: File) => {
     try {
-      const parsed = parsePackFile(await file.text());
-      draft.setPack(parsed.pack);
-      draft.setPhrases(parsed.phrases);
-      setStatus(`Loaded ${file.name}. Nothing is live until you save.`);
-      setTab('review');
+      setIncoming({ name: file.name, file: parsePackFile(await file.text()) });
+      setStatus(null);
     } catch (err) {
+      setIncoming(null);
       setStatus((err as Error).message);
     }
+  };
+
+  const applyImport = (section: PackSection) => {
+    if (!incoming) return;
+    const merged = mergeSection(
+      { pack: draft.pack, phrases: draft.phrases },
+      { pack: incoming.file.pack, phrases: incoming.file.phrases },
+      section,
+    );
+    draft.setPack(merged.pack);
+    draft.setPhrases(merged.phrases);
+    setStatus(
+      `Took ${SECTION_LABEL[section].toLowerCase()} from ${incoming.name}. ` +
+        'Nothing is live until you save.',
+    );
+    setIncoming(null);
+    setTab('review');
   };
 
   const revert = async () => {
@@ -138,6 +178,49 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           <ReviewTab draft={draft} json={serialisePack(draft.pack, draft.phrases)} />
         )}
 
+        {/*
+          Which part of the file to take. The tab you were on is offered first,
+          because that is almost always what you meant, but every section is
+          reachable -- and each says how many rows it would bring so nobody
+          replaces 150 reconciled medicines expecting to replace six chips.
+        */}
+        {incoming && (
+          <div className="scrim" role="dialog" aria-modal="true">
+            <div className="sheet-modal">
+              <h3>What should be taken from this file?</h3>
+              <p className="hint" style={{ marginTop: 0 }}>
+                {incoming.name} · everything else in your pack is left alone.
+              </p>
+              <div className="rows" style={{ marginTop: 10 }}>
+                {(
+                  [
+                    tabSection(tab),
+                    ...(['formulary', 'dosing', 'phrases', 'advice', 'exam', 'labs', 'all'] as PackSection[]),
+                  ].filter((v, i, a) => v !== null && a.indexOf(v) === i) as PackSection[]
+                ).map((section) => (
+                  <div className="queue-row" key={section}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="who">{SECTION_LABEL[section]}</div>
+                      <div className="meta">
+                        {sectionSize(incoming.file.pack, incoming.file.phrases, section)} coming in ·
+                        replaces {sectionSize(draft.pack, draft.phrases, section)} of yours
+                      </div>
+                    </div>
+                    <button className="btn quiet" onClick={() => applyImport(section)}>
+                      Take this
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="actionbar" style={{ padding: '10px 0 0', borderTop: 'none' }}>
+                <button className="btn quiet" onClick={() => setIncoming(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {confirmRevert && (
           <div className="scrim" role="dialog" aria-modal="true">
             <div className="sheet-modal">
@@ -175,7 +258,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) void importFile(file);
+            if (file) void readFile(file);
             e.target.value = '';
           }}
         />

@@ -12,6 +12,7 @@ import { packs as shippedPhrases, packs } from '@data/phrases/index.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import { redFlagWording, unreviewedRedFlags, validateContentPack } from '@domain/pack.ts';
 import { validatePacks } from '@domain/phrases.ts';
+import { mergeSection, sectionSize } from '@render/screen/builder/packFile.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import {
   editDistance,
@@ -352,5 +353,116 @@ describe('growing the pack', () => {
     reg.en.advice.tier1['advice.ws'] = 'Rest at home';
     reg['ur-PK'].advice.tier1['advice.ws'] = '   ';
     expect(validatePacks(reg).some((p) => p.where.includes('advice.ws'))).toBe(true);
+  });
+});
+
+
+describe('importing one section of a pack', () => {
+  /**
+   * Import used to replace the whole pack and both locale packs at once, which
+   * made the ordinary case impossible: taking a colleague's formulary while
+   * keeping your own advice, or pulling in reviewed Urdu without losing the
+   * medicines you spent months reconciling against DRAP.
+   */
+  const mine = () => ({
+    pack: structuredClone(paediatrics),
+    phrases: structuredClone(shippedPhrases),
+  });
+
+  const theirs = () => {
+    const c = mine();
+    c.pack.formularySeed = [{ brand: 'TheirBrand', generic: 'Paracetamol', provenance: 'manual' }];
+    c.pack.dosing = [
+      { generic: 'Paracetamol', route: 'oral', reference: 'Their book, 1st ed.', verified: true },
+    ];
+    c.pack.advicePacks = { tier1: ['advice.theirs'], tier2: [] };
+    c.pack.findingsPalette = { general: [{ id: 'their_chip', label: 'Their chip' }] };
+    c.pack.examSystems = [{ id: 'general', label: 'General' }];
+    c.phrases.en.advice.tier1 = { 'advice.theirs': 'Their advice' };
+    c.phrases['ur-PK'].advice.tier1 = { 'advice.theirs': 'ان کا مشورہ' };
+    c.phrases.en.templates = { 'sig.theirs': '{administer} {dose}' };
+    c.phrases['ur-PK'].templates = { 'sig.theirs': '{dose} {administer}' };
+    c.pack.sigTemplates = ['sig.theirs'];
+    return c;
+  };
+
+  it('takes the medicines and leaves everything else alone', () => {
+    const before = mine();
+    const after = mergeSection(before, theirs(), 'formulary');
+
+    expect(after.pack.formularySeed).toHaveLength(1);
+    expect(after.pack.formularySeed[0]!.brand).toBe('TheirBrand');
+    // The parts nobody asked to replace are untouched.
+    expect(after.pack.dosing).toEqual(before.pack.dosing);
+    expect(after.pack.advicePacks).toEqual(before.pack.advicePacks);
+    expect(after.pack.findingsPalette).toEqual(before.pack.findingsPalette);
+    expect(after.phrases).toEqual(before.phrases);
+  });
+
+  it('takes doses without touching the catalogue', () => {
+    const before = mine();
+    const after = mergeSection(before, theirs(), 'dosing');
+    expect(after.pack.dosing).toHaveLength(1);
+    expect(after.pack.formularySeed).toEqual(before.pack.formularySeed);
+  });
+
+  it('moves advice wording and its sign-offs together', () => {
+    // Splitting them would leave advice ids with no text, or reviewed wording
+    // attached to lines that are no longer offered.
+    const before = mine();
+    const after = mergeSection(before, theirs(), 'advice');
+    expect(after.pack.advicePacks.tier1).toEqual(['advice.theirs']);
+    expect(after.phrases.en.advice.tier1['advice.theirs']).toBe('Their advice');
+    expect(after.phrases['ur-PK'].advice.tier1['advice.theirs']).toBe('ان کا مشورہ');
+    // and left the medicines alone
+    expect(after.pack.formularySeed).toEqual(before.pack.formularySeed);
+  });
+
+  it('does NOT let a phrases import re-sign a red flag', () => {
+    /*
+      The one pairing that would be a safety hole. Advice wording carries a
+      clinician's sign-off; if "phrases" swept it along, importing a phrase set
+      would silently replace reviewed return precautions with someone else's
+      words while the sign-off still said yours.
+    */
+    const before = mine();
+    const after = mergeSection(before, theirs(), 'phrases');
+
+    expect(after.phrases.en.templates).toEqual({ 'sig.theirs': '{administer} {dose}' });
+    expect(after.phrases.en.advice).toEqual(before.phrases.en.advice);
+    expect(after.phrases['ur-PK'].advice).toEqual(before.phrases['ur-PK'].advice);
+    expect(after.pack.advicePacks).toEqual(before.pack.advicePacks);
+  });
+
+  it('takes exam chips and investigations independently', () => {
+    const before = mine();
+    const exam = mergeSection(before, theirs(), 'exam');
+    expect(exam.pack.findingsPalette['general']).toHaveLength(1);
+    expect(exam.pack.labsPalette).toEqual(before.pack.labsPalette);
+
+    const labs = mergeSection(before, theirs(), 'labs');
+    expect(labs.pack.findingsPalette).toEqual(before.pack.findingsPalette);
+  });
+
+  it('still replaces everything when that is what was asked', () => {
+    const after = mergeSection(mine(), theirs(), 'all');
+    expect(after.pack.formularySeed).toHaveLength(1);
+    expect(after.pack.advicePacks.tier1).toEqual(['advice.theirs']);
+  });
+
+  it('never mutates what it was given', () => {
+    // The draft is React state; a merge that wrote through would corrupt it.
+    const before = mine();
+    const snapshot = JSON.stringify(before);
+    mergeSection(before, theirs(), 'formulary');
+    expect(JSON.stringify(before)).toBe(snapshot);
+  });
+
+  it('counts what a section would replace, for the confirm', () => {
+    const before = mine();
+    expect(sectionSize(before.pack, before.phrases, 'formulary')).toBe(
+      before.pack.formularySeed.length,
+    );
+    expect(sectionSize(theirs().pack, theirs().phrases, 'formulary')).toBe(1);
   });
 });
