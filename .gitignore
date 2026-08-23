@@ -9,6 +9,8 @@ artifacts/
 # Playwright MCP writes screenshots and traces into the cwd
 *.png
 !public/*.png
+# the project site's own images, which are content rather than scratch output
+!docs/assets/*.png
 traces/
 
 # Playwright MCP session output

@@ -18,8 +18,75 @@ import { LOCALES } from '@domain/locale.ts';
 import { templateSlots } from '@domain/phrases.ts';
 import type { Draft } from '../useDraft.ts';
 
+/** ids are used in stored prescriptions, so they must be stable and typeable. */
+function slugify(text: string, prefix: string): string {
+  const body = text
+    .toLowerCase()
+    .replace(/\{[^}]*\}/g, ' ')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .split('_')
+    .filter(Boolean)
+    .slice(0, 5)
+    .join('_');
+  return `${prefix}.${body || Date.now().toString(36)}`;
+}
+
 export function AdviceTab({ draft }: { draft: Draft }) {
   const [reviewer, setReviewer] = useState('');
+  const [newTier1, setNewTier1] = useState('');
+  const [newTier2, setNewTier2] = useState('');
+
+  /**
+   * Add a line to a tier.
+   *
+   * The English is written here and the Urdu deliberately starts EMPTY rather
+   * than being copied across. An empty translation is caught by the validator
+   * and shown as a blocking gap; a copied one looks finished and prints English
+   * to a patient who cannot read it. The pack cannot be exported until it is
+   * filled in, which is the point.
+   */
+  const addLine = (tier: 'tier1' | 'tier2', english: string) => {
+    const text = english.trim();
+    if (!text) return;
+    const id = slugify(text, tier === 'tier1' ? 'advice' : 'redflag');
+    if (draft.pack.advicePacks[tier].includes(id)) return;
+
+    draft.setPack({
+      ...draft.pack,
+      advicePacks: {
+        ...draft.pack.advicePacks,
+        [tier]: [...draft.pack.advicePacks[tier], id],
+      },
+    });
+    for (const locale of LOCALES) {
+      draft.editLocale(locale, (pack) => ({
+        ...pack,
+        advice: {
+          ...pack.advice,
+          [tier]: { ...pack.advice[tier], [id]: locale === 'en' ? text : '' },
+        },
+      }));
+    }
+  };
+
+  /**
+   * Remove a line from the pack.
+   *
+   * The wording stays in the locale packs on purpose. A prescription already
+   * written referenced this id, and history should still render what the
+   * patient was actually handed -- retiring a line from the palette is not the
+   * same as deciding it was never said.
+   */
+  const removeLine = (tier: 'tier1' | 'tier2', id: string) => {
+    draft.setPack({
+      ...draft.pack,
+      advicePacks: {
+        ...draft.pack.advicePacks,
+        [tier]: draft.pack.advicePacks[tier].filter((x) => x !== id),
+      },
+    });
+  };
 
   const signOff = (id: string) => {
     if (!reviewer.trim()) return;
@@ -77,6 +144,36 @@ export function AdviceTab({ draft }: { draft: Draft }) {
             I have read all {draft.stats.unreviewedRedFlags} and they are correct
           </button>
         )}
+
+        <div className="compose" style={{ marginTop: 12 }}>
+          <input
+            value={newTier2}
+            aria-label="New red flag in English"
+            placeholder="Come back at once if… (English)"
+            onChange={(e) => setNewTier2(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                addLine('tier2', newTier2);
+                setNewTier2('');
+              }
+            }}
+          />
+          <button
+            className="btn"
+            disabled={!newTier2.trim()}
+            onClick={() => {
+              addLine('tier2', newTier2);
+              setNewTier2('');
+            }}
+          >
+            Add a red flag
+          </button>
+        </div>
+        <p className="hint">
+          The Urdu starts empty and the pack will not export until you write it.
+          Copying the English across would look finished and hand a patient a
+          sentence they cannot read.
+        </p>
       </section>
 
       {draft.pack.advicePacks.tier2.map((id) => {
@@ -115,16 +212,25 @@ export function AdviceTab({ draft }: { draft: Draft }) {
                 />
               </div>
             ))}
-            {signed ? (
-              <p className="hint">
-                Signed off by {review.reviewedBy} on {review.date}. Editing the
-                wording above clears this.
-              </p>
-            ) : (
-              <button className="btn ghost" disabled={!reviewer.trim()} onClick={() => signOff(id)}>
-                {stale ? 'Re-confirm this wording' : 'I have read this and it is correct'}
+            <div className="actionbar" style={{ padding: 0, borderTop: 'none' }}>
+              {signed ? (
+                <p className="hint" style={{ flex: 1, margin: 0 }}>
+                  Signed off by {review.reviewedBy} on {review.date}. Editing the
+                  wording above clears this.
+                </p>
+              ) : (
+                <button
+                  className="btn ghost"
+                  disabled={!reviewer.trim()}
+                  onClick={() => signOff(id)}
+                >
+                  {stale ? 'Re-confirm this wording' : 'I have read this and it is correct'}
+                </button>
+              )}
+              <button className="btn quiet" onClick={() => removeLine('tier2', id)}>
+                Retire
               </button>
-            )}
+            </div>
           </section>
         );
       })}
@@ -135,6 +241,30 @@ export function AdviceTab({ draft }: { draft: Draft }) {
           One tap in the app. `{'{n}'}` is a slot the doctor fills in — it must
           appear in every locale or one of them loses the number.
         </p>
+        <div className="compose" style={{ marginTop: 10 }}>
+          <input
+            value={newTier1}
+            aria-label="New advice line in English"
+            placeholder="e.g. Drink extra fluids for {n} days (English)"
+            onChange={(e) => setNewTier1(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                addLine('tier1', newTier1);
+                setNewTier1('');
+              }
+            }}
+          />
+          <button
+            className="btn"
+            disabled={!newTier1.trim()}
+            onClick={() => {
+              addLine('tier1', newTier1);
+              setNewTier1('');
+            }}
+          >
+            Add advice
+          </button>
+        </div>
       </section>
 
       {draft.pack.advicePacks.tier1.map((id) => {
@@ -151,7 +281,16 @@ export function AdviceTab({ draft }: { draft: Draft }) {
 
         return (
           <section className="card" key={id}>
-            <h2>{id}</h2>
+            <h2>
+              {id}
+              <button
+                className="btn quiet"
+                style={{ float: 'right' }}
+                onClick={() => removeLine('tier1', id)}
+              >
+                Retire
+              </button>
+            </h2>
             {LOCALES.map((locale) => (
               <div className="field" key={locale} style={{ marginBottom: 6 }}>
                 <label>{locale}</label>

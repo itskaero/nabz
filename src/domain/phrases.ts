@@ -281,6 +281,24 @@ export function validatePacks(registry: PackRegistry): PackProblem[] {
           });
           continue;
         }
+        /*
+          An empty string is not a translation.
+          
+          It used to pass. A line WITH slots was caught by accident -- the empty
+          side declared no slots, so the slot-mismatch check fired -- but a line
+          with no slots ("Complete the full course of medicine") validated
+          clean and printed the patient a blank space where their instruction
+          should be. The builder writes exactly this shape when a new line is
+          added, so the hole was directly reachable.
+        */
+        if (template.trim() === '') {
+          problems.push({
+            severity: 'error',
+            where: `${label}.${id}`,
+            message: `blank in locale "${locale}" - the patient would be handed an empty line`,
+          });
+          continue;
+        }
         try {
           const key = templateSlots(template).join(',');
           bySlots.set(key, [...(bySlots.get(key) ?? []), locale]);

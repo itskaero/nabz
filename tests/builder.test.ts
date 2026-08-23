@@ -8,9 +8,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import 'fake-indexeddb/auto';
 import { paediatrics } from '@data/packs/index.ts';
-import { packs as shippedPhrases } from '@data/phrases/index.ts';
+import { packs as shippedPhrases, packs } from '@data/phrases/index.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import { redFlagWording, unreviewedRedFlags, validateContentPack } from '@domain/pack.ts';
+import { validatePacks } from '@domain/phrases.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import {
   editDistance,
@@ -310,5 +311,46 @@ describe('handing the script to the patient', () => {
     expect(
       prescriptionFilename({ ...model, meta: { patientName: '', date: '2026-08-21' } }),
     ).toBe('rx-patient-2026-08-21.pdf');
+  });
+});
+
+
+describe('growing the pack', () => {
+  /**
+   * The builder can now ADD advice, red flags, sig templates and vocabulary,
+   * not only edit what shipped. Every one of them writes the English and leaves
+   * the Urdu blank on purpose -- each locale is authored, never derived
+   * (PRODUCT.md 4) -- so the thing that matters is that a blank cannot escape.
+   */
+  it('refuses a blank translation, with or without slots', () => {
+    const withSlot = structuredClone(packs);
+    withSlot.en.advice.tier1['advice.new'] = 'Drink extra fluids for {n} days';
+    withSlot['ur-PK'].advice.tier1['advice.new'] = '';
+    expect(validatePacks(withSlot).some((p) => p.where.includes('advice.new'))).toBe(true);
+
+    // The one that used to slip through: no slots, so the slot-mismatch check
+    // had nothing to compare and the line exported with an empty Urdu. A
+    // patient was handed a blank space where their instruction should be.
+    const noSlot = structuredClone(packs);
+    noSlot.en.advice.tier1['advice.plain'] = 'Complete the full course of medicine';
+    noSlot['ur-PK'].advice.tier1['advice.plain'] = '';
+    const problems = validatePacks(noSlot).filter((p) => p.where.includes('advice.plain'));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]!.severity).toBe('error');
+    expect(problems[0]!.message).toMatch(/blank/i);
+  });
+
+  it('accepts the line once both locales are written', () => {
+    const reg = structuredClone(packs);
+    reg.en.advice.tier1['advice.plain'] = 'Complete the full course of medicine';
+    reg['ur-PK'].advice.tier1['advice.plain'] = 'دوا کا پورا کورس مکمل کریں';
+    expect(validatePacks(reg).filter((p) => p.where.includes('advice.plain'))).toEqual([]);
+  });
+
+  it('treats whitespace as blank', () => {
+    const reg = structuredClone(packs);
+    reg.en.advice.tier1['advice.ws'] = 'Rest at home';
+    reg['ur-PK'].advice.tier1['advice.ws'] = '   ';
+    expect(validatePacks(reg).some((p) => p.where.includes('advice.ws'))).toBe(true);
   });
 });

@@ -116,6 +116,40 @@ function LocaleField({
 }
 
 function Templates({ draft, query }: { draft: Draft; query: string }) {
+  const [draftTemplate, setDraftTemplate] = useState('');
+
+  /**
+   * A new sig template.
+   *
+   * Written in English and offered immediately, but the Urdu starts empty:
+   * PRODUCT.md 4 is explicit that each locale has its OWN word order and is
+   * authored, never derived. Seeding the Urdu with the English would produce a
+   * template that validates, prints Latin script to a patient, and looks done.
+   */
+  const addTemplate = () => {
+    const text = draftTemplate.trim();
+    if (!text) return;
+    const id = `sig.${text
+      .toLowerCase()
+      .replace(/\[[^\]]*\]|\{[^}]*\}/g, ' ')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .split('_')
+      .filter(Boolean)
+      .slice(0, 4)
+      .join('_') || Date.now().toString(36)}`;
+    if (draft.pack.sigTemplates.includes(id)) return;
+
+    for (const locale of LOCALES) {
+      draft.editLocale(locale, (pack) => ({
+        ...pack,
+        templates: { ...pack.templates, [id]: locale === 'en' ? text : '' },
+      }));
+    }
+    draft.setPack({ ...draft.pack, sigTemplates: [...draft.pack.sigTemplates, id] });
+    setDraftTemplate('');
+  };
+
   const ids = useMemo(() => {
     const all = new Set<string>();
     for (const l of LOCALES) Object.keys(draft.phrases[l].templates).forEach((id) => all.add(id));
@@ -124,6 +158,34 @@ function Templates({ draft, query }: { draft: Draft; query: string }) {
 
   return (
     <>
+      <section className="card">
+        <h2>Add an instruction template</h2>
+        <p className="hint" style={{ marginTop: 0 }}>
+          `{'{dose}'}`, `{'{frequency}'}`, `{'{duration}'}` are slots the doctor
+          fills. Square brackets make a part optional:
+          <code> [ for {'{duration}'}]</code>.
+        </p>
+        <div className="compose">
+          <input
+            value={draftTemplate}
+            aria-label="New instruction template in English"
+            placeholder="{administer} {dose} {frequency}[ for {duration}]"
+            onChange={(e) => setDraftTemplate(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') addTemplate();
+            }}
+          />
+          <button className="btn" disabled={!draftTemplate.trim()} onClick={addTemplate}>
+            Add
+          </button>
+        </div>
+        <p className="hint">
+          The Urdu is left blank deliberately. Each locale has its own word
+          order and is written, never translated from the English — a copy would
+          validate and still be wrong.
+        </p>
+      </section>
+
       {ids.map((id) => {
         const slotSets = LOCALES.map((l) => {
           const t = draft.phrases[l].templates[id];
@@ -189,6 +251,30 @@ function Templates({ draft, query }: { draft: Draft; query: string }) {
 }
 
 function Vocab({ draft, query }: { draft: Draft; query: string }) {
+  const [group, setGroup] = useState('frequency');
+  const [entryId, setEntryId] = useState('');
+  const [english, setEnglish] = useState('');
+
+  /** A new word in an existing group -- "every 48 hours", "before bed". */
+  const addEntry = () => {
+    const key = entryId.trim().replace(/\s+/g, '_');
+    if (!key || !english.trim()) return;
+    for (const locale of LOCALES) {
+      draft.editLocale(locale, (pack) => ({
+        ...pack,
+        vocab: {
+          ...pack.vocab,
+          [group]: {
+            ...(pack.vocab[group] ?? {}),
+            [key]: locale === 'en' ? english.trim() : '',
+          },
+        },
+      }));
+    }
+    setEntryId('');
+    setEnglish('');
+  };
+
   const vocabIds = useMemo(() => {
     const all = new Set<string>();
     for (const l of LOCALES) Object.keys(draft.phrases[l].vocab).forEach((v) => all.add(v));
@@ -197,6 +283,46 @@ function Vocab({ draft, query }: { draft: Draft; query: string }) {
 
   return (
     <>
+      <section className="card">
+        <h2>Add a word</h2>
+        <div className="vocab-row">
+          <select
+            className="pay-select"
+            aria-label="Vocabulary group"
+            value={group}
+            onChange={(e) => setGroup(e.target.value)}
+          >
+            {vocabIds.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <input
+            value={entryId}
+            aria-label="New vocabulary id"
+            placeholder="id, e.g. Q48H"
+            onChange={(e) => setEntryId(e.target.value)}
+          />
+          <input
+            value={english}
+            aria-label="New vocabulary English"
+            placeholder="English, e.g. every 48 hours"
+            onChange={(e) => setEnglish(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') addEntry();
+            }}
+          />
+          <button className="btn" disabled={!entryId.trim() || !english.trim()} onClick={addEntry}>
+            Add
+          </button>
+        </div>
+        <p className="hint">
+          The id is what a prescription stores, so it never changes once used.
+          The Urdu is written in the row below, not translated from here.
+        </p>
+      </section>
+
       {vocabIds.map((vid) => {
         const entries = new Set<string>();
         for (const l of LOCALES) {

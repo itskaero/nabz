@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 60" role="img"
+     aria-label="Nabz — bilingual clinical prescriptions">
+  <title>Nabz</title>
+  <!--
+    Nabz is نبض, "pulse". So the mark is a pulse, and a real one: a single QRS
+    complex rather than the decorative sawtooth most health logos settle for.
+    The trace runs flat, dips to Q, spikes to R, drops to S and settles.
+
+    The Urdu is OUTLINES, not text. Set as a text element it fell back to a
+    serif on any machine without Noto Nastaliq installed, which is most of
+    them, and a wrong-font Urdu in the logo of an app whose entire claim is
+    correct Urdu is not a small thing. These paths came out of the app's own
+    HarfBuzz shaper, so the joins are the ones the renderer itself would draw.
+  -->
+  <defs>
+    <linearGradient id="nabz-pulse" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0b5a54"/>
+      <stop offset="0.6" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#12a594"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M6 34 H19 l4 -1.4 2.8 8.4 5.2 -25 4.7 32 3.8 -15 3.3 1.4 H55"
+        fill="none" stroke="url(#nabz-pulse)" stroke-width="4"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="66" y="43" font-family="'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="33" font-weight="600" letter-spacing="-0.6" fill="#14201f">Nabz</text>
+
+  <g transform="translate(150 41) scale(0.0155)" fill="#0f766e"><path transform="translate(892 54)" d="M-4 -832Q-18 -846 -32 -859Q-46 -872 -59.5 -884Q-73 -896 -87 -906L-87 -915Q-81 -925 -69 -939.5Q-57 -954 -43.5 -969Q-30 -984 -18 -995.5Q-6 -1007 0 -1011L9 -1011Q55 -982 71 -962.5Q87 -943 87 -926Q87 -909 66.5 -885Q46 -861 4 -832L-4 -832Z"/><path transform="translate(0 0)" d="M280 341Q203 341 146.5 309Q90 277 59 219Q28 161 28 84Q28 -9 49 -102.5Q70 -196 123 -308L151 -297Q123 -229 109 -170.5Q95 -112 95 -63Q95 3 115 47Q135 91 168.5 116Q202 141 244 151.5Q286 162 329 162Q398 162 460.5 137.5Q523 113 573 62Q623 11 654 -68Q665 -96 673.5 -131Q682 -166 688 -208Q694 -250 698 -299.5Q702 -349 703 -406L721 -409Q729 -406 745 -403.5Q761 -401 786 -399Q799 -418 824 -450Q849 -482 889 -527Q937 -581 979 -615Q1021 -649 1060.5 -665.5Q1100 -682 1137 -682Q1175 -682 1194 -663Q1213 -644 1213 -618Q1213 -584 1197.5 -543.5Q1182 -503 1138 -439Q1085 -363 1007.5 -320.5Q930 -278 845 -278Q817 -278 792.5 -279.5Q768 -281 745 -285Q734 -168 701.5 -62.5Q669 43 617.5 127Q566 211 498 264Q449 302 394 321.5Q339 341 280 341ZM868 -394Q918 -394 964 -405Q1010 -416 1046 -434Q1082 -452 1102.5 -472.5Q1123 -493 1123 -512Q1123 -531 1102 -543Q1081 -555 1055 -555Q1018 -555 983.5 -538Q949 -521 913 -486Q877 -451 836 -395Q843 -394 850.5 -394Q858 -394 868 -394Z"/><path transform="translate(1422 -252)" d="M-4 187Q-18 172 -32 159Q-46 146 -59.5 134Q-73 122 -87 112L-87 104Q-80 94 -68.5 79.5Q-57 65 -43.5 50Q-30 35 -18 23.5Q-6 12 0 8L9 8Q48 33 67.5 52.5Q87 72 87 92Q87 110 66.5 133.5Q46 157 4 187L-4 187Z"/><path transform="translate(844 -277)" d="M0 0Q-20 0 -29.5 -5.5Q-39 -11 -39 -23Q-39 -34 -32 -39.5Q-25 -45 -6 -45Q49 -45 107.5 -54.5Q166 -64 227 -81Q288 -98 342.5 -130Q397 -162 446 -208Q478 -239 500.5 -265Q523 -291 533 -310Q539 -321 547 -329Q555 -337 564 -341Q573 -345 583 -345Q590 -345 599 -342Q608 -339 618 -334Q628 -330 638.5 -327Q649 -324 659 -324Q672 -324 680 -313Q688 -302 688 -286Q688 -251 667 -234.5Q646 -218 626 -218Q613 -218 601 -221Q589 -224 578 -230Q568 -236 560 -239Q552 -242 547 -242Q539 -242 517.5 -217Q496 -192 464 -163Q391 -98 311.5 -62.5Q232 -27 153 -13.5Q74 0 0 0Z"/><path transform="translate(1570 26)" d="M-4 -832Q-18 -846 -32 -859Q-46 -872 -59.5 -884Q-73 -896 -87 -906L-87 -915Q-81 -925 -69 -939.5Q-57 -954 -43.5 -969Q-30 -984 -18 -995.5Q-6 -1007 0 -1011L9 -1011Q55 -982 71 -962.5Q87 -943 87 -926Q87 -909 66.5 -885Q46 -861 4 -832L-4 -832Z"/><path transform="translate(1469 -494)" d="M0 0Q-8 0 -18.5 -9Q-29 -18 -29 -39Q-29 -70 -9.5 -88Q10 -106 33 -106Q63 -106 80 -118Q97 -130 110 -155L131 -151Q118 -96 98 -62.5Q78 -29 53 -14.5Q28 0 0 0Z"/></g>
+</svg>

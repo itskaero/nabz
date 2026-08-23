@@ -1,14 +1,65 @@
-# Nabz
+<div align="center">
 
-A bilingual clinical prescription PWA. A private-clinic doctor writes the whole
-script — problems, examination, diagnosis, medications, advice — and prints a
-signed document whose **patient-facing instructions are in English and Urdu**.
+<img src="public/logo.svg" alt="Nabz" width="260">
+
+**Bilingual clinical prescriptions that never leave the doctor's device.**
+
+*نبض — a pulse.*
+
+[How it works](https://itskaero.github.io/nabz/) ·
+[What &amp; why](PRODUCT.md) ·
+[How to build](CLAUDE.md) ·
+[How it looks](DESIGN.md)
+
+</div>
+
+---
+
+A private-clinic doctor writes the whole script — problems, examination,
+diagnosis, investigations, medications, advice — and prints a signed document
+whose **patient-facing instructions are in proper Nastaʿlīq Urdu**.
+
+The Urdu is composed from structured data with its own authored word order. It
+is never machine-translated, and it is never the English with the words swapped.
 
 Records live on the device. No server holds anything clinical.
 
-The three specs are the source of truth and this README is not one of them:
-[`PRODUCT.md`](PRODUCT.md) (what & why) · [`CLAUDE.md`](CLAUDE.md) (how to build)
-· [`DESIGN.md`](DESIGN.md) (how it looks & feels).
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**What it does**
+
+- English clinical record + Urdu patient instructions, from one stored object
+- Investigations, exam findings and advice as fast tap-chips
+- WHO and CDC growth charts, computed once and stored with their reference
+- A real PDF at exact mm dimensions — preview *is* print
+- An optional clinic queue for practices with a front desk
+
+</td>
+<td width="50%" valign="top">
+
+**What it refuses to do**
+
+- Machine-translate a single word of patient prose
+- Fill a dose, frequency or duration on your behalf
+- Carry clinical content between visits without you asking
+- Put a diagnosis, a drug or an examination on any server
+- Suggest an investigation or a drug from a diagnosis
+
+</td>
+</tr>
+</table>
+
+---
+
+## What it prints
+
+<img src="docs/assets/script.png" alt="A printed prescription: English clinical sections above, Urdu patient instructions beside each medicine" width="620">
+
+Real output from the PDF renderer, not a mockup. The English is the clinical
+note and the pharmacist's check; the Urdu block beside each medicine is what the
+family takes home.
 
 ---
 
@@ -24,7 +75,7 @@ npm run dev
 committed" below.
 
 ```bash
-npm test            # 212 tests
+npm test            # 292 tests
 npm run build       # typecheck + production build
 npm run preview     # serve the built PWA
 ```
@@ -127,7 +178,10 @@ src/
     pluralize/    per-locale number grammar
     bidi.ts       LTR-inside-RTL isolation (a safety file, not a formatting one)
     exam.ts       findings-chip state model -> English prose
+    labs.ts       investigations: ordered or not, plus a qualifier (en only)
     advice.ts     the three advice tiers and what the app vouches for
+    deviceRole.ts what a machine is for; a front desk cannot store a script
+    secureContext.ts  a plain-http origin has no crypto.subtle -- say so loudly
     growth/       LMS -> z-score -> percentile
     pack.ts       ContentPack + the "no dose without a citation" validator
   data/       content: locale packs, formulary seed, dosing seed, paeds pack,
@@ -140,6 +194,9 @@ src/
     screen/   the React app
       builder/  the pack builder — content authoring + its refusals
   app/        PWA entry
+server/       the clinic station: serves the app, shares the queue, issues its
+              own TLS certificate. Plain JS so the packaged .exe needs no build.
+docs/         the project site (GitHub Pages)
 ```
 
 ---
@@ -268,3 +325,14 @@ value the doctor did not choose.
 **Known spec gap:** the pack builder is specified in `DESIGN.md` §12 but is not
 scoped anywhere in `PRODUCT.md` §4 — not v1, not v2+, not Never. It is built and
 shipping regardless; `PRODUCT.md` should say where it belongs.
+
+---
+
+<div align="center">
+<sub>
+
+Not a medical device. Clinical content is authored and reviewed by a clinician
+before use — the app validates that a translation exists, never that it is right.
+
+</sub>
+</div>
