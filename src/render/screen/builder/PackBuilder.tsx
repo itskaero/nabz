@@ -14,7 +14,8 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.tsx';
-import { forkForEditing, publishContent, revertToShipped, shippedContent } from '@data/provider.ts';
+import { forkForEditing, publishContent, revertToShipped } from '@data/provider.ts';
+import { isShippedPack } from '@data/packs/index.ts';
 import { useDraft } from './useDraft.ts';
 import type { PackFile, PackSection } from './packFile.ts';
 import {
@@ -53,7 +54,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
 export function PackBuilder({ onDone }: { onDone: () => void }) {
   const store = useStore();
   const initial = useMemo(
-    () => forkForEditing({ ...shippedContent, pack: store.pack, phrases: store.phrases }),
+    () => forkForEditing({ pack: store.pack, phrases: store.phrases }),
     [store.pack, store.phrases],
   );
   const draft = useDraft(initial.pack, initial.phrases);
@@ -67,7 +68,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
   const [exporting, setExporting] = useState(false);
 
   const save = async () => {
-    const result = await publishContent(draft.pack, draft.phrases);
+    const result = await publishContent(draft.pack.id, draft.pack, draft.phrases);
     if (!result.ok) {
       setStatus(`Not saved — ${result.errors.length} problem(s) must be fixed first.`);
       setTab('review');
@@ -116,7 +117,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
   };
 
   const revert = async () => {
-    const content = await revertToShipped();
+    const content = await revertToShipped(draft.pack.id);
     draft.setPack(structuredClone(content.pack));
     draft.setPhrases(structuredClone(content.phrases));
     await store.refreshContent();
@@ -126,6 +127,10 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
   };
 
   const errorCount = draft.errors.length;
+  // Revert only makes sense for a pack this build actually ships a default
+  // for. An imported pack with no shipped counterpart has nothing to revert
+  // to; Settings' "remove pack" is the equivalent action for one of those.
+  const canRevert = isShippedPack(draft.pack.id);
 
   return (
     <>
@@ -143,6 +148,11 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           an old draft would be its own trap: someone would assume they were
           looking at what the app currently prescribes from.
         */}
+        {!draft.pack.verified && (
+          <span className="pill warn" title="No clinician of this specialty has signed this pack off yet">
+            unverified pack
+          </span>
+        )}
         {draft.restored && <span className="pill">recovered</span>}
         {draft.dirty && <span className="pill">unsaved</span>}
         <span className={errorCount ? 'pill bad' : 'pill good'}>
@@ -351,9 +361,11 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
         >
           {draft.exportable ? 'Export' : 'Export draft'}
         </button>
-        <button className="btn quiet danger" onClick={() => setConfirmRevert(true)}>
-          Reset
-        </button>
+        {canRevert && (
+          <button className="btn quiet danger" onClick={() => setConfirmRevert(true)}>
+            Reset
+          </button>
+        )}
         <button className="btn" disabled={!draft.dirty || !draft.exportable} onClick={save}>
           Save
         </button>

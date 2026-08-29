@@ -1,0 +1,180 @@
+/**
+ * The eGFR module (PRODUCT.md 4c) -- what the medicine pack's own notes
+ * called "to medicine what the growth chart is to paediatrics".
+ *
+ * Same two rules GrowthPanel enforces, applied here:
+ *  1. Nothing here computes a number. Both estimates come from
+ *     `domain/modules/gfr`, the single source of truth; this panel only
+ *     collects inputs and displays what that module returns.
+ *  2. It shows a number and its method, and STOPS THERE. It never adjusts a
+ *     dose and never flags a drug -- that decision stays with the doctor
+ *     reading the dosing citation on the Medicines tab (PRODUCT.md rule 3.3).
+ */
+import { useMemo, useState } from 'react';
+import type { CreatinineUnit } from '@domain/modules/gfr.ts';
+import { estimateCkdEpi, estimateCockcroftGault, kdigoStage } from '@domain/modules/gfr.ts';
+import { useStore, newId } from '../store.tsx';
+
+export function GfrPanel() {
+  const { rx, setCalculations } = useStore();
+  const patient = rx.patient;
+  const ageYears = patient.ageDays ? patient.ageDays / 365.25 : Number.NaN;
+  const [creatinine, setCreatinine] = useState('');
+  const [unit, setUnit] = useState<CreatinineUnit>('mg/dL');
+
+  const missing: string[] = [];
+  if (!patient.sex) missing.push('sex');
+  if (!Number.isFinite(ageYears)) missing.push('age');
+
+  const input = useMemo(
+    () => ({
+      age: ageYears,
+      sex: patient.sex!,
+      creatinine: Number(creatinine),
+      creatinineUnit: unit,
+      ...(patient.weightKg ? { weightKg: patient.weightKg } : {}),
+    }),
+    [ageYears, patient.sex, patient.weightKg, creatinine, unit],
+  );
+
+  const ready = missing.length === 0 && Number(creatinine) > 0;
+  const ckdEpi = ready ? estimateCkdEpi(input) : null;
+  const crCl = ready ? estimateCockcroftGault(input) : null;
+
+  const record = () => {
+    const now = new Date().toISOString();
+    const next = [...(rx.calculations ?? [])];
+    if (ckdEpi?.ok) {
+      next.push({
+        id: newId(),
+        moduleId: 'gfr',
+        label: 'eGFR (CKD-EPI 2021)',
+        value: ckdEpi.value,
+        unit: ckdEpi.unit,
+        method: ckdEpi.method,
+        inputs: { age: input.age.toFixed(1), sex: input.sex, creatinine, creatinineUnit: unit },
+        computedAt: now,
+      });
+    }
+    if (crCl?.ok) {
+      next.push({
+        id: newId(),
+        moduleId: 'gfr',
+        label: 'Creatinine clearance (Cockcroft-Gault)',
+        value: crCl.value,
+        unit: crCl.unit,
+        method: crCl.method,
+        inputs: {
+          age: input.age.toFixed(1),
+          sex: input.sex,
+          creatinine,
+          creatinineUnit: unit,
+          weightKg: patient.weightKg ?? '',
+        },
+        computedAt: now,
+      });
+    }
+    setCalculations(next);
+  };
+
+  return (
+    <section className="card">
+      <h2>eGFR</h2>
+      <p className="hint" style={{ marginTop: 0 }}>
+        Two estimates, because they answer different questions. CKD-EPI stages
+        kidney function; Cockcroft-Gault estimates creatinine clearance, which
+        is what most drug renal-dosing tables actually cite. Neither adjusts a
+        dose or flags a drug — read the citation on the Medicines tab and
+        decide there.
+      </p>
+
+      {missing.length > 0 && (
+        <div className="warn-box">
+          <strong>Missing {missing.join(' and ')}.</strong>
+          Fill the patient's {missing.join(' and ')} in the patient bar before
+          this can compute anything.
+        </div>
+      )}
+
+      <div className="num-row" style={{ marginBottom: 10 }}>
+        <div className="field num" style={{ flex: 1 }}>
+          <label>Serum creatinine</label>
+          <input
+            inputMode="decimal"
+            aria-label="Serum creatinine"
+            value={creatinine}
+            placeholder={unit === 'mg/dL' ? 'e.g. 1.0' : 'e.g. 88'}
+            onChange={(e) => setCreatinine(e.target.value)}
+          />
+        </div>
+        <div className="opt-group">
+          <label>Unit</label>
+          <div className="opts">
+            {(['mg/dL', 'umol/L'] as CreatinineUnit[]).map((u) => (
+              <button
+                key={u}
+                className="opt"
+                aria-pressed={unit === u}
+                onClick={() => setUnit(u)}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {ready && (
+        <>
+          {/*
+            The two estimates fail independently -- Cockcroft-Gault needs a
+            weight and CKD-EPI does not, so a missing weight must not hide a
+            perfectly computable eGFR.
+          */}
+          <div className="growth-grid" style={{ marginBottom: 10 }}>
+            {ckdEpi?.ok ? (
+              <>
+                <div className="stat">
+                  <div className="k">eGFR</div>
+                  <div className="v">{ckdEpi.value}</div>
+                  <div className="sub">
+                    {ckdEpi.unit} · {ckdEpi.method}
+                  </div>
+                </div>
+                <div className="stat">
+                  <div className="k">KDIGO stage</div>
+                  <div className="v" style={{ fontSize: 14 }}>
+                    {kdigoStage(ckdEpi.value)}
+                  </div>
+                  <div className="sub">by eGFR category</div>
+                </div>
+              </>
+            ) : (
+              <div className="stat">
+                <div className="k">eGFR</div>
+                <div className="sub">{ckdEpi?.detail}</div>
+              </div>
+            )}
+            {crCl?.ok ? (
+              <div className="stat">
+                <div className="k">Creatinine clearance</div>
+                <div className="v">{crCl.value}</div>
+                <div className="sub">
+                  {crCl.unit} · {crCl.method}
+                </div>
+              </div>
+            ) : (
+              <div className="stat">
+                <div className="k">Creatinine clearance</div>
+                <div className="sub">{crCl?.detail}</div>
+              </div>
+            )}
+          </div>
+          <button className="btn" disabled={!ckdEpi?.ok && !crCl?.ok} onClick={record}>
+            Record {ckdEpi?.ok && crCl?.ok ? 'these results' : 'this result'}
+          </button>
+        </>
+      )}
+    </section>
+  );
+}

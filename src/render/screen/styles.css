@@ -1236,6 +1236,16 @@ select {
   margin-bottom: 3px;
 }
 
+/* A weekly-only drug set to a daily frequency: the once-weekly-methotrexate
+   case, which is fatal rather than merely wrong -- reuses the allergy
+   banner's red, not the amber every other warn-box gets. */
+.warn-box.weekly-warn {
+  border-color: var(--alert);
+  background: var(--alert-wash);
+  color: var(--alert);
+  font-weight: 600;
+}
+
 @media (min-width: 560px) {
   .patient .f-name { grid-column: span 6; }
   .patient .f-age { grid-column: span 3; }
@@ -1323,6 +1333,14 @@ select {
   background: var(--alert-wash);
   color: var(--alert);
   font-weight: 600;
+}
+
+/* An unverified pack (drug list not clinician-signed-off yet) -- the same
+   amber the insecure-origin banner and unverified-dosing-row text use. */
+.pill.warn {
+  border-color: var(--unvetted);
+  background: var(--warn-wash);
+  color: #6d4a1b;
 }
 
 .badge.bad {

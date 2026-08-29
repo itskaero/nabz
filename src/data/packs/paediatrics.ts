@@ -22,6 +22,7 @@ export const paediatrics: ContentPack = {
     credential: 'Paediatrics',
     updated: '2026-08-21',
   },
+  verified: true,
 
   /**
    * Order is tap order at OPD speed: the systems examined in almost every

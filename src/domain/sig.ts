@@ -155,3 +155,31 @@ export function composeSigAll(
   for (const locale of locales) out[locale] = composeSig(line, locale, packs);
   return out;
 }
+
+/**
+ * The once-weekly methotrexate check.
+ *
+ * A frequency picker and a template picker are independent controls, so
+ * nothing stops a doctor choosing the right drug and the wrong frequency --
+ * that mistake is how a fatal daily-methotrexate error happens, and it is
+ * exactly the kind of silent, structurally-valid error the composer cannot
+ * see on its own (the sig still renders a complete, well-formed sentence; it
+ * is just the wrong one). This runs alongside composition, not inside it, so
+ * it can be surfaced as a hard warning rather than folded into `missing`.
+ *
+ * Takes a lookup rather than the whole pack: `domain/` stays framework-free
+ * and does not know about `data/packs`, which is where that lookup is built
+ * (`packIndex(pack).dosingByGeneric`).
+ */
+export function weeklyOnlyViolation(
+  line: MedicationLine,
+  dosingByGeneric: Map<string, { weeklyOnly?: boolean }[]>,
+): string | null {
+  const generic = (line.drug.generic || line.drug.raw || '').trim().toLowerCase();
+  if (!generic) return null;
+  const rows = dosingByGeneric.get(generic);
+  if (!rows?.some((r) => r.weeklyOnly)) return null;
+  if (line.sig.frequency === 'WEEKLY') return null;
+  const name = line.drug.generic || line.drug.raw || 'this medicine';
+  return `${name} is dosed ONCE A WEEK, never daily. Set the frequency to "once a week" before signing -- a daily dose of this drug can be fatal.`;
+}

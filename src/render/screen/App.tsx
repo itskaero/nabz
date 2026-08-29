@@ -25,7 +25,9 @@ import { LabsSection } from './sections/LabsSection.tsx';
 import { MedicationsSection } from './sections/MedicationsSection.tsx';
 import { AdviceSection } from './sections/AdviceSection.tsx';
 import { PreviewSheet } from './components/PreviewSheet.tsx';
-import { GrowthPanel } from './components/GrowthPanel.tsx';
+import { MODULE_PANEL } from './modules/registry.tsx';
+import { MODULE_META } from '@domain/modules/index.ts';
+import type { ModuleId } from '@domain/pack.ts';
 import { SettingsPanel } from './components/SettingsPanel.tsx';
 import { HistoryPanel } from './components/HistoryPanel.tsx';
 import { PatientPicker } from './components/PatientPicker.tsx';
@@ -51,7 +53,20 @@ const PackBuilder = lazy(() =>
   import('./builder/PackBuilder.tsx').then((m) => ({ default: m.PackBuilder })),
 );
 
-type View = 'write' | 'preview' | 'history' | 'settings' | 'growth' | 'builder' | 'clinic';
+/** Scores are pack data (§4c), not a module -- lazy for the same reason as the rest. */
+const ScoresPanel = lazy(() =>
+  import('./components/ScoresPanel.tsx').then((m) => ({ default: m.ScoresPanel })),
+);
+
+/**
+ * `ModuleId` folds straight into `View`: every module id IS a valid view,
+ * chosen the moment it is added to `domain/pack.ts`'s closed union. That is
+ * what lets the nav below be GENERATED from `pack.modules` instead of one
+ * hardcoded button per module -- the Growth button used to be gated on device
+ * role alone and never on whether the active pack actually offered growth,
+ * which meant a pack with `modules: []` still showed a tab leading nowhere.
+ */
+type View = 'write' | 'preview' | 'history' | 'settings' | 'builder' | 'clinic' | 'scores' | ModuleId;
 
 const TAB_ORDER: SectionId[] = [
   'problems',
@@ -297,13 +312,24 @@ export function App() {
               Queue
             </button>
           )}
-          {!reception && (
+          {!reception &&
+            pack.modules.map((id) => (
+              <button
+                key={id}
+                className="icon-btn"
+                aria-pressed={view === id}
+                onClick={() => setView(view === id ? 'write' : id)}
+              >
+                {MODULE_META[id].label}
+              </button>
+            ))}
+          {!reception && (pack.scores?.length ?? 0) > 0 && (
             <button
               className="icon-btn"
-              aria-pressed={view === 'growth'}
-              onClick={() => setView(view === 'growth' ? 'write' : 'growth')}
+              aria-pressed={view === 'scores'}
+              onClick={() => setView(view === 'scores' ? 'write' : 'scores')}
             >
-              Growth
+              Scores
             </button>
           )}
           {!reception && (
@@ -510,10 +536,22 @@ export function App() {
 
       {shown('history') && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
       {view === 'settings' && <SettingsPanel onOpenBuilder={() => setView('builder')} />}
-      {shown('growth') && view === 'growth' && (
-        <div className="body">
-          <GrowthPanel />
-        </div>
+      {pack.modules.includes(view as ModuleId) && shown(view) && (
+        <Suspense fallback={<div className="body"><p className="empty">Opening…</p></div>}>
+          <div className="body">
+            {(() => {
+              const Panel = MODULE_PANEL[view as ModuleId];
+              return <Panel />;
+            })()}
+          </div>
+        </Suspense>
+      )}
+      {view === 'scores' && (pack.scores?.length ?? 0) > 0 && shown('scores') && (
+        <Suspense fallback={<div className="body"><p className="empty">Opening…</p></div>}>
+          <div className="body">
+            <ScoresPanel />
+          </div>
+        </Suspense>
       )}
 
       <footer className="actionbar">
@@ -554,7 +592,8 @@ export function App() {
         */}
         {(view === 'history' ||
           view === 'settings' ||
-          view === 'growth' ||
+          pack.modules.includes(view as ModuleId) ||
+          view === 'scores' ||
           view === 'builder' ||
           view === 'clinic') &&
           !(reception && view === 'clinic') && (

@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { MedicationLine } from '@domain/prescription.ts';
-import { composeSig } from '@domain/sig.ts';
+import { composeSig, weeklyOnlyViolation } from '@domain/sig.ts';
 import type { DosingEntry } from '@domain/pack.ts';
 import { packIndex } from '@data/packs/index.ts';
 import type { RepertoireEntry } from '@domain/repertoire.ts';
@@ -24,6 +24,21 @@ import * as db from '@storage/db.ts';
 import { languageFor } from '@config/doctorProfile.ts';
 import { useStore, newId } from '../store.tsx';
 import { SigEditor } from '../components/SigEditor.tsx';
+
+/**
+ * The dose text a citation shows. `mgPerKg` (weight-based, mostly paediatric)
+ * takes priority; `fixedDose` (a fixed adult regimen -- or, for a row like
+ * warfarin or insulin, a plainly-worded refusal to suggest one) is next;
+ * `maxPerDay` alone is the rare case of a true ceiling with no starting dose.
+ * One function so the on-screen text and the printed citation can never drift
+ * apart from each other.
+ */
+function citedDoseText(cited: DosingEntry): string {
+  if (cited.mgPerKg) {
+    return `${cited.mgPerKg} mg/kg per dose${cited.perDoses ? `, ${cited.perDoses}× a day` : ''}`;
+  }
+  return cited.fixedDose ?? cited.maxPerDay ?? '';
+}
 
 export function MedicationsSection() {
   const { rx, pack, phrases: packs, profile, setMedications } = useStore();
@@ -151,6 +166,7 @@ export function MedicationsSection() {
         const dosing: DosingEntry[] =
           index.dosingByGeneric.get((line.drug.generic ?? '').toLowerCase()) ?? [];
         const cited = dosing[0];
+        const weeklyWarning = weeklyOnlyViolation(line, index.dosingByGeneric);
 
         return (
           <article className="med" key={line.id}>
@@ -170,6 +186,12 @@ export function MedicationsSection() {
                 ×
               </button>
             </div>
+
+            {weeklyWarning && (
+              <div className="warn-box weekly-warn" role="alert">
+                <strong>Stop and check the frequency.</strong> {weeklyWarning}
+              </div>
+            )}
 
             <div className="med-tracks">
               <div className="track en">
@@ -222,9 +244,7 @@ export function MedicationsSection() {
             {cited && (
               <div className="cite">
                 <div>
-                  {cited.mgPerKg
-                    ? `${cited.mgPerKg} mg/kg per dose${cited.perDoses ? `, ${cited.perDoses}× a day` : ''}`
-                    : cited.maxPerDay}
+                  {citedDoseText(cited)}
                   {cited.indication ? ` — ${cited.indication}` : ''}
                   {rx.patient.weightKg && cited.mgPerKg ? (
                     <>
@@ -252,9 +272,7 @@ export function MedicationsSection() {
                   onClick={() =>
                     update(line.id, {
                       citedSuggestion: {
-                        text: cited.mgPerKg
-                          ? `${cited.mgPerKg} mg/kg per dose${cited.perDoses ? `, ${cited.perDoses}× a day` : ''}`
-                          : (cited.maxPerDay ?? ''),
+                        text: citedDoseText(cited),
                         reference: cited.reference,
                       },
                     })

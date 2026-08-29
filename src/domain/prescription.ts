@@ -177,6 +177,33 @@ export interface GrowthPoint {
   edition?: string;
 }
 
+/**
+ * One clinical-tool result, stored WITH what produced it -- the same
+ * discipline `GrowthPoint` uses. `moduleId` is a plain string, not the
+ * `ModuleId` union: `domain/pack.ts` already imports `GrowthMeasureId` from
+ * this file, so importing `ModuleId` back the other way would be circular.
+ * `domain/pack.ts` and `domain/modules/*` are what actually enforce the
+ * closed set of ids; this record just remembers which one produced a number.
+ */
+export interface CalcResult {
+  id: string;
+  moduleId: string;
+  /** "eGFR (CKD-EPI 2021)" -- frozen at compute time, like a chip's label */
+  label: string;
+  value: number;
+  unit: string;
+  /** formula + edition, e.g. "CKD-EPI 2021 (race-free, creatinine)" */
+  method: string;
+  /** the inputs it was computed from, so a stale number is auditable later */
+  inputs: Record<string, number | string>;
+  computedAt: string;
+}
+
+/** One printable line per recorded result -- "eGFR (CKD-EPI 2021): 73 mL/min/1.73m2". */
+export function composeCalculations(items: CalcResult[]): string[] {
+  return items.map((c) => `${c.label}: ${c.value} ${c.unit}`);
+}
+
 // --- the record ------------------------------------------------------------
 
 export interface Prescription {
@@ -208,6 +235,8 @@ export interface Prescription {
   advice: AdviceItem[];
   /** doctor-initiated only; see PRODUCT.md 4b longitudinal carve-out */
   growth?: GrowthPoint[];
+  /** results from a clinical-tool module (eGFR, ...); printing is a setting */
+  calculations?: CalcResult[];
   followUp?: { in: Quantity } | undefined;
   /** which content pack was loaded when this was written */
   packId: string;

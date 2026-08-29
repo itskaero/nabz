@@ -87,6 +87,11 @@ export function useDraft(
     let cancelled = false;
     void db.loadDraft().then((saved) => {
       if (cancelled || !saved) return;
+      // A draft is scoped to the pack it was authored against. Multiple packs
+      // exist now (Stage A) -- restoring pack B's draft onto pack A's fork
+      // would silently overwrite whatever A's live content actually is with
+      // stale, unrelated edits. Leave the fork as it stands instead.
+      if (saved.basedOn.packId !== initialPack.id) return;
       setPackState(saved.pack);
       setPhrasesState(saved.phrases);
       setDirty(true);
@@ -95,7 +100,8 @@ export function useDraft(
     return () => {
       cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the id the draft was scoped to matters here, not the object identity
+  }, [initialPack.id]);
 
   /*
     Autosave, debounced. Typing a phrase should not write to IndexedDB on every

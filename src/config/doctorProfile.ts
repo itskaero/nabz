@@ -76,6 +76,14 @@ export interface DoctorProfile {
   extraFindings: Record<string, Array<{ id: string; label: string }>>;
   growth: { reference: 'WHO' | 'CDC' };
   /**
+   * Whether a recorded clinical-tool result (eGFR, ...) prints on the sheet.
+   * Off by default: the number is always recorded on the prescription once a
+   * doctor records it (CLAUDE.md 6d), but putting a raw creatinine clearance
+   * figure on the patient's own copy is a separate decision this profile
+   * setting keeps separate from "was it computed at all".
+   */
+  printCalculations: boolean;
+  /**
    * The clinic layer (queue, fees). Off by default and invisible until turned
    * on: this is a prescription app first, a clinic system second.
    */
@@ -107,6 +115,7 @@ export const defaultDoctorProfile: DoctorProfile = {
   hiddenLabCategories: [],
   extraFindings: {},
   growth: { reference: 'WHO' },
+  printCalculations: false,
   clinic: defaultClinicSettings,
   roleGate: openGate,
   uiLocale: 'en',

@@ -22,6 +22,7 @@ import {
 import type { ReactNode } from 'react';
 import type {
   AdviceItem,
+  CalcResult,
   ExamSystem,
   LabOrder,
   MedicationLine,
@@ -37,7 +38,7 @@ import { DEFAULT_PACK_ID } from '@data/packs/index.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import type { ResolvedContent } from '@data/provider.ts';
-import { resolveContent, shippedContent } from '@data/provider.ts';
+import { defaultResolvedContent, resolveContent } from '@data/provider.ts';
 import type { PatientRecord } from '@domain/patient.ts';
 import * as db from '@storage/db.ts';
 
@@ -54,10 +55,12 @@ interface Store {
   pack: ContentPack;
   /** live locale packs, same */
   phrases: PackRegistry;
+  /** the active pack's own sign-off state; false badges it as a draft */
+  contentVerified: boolean;
   /** non-empty when an edited copy exists but failed validation and was ignored */
   contentRejected: string[];
-  /** re-read content after the builder publishes */
-  refreshContent: () => Promise<void>;
+  /** re-read content after the builder publishes; defaults to the active pack */
+  refreshContent: (packId?: string) => Promise<void>;
   dirty: boolean;
   savedAt: string | null;
 
@@ -89,6 +92,8 @@ interface Store {
   setLabs: (update: (prev: LabOrder[]) => LabOrder[]) => void;
   setMedications: (lines: MedicationLine[]) => void;
   setAdvice: (items: AdviceItem[]) => void;
+  /** results from a clinical-tool module (eGFR, ...) -- see CalcResult */
+  setCalculations: (items: CalcResult[]) => void;
   setFollowUp: (days: number | null) => void;
 
   save: () => Promise<void>;
@@ -113,27 +118,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
-  const [content, setContent] = useState<ResolvedContent>(shippedContent);
+  const [content, setContent] = useState<ResolvedContent>(defaultResolvedContent);
   const [patient, setPatientRecord] = useState<PatientRecord | null>(null);
   const [queueEntryId, setQueueEntryId] = useState<string | null>(null);
   const loadedProfile = useRef(false);
+  // A ref alongside the state so `refreshContent` can read the CURRENT
+  // packId without depending on `profile` -- that dependency would make the
+  // callback's identity change on every profile edit, and `setProfile` below
+  // calls it directly with an explicit id anyway, so the ref only matters for
+  // the no-argument call from the pack builder after a publish.
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
 
-  const refreshContent = useCallback(async () => {
-    setContent(await resolveContent());
+  const refreshContent = useCallback(async (packId?: string) => {
+    setContent(await resolveContent(packId ?? profileRef.current.packId));
   }, []);
 
   useEffect(() => {
     if (loadedProfile.current) return;
     loadedProfile.current = true;
-    void db.loadProfile().then((stored) => {
-      if (stored) setProfileState({ ...defaultDoctorProfile, ...stored });
-    });
-    // Renders with the shipped packs for one frame, then swaps to the edited
-    // copy if there is a valid one. Blocking the whole app on a storage read
-    // would be a worse trade than a single re-render.
-    void refreshContent();
+    void (async () => {
+      const stored = await db.loadProfile();
+      const resolvedProfile = stored ? { ...defaultDoctorProfile, ...stored } : defaultDoctorProfile;
+      setProfileState(resolvedProfile);
+      // Sequenced, not parallel: content is resolved for the PROFILE'S pack,
+      // and the profile has to be read first to know which one that is.
+      // Renders with the shipped default for one frame, then swaps to the
+      // right pack's edited copy if there is a valid one -- blocking the
+      // whole app on two storage reads would be a worse trade than that.
+      setContent(await resolveContent(resolvedProfile.packId));
+    })();
     void db.requestPersistence();
-  }, [refreshContent]);
+  }, []);
 
   const patch = useCallback((updater: (prev: Prescription) => Prescription) => {
     setRx((prev) => updater(prev));
@@ -146,6 +162,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       profile,
       pack: content.pack,
       phrases: content.phrases,
+      contentVerified: content.verified,
       contentRejected: content.rejected,
       refreshContent,
       dirty,
@@ -186,6 +203,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLabs: (update) => patch((prev) => ({ ...prev, labs: update(prev.labs) })),
       setMedications: (lines) => patch((prev) => ({ ...prev, medications: lines })),
       setAdvice: (items) => patch((prev) => ({ ...prev, advice: items })),
+      setCalculations: (items) => patch((prev) => ({ ...prev, calculations: items })),
       setFollowUp: (days) =>
         patch((prev) => ({
           ...prev,
@@ -249,6 +267,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setProfile: (next) => {
         setProfileState(next);
         void db.saveProfile(next);
+        // Switching the active pack is switching which library entry drives
+        // the app. Passed explicitly rather than left to profileRef, so this
+        // is correct even if two profile edits land in the same tick.
+        if (next.packId !== profile.packId) void refreshContent(next.packId);
       },
     };
   }, [rx, profile, content, refreshContent, dirty, savedAt, patient, patch, queueEntryId]);

@@ -17,6 +17,7 @@
  *   - no colour-only encoding anywhere.
  */
 import type { Prescription, MedicationLine, AdviceItem } from '@domain/prescription.ts';
+import { composeCalculations } from '@domain/prescription.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import type { Locale } from '@domain/locale.ts';
@@ -854,6 +855,19 @@ export function buildDocument(ctx: RenderContext): DocumentModel {
   };
 
   if (placement === 'after-diagnosis') drawLabs();
+
+  /**
+   * A recorded clinical-tool result (eGFR, ...). Always recorded on save once
+   * a doctor records one (domain/prescription.ts's CalcResult); whether it
+   * PRINTS is this doctor's own setting -- off by default, because a raw
+   * creatinine-clearance figure on the patient's own copy is a choice, not a
+   * given. English-only clinical-register block, same tag style as labs.
+   */
+  if (profile.printCalculations && rx.calculations?.length) {
+    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.calculations'), 'EN');
+    bulletList(b, composeCalculations(rx.calculations), true);
+    b.y += SECTION_GAP - 6;
+  }
 
   if (rx.medications.length) {
     const lang = languageFor(profile, 'medications');

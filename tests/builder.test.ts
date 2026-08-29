@@ -7,7 +7,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import 'fake-indexeddb/auto';
-import { paediatrics } from '@data/packs/index.ts';
+import { paediatrics, medicine, phrasesForShippedPack } from '@data/packs/index.ts';
 import { packs as shippedPhrases, packs } from '@data/phrases/index.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import { redFlagWording, unreviewedRedFlags, validateContentPack } from '@domain/pack.ts';
@@ -32,7 +32,10 @@ import {
 } from '@domain/generics.ts';
 import {
   contentErrors,
+  installPack,
+  listPacks,
   publishContent,
+  removePack,
   resetContentCache,
   resolveContent,
   revertToShipped,
@@ -248,7 +251,7 @@ describe('content provider', () => {
   it('serves an edited pack once published', async () => {
     const pack = clonePack();
     pack.examSystems[0]!.label = 'General appearance';
-    const result = await publishContent(pack, shippedPhrases);
+    const result = await publishContent(pack.id, pack, shippedPhrases);
     expect(result.ok).toBe(true);
 
     resetContentCache();
@@ -260,7 +263,7 @@ describe('content provider', () => {
   it('refuses to publish content with errors', async () => {
     const pack = clonePack();
     pack.dosing[0]!.reference = '';
-    const result = await publishContent(pack, shippedPhrases);
+    const result = await publishContent(pack.id, pack, shippedPhrases);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors.join('\n')).toMatch(/no reference/i);
@@ -272,11 +275,12 @@ describe('content provider', () => {
   it('ignores stored content that is invalid, and says so', async () => {
     // Publish something valid, then corrupt it behind the provider's back --
     // the shape a partially-written or hand-edited store would have.
-    await publishContent(clonePack(), clonePhrases());
+    const pack = clonePack();
+    await publishContent(pack.id, pack, clonePhrases());
     const db = await import('@storage/db.ts');
-    const stored = (await db.loadContent())!;
+    const stored = (await db.getInstalledPack(pack.id))!;
     delete stored.phrases['ur-PK'].templates['sig.oral.liquid'];
-    await db.saveContent(stored);
+    await db.putInstalledPack(stored);
 
     resetContentCache();
     const content = await resolveContent();
@@ -288,7 +292,7 @@ describe('content provider', () => {
   it('reverts to the shipped content on request', async () => {
     const pack = clonePack();
     pack.examSystems[0]!.label = 'Changed';
-    await publishContent(pack, shippedPhrases);
+    await publishContent(pack.id, pack, shippedPhrases);
     resetContentCache();
     expect((await resolveContent()).edited).toBe(true);
 
@@ -297,6 +301,62 @@ describe('content provider', () => {
     const content = await resolveContent();
     expect(content.edited).toBe(false);
     expect(content.pack.examSystems[0]!.label).not.toBe('Changed');
+  });
+
+  it('an edited pack survives a re-seed of a DIFFERENT pack', async () => {
+    // The exact failure this guards: seeding must be per-id and additive, or
+    // installing a second pack could silently roll back the first doctor's
+    // edits the moment the library is next touched.
+    const editedMedicine = structuredClone(medicine);
+    editedMedicine.examSystems[0]!.label = 'CHANGED BY THE DOCTOR';
+    await publishContent(medicine.id, editedMedicine, phrasesForShippedPack(medicine.id));
+    resetContentCache();
+
+    // Something else resolves the paediatrics pack, which triggers seeding.
+    await resolveContent(paediatrics.id);
+    resetContentCache();
+
+    const stillEdited = await resolveContent(medicine.id);
+    expect(stillEdited.edited).toBe(true);
+    expect(stillEdited.pack.examSystems[0]!.label).toBe('CHANGED BY THE DOCTOR');
+
+    await revertToShipped(medicine.id);
+  });
+
+  it('switching packs resolves the OTHER pack correctly, independent of what is active', async () => {
+    resetContentCache();
+    const paeds = await resolveContent(paediatrics.id);
+    const meds = await resolveContent(medicine.id);
+    expect(paeds.pack.id).toBe('paediatrics');
+    expect(meds.pack.id).toBe('medicine');
+    expect(paeds.pack.specialty).not.toBe(meds.pack.specialty);
+  });
+});
+
+describe('the pack library API', () => {
+  it('installs a pack from a file and it appears in the listing', async () => {
+    const result = await installPack({ pack: medicine, phrases: phrasesForShippedPack(medicine.id) });
+    expect(result.ok).toBe(true);
+    const list = await listPacks();
+    expect(list.some((p) => p.id === medicine.id)).toBe(true);
+  });
+
+  it('refuses to install a pack with structural errors', async () => {
+    const broken = structuredClone(medicine);
+    broken.dosing[0]!.reference = '';
+    const result = await installPack({ pack: broken, phrases: phrasesForShippedPack(medicine.id) });
+    expect(result.ok).toBe(false);
+  });
+
+  it('refuses to remove the last pack standing', async () => {
+    // Get down to exactly one installed pack, then try to remove it.
+    for (const p of await listPacks()) {
+      if (p.id !== paediatrics.id) await removePack(p.id);
+    }
+    const result = await removePack(paediatrics.id);
+    expect(result.ok).toBe(false);
+    // Restore the second pack for tests that run after this one.
+    await installPack({ pack: medicine, phrases: phrasesForShippedPack(medicine.id) });
   });
 });
 

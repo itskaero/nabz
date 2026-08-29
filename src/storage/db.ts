@@ -24,7 +24,7 @@ import type { PatientRecord, LegacyGrowthLink } from '@domain/patient.ts';
 import type { QueueEntry } from '@domain/clinic.ts';
 
 const DB_NAME = 'nabz';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 /**
  * Edited content: the specialty pack and the locale packs, as authored in the
@@ -44,6 +44,29 @@ export interface StoredContent {
   pack: ContentPack;
   phrases: PackRegistry;
   basedOn: { packId: string; appVersion: string };
+  updatedAt: string;
+}
+
+/**
+ * One entry in the pack LIBRARY -- the thing that makes a second specialty an
+ * install rather than a hand-merge (CLAUDE.md 6a, 6d). Keyed by `pack.id`, so
+ * there is exactly one live copy of each installed pack, edited or not.
+ *
+ * `source` and `verified` are library metadata, independent of the pack's own
+ * `verified` flag at the moment it was installed: editing a shipped pack in
+ * the builder does not retroactively make it a doctor-verified pack, so
+ * `verified` here is refreshed from `pack.verified` on every publish, never
+ * assumed to stay in sync on its own.
+ */
+export interface InstalledPack {
+  id: string;
+  pack: ContentPack;
+  phrases: PackRegistry;
+  source: 'shipped' | 'imported';
+  verified: boolean;
+  /** true once a doctor has published an edit; false for an untouched shipped pack */
+  edited: boolean;
+  installedAt: string;
   updatedAt: string;
 }
 
@@ -104,6 +127,8 @@ interface NabzDb extends DBSchema {
   learned: { key: string; value: LearnedTerm; indexes: { byField: string } };
   profile: { key: string; value: DoctorProfile };
   content: { key: string; value: StoredContent };
+  /** the pack library (Stage A) -- one InstalledPack per pack id */
+  packs: { key: string; value: InstalledPack };
   meta: { key: string; value: unknown };
 }
 
@@ -143,12 +168,33 @@ export function db(): Promise<IDBPDatabase<NabzDb>> {
         const queue = database.createObjectStore('queue', { keyPath: 'id' });
         queue.createIndex('byDate', 'date');
       }
+      if (oldVersion < 5) {
+        database.createObjectStore('packs', { keyPath: 'id' });
+      }
     },
   });
   return dbPromise;
 }
 
 // --- prescriptions ---------------------------------------------------------
+
+/**
+ * Bring an older record up to the shape the app reads today.
+ *
+ * `labs` and `calculations` were added after `Prescription` first shipped, so
+ * a record written before either existed comes back from IndexedDB without
+ * them -- exactly as stored, since `savePrescription` never rewrites old
+ * records on its own. Applied on every read path rather than scattered as
+ * `?? []` through the renderer, and the one place a future field gets the
+ * same treatment.
+ */
+export function normalisePrescription(rx: Prescription): Prescription {
+  return {
+    ...rx,
+    labs: rx.labs ?? [],
+    calculations: rx.calculations ?? [],
+  };
+}
 
 export async function savePrescription(rx: Prescription): Promise<void> {
   /*
@@ -167,7 +213,8 @@ export async function savePrescription(rx: Prescription): Promise<void> {
 
 /** Loads ONE prescription the doctor explicitly selected, by its id. */
 export async function getPrescription(id: string): Promise<Prescription | undefined> {
-  return (await db()).get('prescriptions', id);
+  const rx = await (await db()).get('prescriptions', id);
+  return rx && normalisePrescription(rx);
 }
 
 export async function deletePrescription(id: string): Promise<void> {
@@ -179,7 +226,8 @@ export async function recentPrescriptions(limit = 30): Promise<Prescription[]> {
   const all = await database.getAll('prescriptions');
   return all
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
+    .slice(0, limit)
+    .map(normalisePrescription);
 }
 
 /**
@@ -203,7 +251,8 @@ export async function searchHistory(query: string, limit = 25): Promise<Prescrip
       return haystack.includes(q);
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
+    .slice(0, limit)
+    .map(normalisePrescription);
 }
 
 export async function prescriptionCount(): Promise<number> {
@@ -272,7 +321,8 @@ export async function patientHistory(patientId: string): Promise<Prescription[]>
   const all = await (await db()).getAll('prescriptions');
   return all
     .filter((rx) => rx.patientId === patientId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map(normalisePrescription);
 }
 
 // --- growth (the named carve-out) ------------------------------------------
@@ -534,6 +584,24 @@ export async function saveContent(content: StoredContent): Promise<void> {
 /** Revert to the packs this build shipped with. */
 export async function clearContent(): Promise<void> {
   await (await db()).delete('content', 'current');
+}
+
+// --- pack library (Stage A) -------------------------------------------------
+
+export async function listInstalledPacks(): Promise<InstalledPack[]> {
+  return (await db()).getAll('packs');
+}
+
+export async function getInstalledPack(id: string): Promise<InstalledPack | undefined> {
+  return (await db()).get('packs', id);
+}
+
+export async function putInstalledPack(entry: InstalledPack): Promise<void> {
+  await (await db()).put('packs', entry);
+}
+
+export async function deleteInstalledPack(id: string): Promise<void> {
+  await (await db()).delete('packs', id);
 }
 
 // --- durability nag --------------------------------------------------------

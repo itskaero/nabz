@@ -8,11 +8,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import { packs } from '@data/phrases/index.ts';
-import { composePatientLine, composeSig } from '@domain/sig.ts';
+import { composePatientLine, composeSig, weeklyOnlyViolation } from '@domain/sig.ts';
 import { toPlainText } from '@domain/text.ts';
 import { isolatesBalanced, LRI, PDI, stripIsolates } from '@domain/bidi.ts';
 import { templateSlots, validatePacks } from '@domain/phrases.ts';
 import type { MedicationLine } from '@domain/prescription.ts';
+import { medicine, phrasesForShippedPack } from '@data/packs/index.ts';
 
 const amoxil = (over: Partial<MedicationLine['sig']> = {}): MedicationLine => ({
   id: 'm1',
@@ -224,5 +225,73 @@ describe('graceful degradation', () => {
     );
     const ur = stripIsolates(composeSig(line, 'ur-PK', packs).plain);
     expect(ur).toContain('زیادہ سے زیادہ 4 خوراکیں');
+  });
+});
+
+describe('weeklyOnlyViolation (the once-weekly-methotrexate case)', () => {
+  const methotrexateLine = (frequency: string): MedicationLine => ({
+    id: 'm3',
+    drug: { generic: 'Methotrexate', brand: 'Methotrexate', strength: '2.5mg', form: 'tablet' },
+    sig: {
+      templateId: 'sig.oral.solid',
+      dose: { value: 1, unit: 'tablet' },
+      frequency,
+      slots: { administer: 'take' },
+    },
+  });
+
+  const dosingByGeneric = new Map<string, { weeklyOnly?: boolean }[]>([
+    ['methotrexate', [{ weeklyOnly: true }]],
+    ['paracetamol', [{ weeklyOnly: false }]],
+  ]);
+
+  it('refuses a daily frequency for a weekly-only drug', () => {
+    const violation = weeklyOnlyViolation(methotrexateLine('OD'), dosingByGeneric);
+    expect(violation).toMatch(/ONCE A WEEK|once a week/i);
+    expect(violation).toMatch(/Methotrexate/);
+  });
+
+  it('is silent once the frequency actually reads "once a week"', () => {
+    expect(weeklyOnlyViolation(methotrexateLine('WEEKLY'), dosingByGeneric)).toBeNull();
+  });
+
+  it('is silent for a drug that is not flagged weekly-only', () => {
+    const paracetamol: MedicationLine = {
+      id: 'm4',
+      drug: { generic: 'Paracetamol' },
+      sig: { templateId: 'sig.oral.solid', dose: { value: 1, unit: 'tablet' }, frequency: 'OD', slots: {} },
+    };
+    expect(weeklyOnlyViolation(paracetamol, dosingByGeneric)).toBeNull();
+  });
+
+  it('the real medicine pack flags methotrexate and leaves other generics alone', () => {
+    const index = new Map<string, { weeklyOnly?: boolean }[]>();
+    for (const row of medicine.dosing) {
+      const key = row.generic.toLowerCase();
+      index.set(key, [...(index.get(key) ?? []), row]);
+    }
+    expect(weeklyOnlyViolation(methotrexateLine('OD'), index)).not.toBeNull();
+    expect(weeklyOnlyViolation(methotrexateLine('WEEKLY'), index)).toBeNull();
+  });
+});
+
+describe('medicine pack: Urdu number placement differs by string, not just by pack', () => {
+  it('places {n} at a different word position than the English original', () => {
+    const ur = phrasesForShippedPack(medicine.id)['ur-PK'];
+    const en = phrasesForShippedPack(medicine.id).en;
+
+    const wordIndexOfSlot = (text: string) =>
+      text.split(/\s+/).findIndex((w) => w.includes('{n}'));
+
+    // advice.follow_up_in: English puts the number fourth; Urdu opens with it.
+    const enFollowUp = wordIndexOfSlot(en.advice.tier1['advice.follow_up_in']!);
+    const urFollowUp = wordIndexOfSlot(ur.advice.tier1['advice.follow_up_in']!);
+    expect(urFollowUp).not.toBe(enFollowUp);
+    expect(urFollowUp).toBe(0);
+
+    // advice.limit_fluid: the number sits at a different offset in each locale.
+    const enLimit = wordIndexOfSlot(en.advice.tier1['advice.limit_fluid']!);
+    const urLimit = wordIndexOfSlot(ur.advice.tier1['advice.limit_fluid']!);
+    expect(urLimit).not.toBe(enLimit);
   });
 });

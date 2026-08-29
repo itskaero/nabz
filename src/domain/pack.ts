@@ -52,6 +52,16 @@ export interface DosingEntry {
   /** doses per day this mg/kg figure assumes */
   perDoses?: number;
   maxPerDay?: string;
+  /**
+   * A fixed adult regimen -- "500 mg to 1 g every 4 to 6 hours" -- for the
+   * common case where dosing is not weight-based at all. `mgPerKg` and
+   * `fixedDose` are alternative ways to express the SAME thing (the dose),
+   * not a dose plus a ceiling; a row may also legitimately use this field to
+   * say a dose cannot be reduced to a formula (INR-guided, titrated against a
+   * glucose log) -- see the "row must express a dose" check below, which
+   * exists so that case renders instead of silently showing nothing.
+   */
+  fixedDose?: string;
   route: string;
   /** source + edition + section. Non-empty, always. */
   reference: string;
@@ -63,6 +73,14 @@ export interface DosingEntry {
   verified: boolean;
   /** free-text caution shown with the suggestion */
   note?: string;
+  /**
+   * True only for a drug where a daily frequency is not merely wrong but
+   * dangerous -- once-weekly methotrexate taken daily is a known killer. Set
+   * this ONLY when the weekly interval itself is the safety boundary, not for
+   * every drug that happens to be dosed weekly by convention. See
+   * `weeklyOnlyViolation` in domain/sig.ts, which is what actually acts on it.
+   */
+  weeklyOnly?: boolean;
 }
 
 // --- exam palette ----------------------------------------------------------
@@ -114,9 +132,63 @@ export interface LabCategoryDefinition {
   order?: number;
 }
 
+// --- clinical scores ---------------------------------------------------------
+
+/**
+ * A score is PACK DATA -- tick criteria, add integers, look up a band -- and
+ * that ceiling is deliberate. Anything needing arithmetic beyond a sum and a
+ * band lookup (a percentile, an exponentiated ratio) is a FORMULA, and a
+ * formula belongs in code with tests against published values, the same way
+ * the growth module does. See `ModuleId` below and CLAUDE.md 6d.
+ */
+export interface ScoreCriterion {
+  id: string;
+  label: string;
+  points: number;
+  /**
+   * Criteria sharing a `group` are MUTUALLY EXCLUSIVE -- e.g. CHA₂DS₂-VASc's
+   * two age bands (65-74 vs ≥75): a patient is in exactly one, never both, so
+   * ticking a second criterion in the same group must not simply add its
+   * points on top. `computeScore` enforces this defensively (counts only the
+   * highest-point ticked criterion per group) regardless of what ticked them;
+   * the UI additionally unticks the rest of the group when one is chosen, so
+   * the score never visibly shows two mutually-exclusive boxes ticked at once.
+   */
+  group?: string;
+}
+
+/**
+ * `note` carries the SOURCE'S OWN published outcome, attributed -- "30-day
+ * mortality 14% (Lim et al., Thorax 2003)" -- never an instruction in the
+ * app's voice. The app must never print "admit" or "start anticoagulation";
+ * that is automated clinical judgement (PRODUCT.md rule 3.3).
+ */
+export interface ScoreBand {
+  min: number;
+  max: number;
+  label: string;
+  note?: string;
+}
+
+export interface ScoreDefinition {
+  id: string;
+  label: string;
+  criteria: ScoreCriterion[];
+  bands: ScoreBand[];
+  /** source + edition. REQUIRED and non-empty, exactly like DosingEntry. */
+  reference: string;
+}
+
 // --- the pack --------------------------------------------------------------
 
-export type ModuleId = 'growth';
+/**
+ * A CLOSED union on purpose. A module is code -- a formula, tested against
+ * published values, with its own panel -- never something a pack can invent
+ * by declaring an id. Adding a module means adding both a case here AND the
+ * code it names (`domain/modules/`); an id with no matching code is a build
+ * error, and that is the property this union exists to buy (CLAUDE.md 6d).
+ */
+export type ModuleId = 'growth' | 'gfr' | 'bmi';
 
 /**
  * Sign-off on one tier-2 red flag.
@@ -143,6 +215,15 @@ export interface ContentPack {
   specialty: string;
   /** who authored the clinical content, and when. Not decoration. */
   author: { name: string; credential: string; updated: string };
+  /**
+   * Whether a clinician of this specialty has signed the pack itself off --
+   * doses reviewed, formulary reconciled, Urdu read aloud. `false` badges the
+   * pack as a draft everywhere it appears (Settings, the pack picker) rather
+   * than hiding it: the honesty is carried by the UI, not by keeping the pack
+   * out of reach. Independent of the per-row `verified` on a DosingEntry --
+   * a pack can ship with every row still individually unverified.
+   */
+  verified: boolean;
   examSystems: ExamSystemDefinition[];
   /** systemId -> chips offered for that system */
   findingsPalette: Record<string, FindingDefinition[]>;
@@ -160,6 +241,8 @@ export interface ContentPack {
   sigTemplates: string[];
   formularySeed: FormularyEntry[];
   dosing: DosingEntry[];
+  /** clinical scores this specialty offers -- see ScoreDefinition above */
+  scores?: ScoreDefinition[];
   modules: ModuleId[];
   /** redFlagId -> who signed the wording off, and when */
   redFlagReview?: Record<string, RedFlagReview>;
@@ -280,6 +363,19 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
         message: 'dosing row has no route',
       });
     }
+    // A row must express SOME dose -- weight-based, fixed, or (rarely) just a
+    // ceiling -- or it renders as nothing on the script, which is a UI bug
+    // wearing a data hole. A row whose whole content is a refusal to suggest a
+    // dose (INR-guided warfarin, titrated insulin) still says so via
+    // `fixedDose`; that is a valid dose expression, not an empty one.
+    if (!row.mgPerKg && !row.fixedDose && !row.maxPerDay) {
+      issues.push({
+        severity: 'error',
+        where: `dosing[${i}] ${row.generic}`,
+        message:
+          'dosing row expresses no dose at all -- none of mgPerKg, fixedDose or maxPerDay is set',
+      });
+    }
   });
 
   const seenBrand = new Set<string>();
@@ -327,6 +423,37 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
       where: 'moduleConfig.growth',
       message: 'pack enables the growth module but does not configure it',
     });
+  }
+
+  // Same rule as dosing: a score with no citation is a number with no
+  // provenance in front of a doctor, and that is a build error, not a warning.
+  const seenScore = new Set<string>();
+  for (const score of pack.scores ?? []) {
+    if (seenScore.has(score.id)) {
+      issues.push({ severity: 'error', where: `scores.${score.id}`, message: 'duplicate score id' });
+    }
+    seenScore.add(score.id);
+    if (!score.reference || !score.reference.trim()) {
+      issues.push({
+        severity: 'error',
+        where: `scores.${score.id}`,
+        message: 'score has no reference. A score without a citation cannot ship.',
+      });
+    }
+    if (score.criteria.length === 0) {
+      issues.push({
+        severity: 'error',
+        where: `scores.${score.id}`,
+        message: 'score has no criteria',
+      });
+    }
+    if (score.bands.length === 0) {
+      issues.push({
+        severity: 'error',
+        where: `scores.${score.id}`,
+        message: 'score has no bands to report a result in',
+      });
+    }
   }
 
   return issues;

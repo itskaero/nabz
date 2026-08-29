@@ -13,14 +13,16 @@
  */
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '@render/screen/App.tsx';
 import { StoreProvider } from '@render/screen/store.tsx';
-import { paediatrics } from '@data/packs/index.ts';
+import { paediatrics, medicine } from '@data/packs/index.ts';
 import { packs as shippedPhrases } from '@data/phrases/index.ts';
 import { publishContent, resetContentCache, revertToShipped } from '@data/provider.ts';
 import { setDeviceRole, clearDeviceRole } from '@domain/deviceRole.ts';
+import { defaultDoctorProfile } from '@config/doctorProfile.ts';
+import * as db from '@storage/db.ts';
 
 /**
  * These tests are about the clinical app, not first-run setup. A device with no
@@ -34,6 +36,10 @@ afterEach(async () => {
   clearDeviceRole();
   cleanup();
   await revertToShipped();
+  // A test that switches the active pack writes that choice into the SAME
+  // profile store every other test's renderApp() reads on mount -- reset it
+  // so a later test cannot silently inherit "medicine" as the active pack.
+  await db.saveProfile(defaultDoctorProfile);
   resetContentCache();
 });
 
@@ -236,7 +242,7 @@ describe('edited content reaches the app', () => {
     const respiratory = pack.findingsPalette.respiratory!;
     const wheeze = respiratory.find((f) => f.id === 'wheeze')!;
     wheeze.label = 'expiratory wheeze';
-    expect((await publishContent(pack, shippedPhrases)).ok).toBe(true);
+    expect((await publishContent(pack.id, pack, shippedPhrases)).ok).toBe(true);
     resetContentCache();
 
     const user = userEvent.setup();
@@ -250,7 +256,7 @@ describe('edited content reaches the app', () => {
   it('uses edited Urdu wording when composing the patient instruction', async () => {
     const phrases = structuredClone(shippedPhrases);
     phrases['ur-PK'].vocab.frequency!.TID = 'روزانہ تین مرتبہ';
-    expect((await publishContent(paediatrics, phrases)).ok).toBe(true);
+    expect((await publishContent(paediatrics.id, paediatrics, phrases)).ok).toBe(true);
     resetContentCache();
 
     const user = userEvent.setup();
@@ -270,17 +276,56 @@ describe('edited content reaches the app', () => {
 
   it('ignores invalid stored content and says so rather than degrading quietly', async () => {
     const phrases = structuredClone(shippedPhrases);
-    await publishContent(paediatrics, phrases);
+    await publishContent(paediatrics.id, paediatrics, phrases);
     const db = await import('@storage/db.ts');
-    const stored = (await db.loadContent())!;
+    const stored = (await db.getInstalledPack(paediatrics.id))!;
     delete stored.phrases['ur-PK'].templates['sig.oral.liquid'];
-    await db.saveContent(stored);
+    await db.putInstalledPack(stored);
     resetContentCache();
 
     renderApp();
-    const statuses = await screen.findAllByRole('status');
-    const message = statuses.map((s) => s.textContent).join(' ');
-    expect(message).toContain('edited content did not load');
-    expect(message).toContain('sig.oral.liquid');
+    // Two independent banners can be on screen at once (this one, and jsdom's
+    // real font-load failure) -- findAllByRole resolves the instant ANY status
+    // exists, not once every eventual one has mounted, so waitFor is what
+    // actually waits for THIS banner's text rather than racing the other one.
+    await waitFor(() => {
+      const message = screen
+        .getAllByRole('status')
+        .map((s) => s.textContent)
+        .join(' ');
+      expect(message).toContain('edited content did not load');
+      expect(message).toContain('sig.oral.liquid');
+    });
+  });
+});
+
+describe('module nav follows the active pack', () => {
+  it('medicine (modules: gfr, bmi) shows eGFR, BMI / BSA and Scores, no Growth', async () => {
+    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    resetContentCache();
+    renderApp();
+
+    expect(await screen.findByRole('button', { name: 'eGFR' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'BMI / BSA' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Scores' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Growth' })).toBeNull();
+  });
+
+  it('the default pack (paediatrics, no scores) shows Growth, no eGFR/BMI/Scores tab', async () => {
+    renderApp();
+    expect(await screen.findByRole('button', { name: 'Growth' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'eGFR' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'BMI / BSA' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Scores' })).toBeNull();
+  });
+
+  it('opening Scores for medicine shows CURB-65 among the choices', async () => {
+    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    resetContentCache();
+    renderApp();
+
+    const scoresBtn = await screen.findByRole('button', { name: 'Scores' });
+    await userEvent.click(scoresBtn);
+    expect(await screen.findByRole('button', { name: /CURB-65/ })).toBeTruthy();
   });
 });

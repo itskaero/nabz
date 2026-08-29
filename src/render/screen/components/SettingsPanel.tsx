@@ -24,6 +24,9 @@ import { applyPatch } from '@domain/patch.ts';
 import { hasPin, openGate, setPin } from '@domain/roles.ts';
 import { secureContextProblem } from '@domain/secureContext.ts';
 import { deviceRole, setDeviceRole } from '@domain/deviceRole.ts';
+import type { InstalledPack } from '@storage/db.ts';
+import { installPack, listPacks, removePack } from '@data/provider.ts';
+import { parsePackFile } from '../builder/packFile.ts';
 
 const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   {
@@ -56,7 +59,7 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
     return () => ac.abort();
   }, []);
 
-  const { profile, setProfile, pack, contentRejected } = useStore();
+  const { profile, setProfile, pack, contentRejected, contentVerified } = useStore();
   const [passphrase, setPassphrase] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [newPin, setNewPin] = useState('');
@@ -67,13 +70,51 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
   const [cryptoProblem] = useState(secureContextProblem);
   const [role, setRole] = useState(deviceRole);
   const [confirmReception, setConfirmReception] = useState(false);
+  const [installedPacks, setInstalledPacks] = useState<InstalledPack[]>([]);
+  const [packStatus, setPackStatus] = useState<string | null>(null);
+  const packFileInput = useRef<HTMLInputElement>(null);
+
+  const refreshPackList = () => void listPacks().then(setInstalledPacks);
 
   useEffect(() => {
     void (async () => {
       const [rx, estimate] = await Promise.all([db.prescriptionCount(), db.storageEstimate()]);
       setCounts({ rx, usage: estimate?.usage ?? 0, quota: estimate?.quota ?? 0 });
     })();
+    refreshPackList();
   }, []);
+
+  const switchPack = (id: string) => {
+    setProfile({ ...profile, packId: id });
+    setPackStatus(null);
+  };
+
+  const installFromFile = async (file: File) => {
+    try {
+      const parsed = parsePackFile(await file.text());
+      const result = await installPack({ pack: parsed.pack, phrases: parsed.phrases });
+      if (!result.ok) {
+        setPackStatus(`Not installed — ${result.errors.length} problem(s): ${result.errors[0]}`);
+        return;
+      }
+      refreshPackList();
+      setPackStatus(
+        `Installed "${parsed.pack.specialty}". Select "Make active" above to start writing from it.`,
+      );
+    } catch (err) {
+      setPackStatus((err as Error).message);
+    }
+  };
+
+  const removePackById = async (id: string) => {
+    const result = await removePack(id);
+    if (!result.ok) {
+      setPackStatus(result.reason);
+      return;
+    }
+    refreshPackList();
+    setPackStatus('Removed.');
+  };
 
   const doctor = profile.doctor;
   const setDoctor = (patch: Partial<typeof doctor>) =>
@@ -502,30 +543,124 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
       <LegacyGrowthResolver />
 
       <section className="card settings-section">
-        <h3>Content pack</h3>
+        <h3>Content packs</h3>
         <p className="hint" style={{ marginTop: 0 }}>
           Currently loaded: <strong>{pack.specialty}</strong> — {pack.examSystems.length}{' '}
           exam systems, {pack.formularySeed.length} medicines,{' '}
           {pack.dosing.length} cited doses. Exam chips, advice wording, the drug
-          list and the Urdu phrase library all come from the pack; adding
-          another specialty means adding a pack, not changing the app.
+          list and the Urdu phrase library all come from the pack; installing
+          another specialty means installing a pack, not changing the app.
         </p>
         {contentRejected.length > 0 && (
           <div className="warn-box" style={{ margin: '8px 0' }}>
             <strong>Your edited content is not in use.</strong>
-            It failed validation, so the built-in packs are running instead.
+            It failed validation, so the built-in pack is running instead.
             Open the builder to see what is wrong.
           </div>
         )}
+        {!contentVerified && contentRejected.length === 0 && (
+          <div className="warn-box" style={{ margin: '8px 0' }}>
+            <strong>This pack is an unverified draft.</strong>
+            No clinician of this specialty has signed it off yet — treat every
+            suggestion as a starting point, not a checked answer.
+          </div>
+        )}
+
+        <div className="pack-list" style={{ display: 'grid', gap: 8, margin: '10px 0' }}>
+          {installedPacks.map((entry) => {
+            const active = entry.id === profile.packId;
+            return (
+              <div
+                key={entry.id}
+                className="pack-row"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--r-sm)',
+                  background: active ? 'var(--patient-tint)' : 'transparent',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong>{entry.pack.specialty}</strong>{' '}
+                  {!entry.verified && <span className="pill warn">unverified</span>}{' '}
+                  {entry.source === 'imported' && <span className="pill">imported</span>}{' '}
+                  {entry.edited && <span className="pill">edited</span>}
+                </div>
+                {active ? (
+                  <span className="pill good">active</span>
+                ) : (
+                  <button className="btn quiet" onClick={() => switchPack(entry.id)}>
+                    Make active
+                  </button>
+                )}
+                {!active && (
+                  <button className="btn quiet danger" onClick={() => removePackById(entry.id)}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {packStatus && (
+          <p className="hint" style={{ margin: '4px 0 10px' }}>
+            {packStatus}
+          </p>
+        )}
+
+        <div className="opt-group">
+          <label>Recorded calculations (eGFR, ...)</label>
+          <div className="opts">
+            <button
+              className="opt"
+              aria-pressed={!profile.printCalculations}
+              onClick={() => setProfile({ ...profile, printCalculations: false })}
+            >
+              Keep on the chart only
+            </button>
+            <button
+              className="opt"
+              aria-pressed={profile.printCalculations}
+              onClick={() => setProfile({ ...profile, printCalculations: true })}
+            >
+              Also print on the sheet
+            </button>
+          </div>
+          <p className="ref-note">
+            A recorded result is always saved with the prescription either way
+            — this only decides whether it also appears on the printed copy.
+          </p>
+        </div>
+
         <div className="warn-box" style={{ margin: '8px 0' }}>
           <strong>Editing content changes what patients are given.</strong>
           The builder edits the drug list, the dosing citations and the Urdu
           wording that gets printed. Changes apply to every script you write
           after saving.
         </div>
-        <button className="btn ghost" onClick={onOpenBuilder}>
-          Open the pack builder
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn ghost" onClick={onOpenBuilder}>
+            Open the pack builder
+          </button>
+          <button className="btn ghost" onClick={() => packFileInput.current?.click()}>
+            Install a pack from a file
+          </button>
+          <input
+            ref={packFileInput}
+            type="file"
+            accept=".json,application/json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void installFromFile(file);
+              e.target.value = '';
+            }}
+          />
+        </div>
       </section>
     </div>
   );

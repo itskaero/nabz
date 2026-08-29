@@ -161,6 +161,7 @@ export const en: LocalePack = {
     'section.examination': 'Examination',
     'section.diagnosis': 'Diagnosis',
     'section.labs': 'Investigations advised',
+    'section.calculations': 'Calculations',
     'section.medications': 'Medications',
     'section.advice': 'Advice',
     'section.patientInstructions': 'For the patient',
