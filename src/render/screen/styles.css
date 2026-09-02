@@ -9,6 +9,13 @@
  *
  * Colour is semantic, never paint (DESIGN.md 3): teal = action and "vetted",
  * amber = "the doctor's own words", red = danger. Nothing else is coloured.
+ *
+ * Dark mode (DESIGN.md 14a) is an explicit, doctor-chosen secondary state --
+ * light stays the mandatory default. It is applied via [data-theme='dark'] on
+ * <html>, set by src/domain/colorScheme.ts before first paint. The three
+ * semantic roles keep their MEANING across both themes; only lightness and
+ * saturation move. Print (render/theme.ts) never reads this -- a printed page
+ * has no theme, only the one fixed light palette.
  */
 
 :root {
@@ -19,29 +26,96 @@
   --ink-faint: #8a9691;
   --line: #dfe4e3;
   --line-soft: #eceeed;
+  /* --ink's RGB, split out for rgba() shadows/scrims that need to track --ink
+     across themes instead of hardcoding light-mode's darkness. */
+  --ink-rgb: 20, 32, 31;
 
-  --teal: #0f766e;
-  --teal-ink: #0b5a54;
-  --teal-wash: #e6f2f0;
+  /* Accent, resolved (DESIGN.md 14): desaturated teal-green, one role only --
+     "interactive action" and "vetted/safe" together, never a 4th meaning. */
+  --teal: #0f8055;
+  --teal-ink: #0b6b3f;
+  --teal-wash: #e3f2ea;
+  /* Text sitting on a solid --teal fill (buttons, selected tab, present-chip)
+     is a fixed high-contrast pair, independent of theme -- declared once here
+     and never overridden in dark mode. */
+  --on-teal: #ffffff;
+  --on-teal-soft: rgba(255, 255, 255, 0.75);
+  --on-teal-badge-bg: rgba(255, 255, 255, 0.22);
 
   --alert: #b4232a;
   --alert-wash: #fbeceb;
 
   --unvetted: #a8722a;
+  --unvetted-ink: #6d4a1b;
   --warn-wash: #f6eddf;
 
-  --patient-tint: #f2f7f6;
-  --sheet: #f6f8f8;
+  --patient-tint: #f1f8f4;
+  --sheet: #f5f9f7;
+  /* The simulated printed page is paper, not app chrome -- it stays white in
+     both themes so "preview == print" (CLAUDE.md 5) never goes dark just
+     because the doctor's screen did. Declared once, never overridden below. */
+  --paper: #ffffff;
 
   --r: 8px;
   --r-sm: 6px;
-  --shadow: 0 1px 2px rgba(20, 32, 31, 0.06), 0 4px 10px rgba(20, 32, 31, 0.04);
+  --shadow: 0 1px 2px rgba(var(--ink-rgb), 0.06), 0 4px 10px rgba(var(--ink-rgb), 0.04);
+  /* A stronger shadow + accent top border for the one card per view that
+     should read as more important than its neighbours (critique P2: every
+     card used the identical treatment, so nothing signalled weight). */
+  --shadow-emphasis: 0 2px 4px rgba(var(--ink-rgb), 0.1), 0 10px 24px rgba(var(--ink-rgb), 0.08);
+
+  /* Widened type scale (critique P2: the sheet capped out at 16px, a 1.7:1
+     ratio end to end). Used sparingly -- the Home view's headline stat and
+     section headers, not a general upsizing of body text. */
+  --fs-lg: 20px;
+  --fs-xl: 28px;
 
   --font-latin: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --font-urdu: 'Noto Nastaliq Urdu', serif;
 
   --bar-h: 56px;
+}
+
+/*
+ * Dark palette. Every pair below (ink-soft/ink-faint vs bg/surface, teal-ink
+ * vs teal-wash, etc.) is checked against WCAG AA independently in this theme
+ * -- see tests/contrast.test.ts -- rather than assumed to inherit the light
+ * palette's numbers. Urdu legibility in this theme is checked by hand
+ * (Nastaliq's joining strokes are more contrast-sensitive than Latin type);
+ * see the design-system plan's verification notes.
+ */
+:root[data-theme='dark'] {
+  --bg: #0d1614;
+  --surface: #16241f;
+  --ink: #eef3f1;
+  --ink-soft: #a9bdb6;
+  --ink-faint: #90a29c;
+  --line: #263631;
+  --line-soft: #1c2925;
+  --ink-rgb: 238, 243, 241;
+
+  /* Reuses the exact light-mode --teal (not a lighter dark-mode variant):
+     white text on it needs >=4.5:1 (tests/contrast.test.ts), and a lighter
+     teal that reads well on a dark bg does not clear that bar for --on-teal.
+     --teal-ink stays a separate, lighter value for teal used AS text. */
+  --teal: #0f8055;
+  --teal-ink: #8fe3c0;
+  --teal-wash: #123128;
+
+  --alert: #ff7a72;
+  --alert-wash: #3a1613;
+
+  --unvetted: #e0a84f;
+  --unvetted-ink: #ffdca3;
+  --warn-wash: #332411;
+
+  --patient-tint: #112420;
+  --sheet: #16241f;
+
+  /* A black-on-black drop shadow does nothing -- dark mode reads elevation
+     from a heavier, more opaque shadow instead of a lighter one. */
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.32);
 }
 
 @font-face {
@@ -98,6 +172,21 @@ select {
   color: inherit;
 }
 
+/*
+ * Every text input/textarea/select gets an explicit background -- without
+ * this, an element with no background rule of its own (found live: the
+ * medicine/problem/diagnosis "compose" search boxes) falls back to the
+ * browser's default white input background, which was invisible in light
+ * mode and a glaring bug in dark mode. Button variants keep their own
+ * explicit backgrounds (.btn, .icon-btn, .mini, .linkish, ...), which all
+ * win here on specificity.
+ */
+input,
+textarea,
+select {
+  background: var(--surface);
+}
+
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -148,7 +237,10 @@ select {
   display: block;
   font-size: 10.5px;
   font-weight: 400;
-  color: var(--ink-faint);
+  /* --ink-soft, not --ink-faint: this line is the one on-screen cue telling
+     a doctor which device they're on (critique P1 -- --ink-faint measures
+     ~3:1, below AA). */
+  color: var(--ink-soft);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -161,6 +253,13 @@ select {
  * The nav must never push a control off the right edge. On a 390px phone with
  * the queue turned on there are more buttons than there is room, and a button
  * you cannot see is a button you cannot press -- so the strip scrolls.
+ *
+ * The scroll used to be silent (critique P1): no fade, arrow or scrollbar
+ * hinted it existed, and the ACTIVE button (e.g. Settings, once the medicine
+ * pack's modules plus Queue are all on) could sit fully off-screen with
+ * nothing on screen saying so. The edge-fade below is the hint; App.tsx
+ * scrolls the pressed button into view on selection so a doctor never has to
+ * discover the scroll by accident to find where they already are.
  */
 .topbar-nav {
   display: flex;
@@ -170,6 +269,8 @@ select {
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 20px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 20px), transparent 100%);
 }
 
 .topbar-nav::-webkit-scrollbar {
@@ -209,6 +310,9 @@ select {
   background: var(--surface);
   border-radius: var(--r-sm);
   padding: 6px 10px;
+  /* 44px floor (critique P2: measured 55x32px live). The 480px breakpoint
+     below shrinks padding for the phone nav strip, not this minimum. */
+  min-height: 44px;
   font-size: 13px;
   color: var(--ink-soft);
   cursor: pointer;
@@ -244,7 +348,7 @@ select {
 
 .banner-backup {
   background: var(--warn-wash);
-  color: #6d4a1b;
+  color: var(--unvetted-ink);
   border-left: 4px solid var(--unvetted);
 }
 
@@ -305,7 +409,9 @@ select {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--ink-faint);
+  /* --ink-soft: field labels (PATIENT/AGE/SEX/...) carry real information,
+     not placeholder text -- critique P1 measured --ink-faint at ~3:1 here. */
+  color: var(--ink-soft);
 }
 
 .field input,
@@ -339,6 +445,10 @@ select {
   overflow-x: auto;
   background: var(--bg);
   scrollbar-width: none;
+  /* Same edge-fade affordance as .topbar-nav, same critique finding: at
+     390px this strip clipped "Medicines" mid-word with no hint it scrolled. */
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 20px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 20px), transparent 100%);
 }
 
 .tabs::-webkit-scrollbar {
@@ -351,6 +461,8 @@ select {
   background: var(--surface);
   border-radius: var(--r);
   padding: 6px 11px;
+  /* 44px floor (critique P2). */
+  min-height: 44px;
   cursor: pointer;
   text-align: left;
   line-height: 1.15;
@@ -362,21 +474,24 @@ select {
   font-weight: 500;
 }
 
-/* The language tag makes the audience model visible (DESIGN.md 11). */
+/* The language tag makes the audience model visible (DESIGN.md 11) -- which
+   is exactly why it gets --ink-soft, not --ink-faint (critique P1: the faint
+   token measured ~3:1 here, on the one line meant to teach a doctor the
+   per-section audience model at a glance). */
 .tab span {
   font-size: 9.5px;
   letter-spacing: 0.06em;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
 }
 
 .tab[aria-selected='true'] {
   background: var(--teal);
   border-color: var(--teal);
-  color: #fff;
+  color: var(--on-teal);
 }
 
 .tab[aria-selected='true'] span {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--on-teal-soft);
 }
 
 .badge {
@@ -394,8 +509,8 @@ select {
 }
 
 .tab[aria-selected='true'] .badge {
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  background: var(--on-teal-badge-bg);
+  color: var(--on-teal);
 }
 
 /* ---------- body ---------- */
@@ -416,6 +531,15 @@ select {
   box-shadow: var(--shadow);
 }
 
+/* The one card per view that should outweigh its neighbours -- critique P2's
+   "nothing but the medication row ever signals this matters more". Opt-in,
+   not a redesign of .card itself: most cards stay exactly as quiet as before. */
+.card.emphasis {
+  border-top: 2px solid var(--teal);
+  box-shadow: var(--shadow-emphasis);
+  padding: 16px;
+}
+
 .card > h2 {
   margin: 0 0 8px;
   font-size: 12px;
@@ -426,13 +550,17 @@ select {
 }
 
 .hint {
-  color: var(--ink-faint);
+  /* --ink-soft, not --ink-faint (2nd-pass critique P1): this class carries
+     real explanatory copy across most of Settings, not placeholder text --
+     --ink-faint measured 2.70-3.06:1 here, below the 4.5:1 AA floor. */
+  color: var(--ink-soft);
   font-size: 12px;
   margin: 6px 0 0;
 }
 
 .empty {
-  color: var(--ink-faint);
+  /* --ink-soft: same contrast reasoning as .hint above. */
+  color: var(--ink-soft);
   font-size: 13px;
   padding: 10px 2px;
 }
@@ -499,9 +627,12 @@ select {
 .btn {
   border: 1px solid var(--teal);
   background: var(--teal);
-  color: #fff;
+  color: var(--on-teal);
   border-radius: var(--r-sm);
   padding: 8px 13px;
+  /* 44px floor (critique P2): this class backs the bottom action bar and
+     most Settings buttons, both measured under it. */
+  min-height: 44px;
   cursor: pointer;
   font-weight: 500;
   white-space: nowrap;
@@ -636,6 +767,10 @@ select {
   background: var(--surface);
   border-radius: 20px;
   padding: 5px 11px;
+  /* Raised toward, not to, the 44px floor (critique P2): chips are dense
+     multi-select controls tapped dozens of times per script, not primary
+     actions -- forcing full 44px would break the compact chip grid. */
+  min-height: 34px;
   font-size: 13px;
   cursor: pointer;
   color: var(--ink-soft);
@@ -646,7 +781,7 @@ select {
 .chip[data-state='present'] {
   background: var(--teal);
   border-color: var(--teal);
-  color: #fff;
+  color: var(--on-teal);
   font-weight: 500;
 }
 
@@ -743,7 +878,9 @@ select {
   font-size: 9.5px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  /* --ink-soft, same reasoning as .tab span: this label identifies which
+     language the track below it is (DESIGN.md's audience model, again). */
+  color: var(--ink-soft);
   margin-bottom: 3px;
   display: block;
 }
@@ -877,7 +1014,10 @@ select {
 }
 
 .advice-item[data-vouch='vetted'] .mark {
-  color: var(--teal);
+  /* --teal-ink, not --teal: this is TEXT (the vouch glyph), and --teal-ink is
+     the token meant for that role -- verified by tests/contrast.test.ts in
+     both themes, where --teal alone falls short against a dark --surface. */
+  color: var(--teal-ink);
 }
 .advice-item[data-vouch='red-flag'] .mark {
   color: var(--alert);
@@ -961,7 +1101,11 @@ select {
 .scrim {
   position: fixed;
   inset: 0;
-  background: rgba(20, 32, 31, 0.35);
+  /* Fixed dark dimming overlay, not var(--ink-rgb) -- --ink-rgb inverts to
+     near-white in dark mode (see :root[data-theme='dark']), which would turn
+     a modal scrim into a glow instead of a dim. A scrim darkens regardless of
+     theme, the same reasoning as the paper shadow above. */
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1006,7 +1150,8 @@ select {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--ink-faint);
+  /* --ink-soft: same field-label pattern as .field label above. */
+  color: var(--ink-soft);
   display: block;
   margin-bottom: 5px;
 }
@@ -1022,6 +1167,10 @@ select {
   background: var(--surface);
   border-radius: 20px;
   padding: 5px 11px;
+  /* 44px floor (critique P2) -- unlike .chip, these are one-per-row/few-per-
+     row pickers (unit toggle, score criteria, sig slot options), not a dense
+     multi-select grid, so the full floor applies. */
+  min-height: 44px;
   font-size: 13px;
   cursor: pointer;
 }
@@ -1029,7 +1178,7 @@ select {
 .opt[aria-pressed='true'] {
   background: var(--teal);
   border-color: var(--teal);
-  color: #fff;
+  color: var(--on-teal);
 }
 
 .num-row {
@@ -1068,8 +1217,11 @@ select {
 }
 
 .sheet-page {
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(20, 32, 31, 0.14), 0 8px 24px rgba(20, 32, 31, 0.08);
+  background: var(--paper);
+  /* Fixed dark shadow, not var(--ink-rgb): the page is always white paper
+     (see --paper above), so the shadow it casts doesn't invert with the app
+     theme either -- real paper on a real desk doesn't glow in the dark. */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 8px 24px rgba(0, 0, 0, 0.08);
   margin: 0 auto 14px;
   display: block;
   max-width: 100%;
@@ -1105,7 +1257,9 @@ select {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--ink-faint);
+  /* --ink-soft: this label ("eGFR", "KDIGO stage", ...) names the number
+     beneath it, same field-label pattern as .field label above. */
+  color: var(--ink-soft);
 }
 
 .stat .v {
@@ -1129,7 +1283,9 @@ select {
 
 .ref-note {
   font-size: 11.5px;
-  color: var(--ink-faint);
+  /* --ink-soft: this is the dosing-citation caption (CLAUDE.md 8a) --
+     "suggestion, confirm before signing" -- not placeholder text. */
+  color: var(--ink-soft);
   margin-top: 6px;
 }
 
@@ -1228,7 +1384,7 @@ select {
   border-radius: var(--r-sm);
   padding: 10px 12px;
   font-size: 12.5px;
-  color: #6d4a1b;
+  color: var(--unvetted-ink);
 }
 
 .warn-box strong {
@@ -1340,7 +1496,16 @@ select {
 .pill.warn {
   border-color: var(--unvetted);
   background: var(--warn-wash);
-  color: #6d4a1b;
+  color: var(--unvetted-ink);
+}
+
+/* A "Record" button plus its transient confirmation pill (GfrPanel,
+   BmiPanel, ScoresPanel) -- so pressing Record gives visible feedback
+   instead of silently writing to rx.calculations with nothing on screen. */
+.record-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .badge.bad {
@@ -1582,4 +1747,86 @@ select {
 /* A desk surface gets the width; the doctor's surface stays phone-shaped. */
 .app[data-wide='true'] {
   max-width: 1200px;
+}
+
+/* ---------- home (practice analytics landing) ---------- */
+/*
+ * DESIGN.md 11's phone-shaped write/settings/module surfaces stay narrow on
+ * purpose -- "not one-handed at OPD speed" does not apply to a doctor reading
+ * their own monthly numbers, so Home alone gets a composed desktop layout
+ * (DESIGN.md 11 addendum), the same reasoning already used for the reception
+ * queue and pack builder.
+ */
+.home {
+  padding: 12px;
+}
+
+.home-primary {
+  display: block;
+  width: 100%;
+  font-size: var(--fs-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+/* --fs-xl, applied for real (2nd-pass critique P2 -- the token existed after
+   the last pass with zero call sites anywhere). The one headline number on
+   the one card built to outweigh its neighbour (.card.emphasis, above). */
+.home-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.home-headline-n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.home-headline-l {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+@media (min-width: 900px) {
+  .home {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .home-primary {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- patient identity strip (module panels) ---------- */
+/*
+ * Compact, read-only name/age/sex atop eGFR/BMI/Scores -- both feed the
+ * calculation, and until this existed nothing on screen said whose numbers
+ * they were (critique P0).
+ */
+.patient-strip {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: var(--patient-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: 12.5px;
+}
+
+.patient-strip .who {
+  font-weight: 600;
+}
+
+.patient-strip .meta {
+  color: var(--ink-soft);
 }

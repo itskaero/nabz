@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react';
 import type { ScoreDefinition } from '@domain/pack.ts';
 import { computeScore } from '@domain/scores.ts';
 import { useStore, newId } from '../store.tsx';
+import { PatientStrip } from './PatientStrip.tsx';
 
 export function ScoresPanel() {
   const { rx, pack, setCalculations } = useStore();
@@ -29,10 +30,13 @@ export function ScoresPanel() {
   );
   const total = result?.total ?? 0;
   const band = result?.band ?? null;
+  const recorded = (rx.calculations ?? []).filter((c) => c.moduleId === `score:${active?.id}`);
+  const [justRecorded, setJustRecorded] = useState(false);
 
   const selectScore = (id: string) => {
     setActiveId(id);
     setTicked(new Set());
+    setJustRecorded(false);
   };
 
   const toggle = (criterionId: string) => {
@@ -56,6 +60,7 @@ export function ScoresPanel() {
       next.add(criterionId);
       return next;
     });
+    setJustRecorded(false);
   };
 
   const record = () => {
@@ -75,12 +80,14 @@ export function ScoresPanel() {
         computedAt: new Date().toISOString(),
       },
     ]);
+    setJustRecorded(true);
   };
 
   if (scores.length === 0) return null;
 
   return (
     <section className="card">
+      <PatientStrip />
       <h2>Scores</h2>
 
       {scores.length > 1 && (
@@ -139,9 +146,30 @@ export function ScoresPanel() {
             {active.reference}
           </p>
 
-          <button className="btn" disabled={!band} onClick={record}>
-            Record this result
-          </button>
+          <div className="record-row">
+            <button className="btn" disabled={!band} onClick={record}>
+              Record this result
+            </button>
+            {justRecorded && <span className="pill good">Recorded ✓</span>}
+          </div>
+
+          {recorded.length > 0 && (
+            <div className="rows" style={{ marginTop: 14 }}>
+              <p className="hint" style={{ margin: '0 0 6px' }}>
+                Already recorded on this script. Printing is off by default —
+                turn it on in Settings → Paper &amp; letterhead.
+              </p>
+              {recorded.map((c) => (
+                <div className="row-item" key={c.id}>
+                  <span className="who mono">
+                    {c.value} {c.unit}
+                  </span>
+                  <span className="meta">{c.method}</span>
+                  <time>{c.computedAt.slice(11, 16)}</time>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </section>

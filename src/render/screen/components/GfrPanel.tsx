@@ -14,17 +14,31 @@ import { useMemo, useState } from 'react';
 import type { CreatinineUnit } from '@domain/modules/gfr.ts';
 import { estimateCkdEpi, estimateCockcroftGault, kdigoStage } from '@domain/modules/gfr.ts';
 import { useStore, newId } from '../store.tsx';
+import { PatientStrip } from './PatientStrip.tsx';
 
 export function GfrPanel() {
   const { rx, setCalculations } = useStore();
   const patient = rx.patient;
-  const ageYears = patient.ageDays ? patient.ageDays / 365.25 : Number.NaN;
+  /*
+    patient.ageDays is only ever written by GrowthPanel's date-of-birth field
+    (domain/growth's ageDaysBetween) -- and the medicine pack, the one that
+    enables this module, never enables growth. Depending on it alone left
+    eGFR permanently stuck on "missing age" for every real adult patient, with
+    no way to clear it. This field is the fix: a plain age-in-years input,
+    same self-contained pattern BmiPanel already uses for weight/height,
+    falling back to patient.ageDays only when something (a paediatric pack
+    that also happened to enable gfr) has actually set it.
+  */
+  const [ageInput, setAgeInput] = useState(
+    patient.ageDays ? String(Math.round(patient.ageDays / 365.25)) : '',
+  );
+  const ageYears = patient.ageDays ? patient.ageDays / 365.25 : Number(ageInput);
   const [creatinine, setCreatinine] = useState('');
   const [unit, setUnit] = useState<CreatinineUnit>('mg/dL');
 
   const missing: string[] = [];
   if (!patient.sex) missing.push('sex');
-  if (!Number.isFinite(ageYears)) missing.push('age');
+  if (!Number.isFinite(ageYears) || ageYears <= 0) missing.push('age');
 
   const input = useMemo(
     () => ({
@@ -40,6 +54,8 @@ export function GfrPanel() {
   const ready = missing.length === 0 && Number(creatinine) > 0;
   const ckdEpi = ready ? estimateCkdEpi(input) : null;
   const crCl = ready ? estimateCockcroftGault(input) : null;
+  const recorded = (rx.calculations ?? []).filter((c) => c.moduleId === 'gfr');
+  const [justRecorded, setJustRecorded] = useState(false);
 
   const record = () => {
     const now = new Date().toISOString();
@@ -75,10 +91,12 @@ export function GfrPanel() {
       });
     }
     setCalculations(next);
+    setJustRecorded(true);
   };
 
   return (
     <section className="card">
+      <PatientStrip />
       <h2>eGFR</h2>
       <p className="hint" style={{ marginTop: 0 }}>
         Two estimates, because they answer different questions. CKD-EPI stages
@@ -88,15 +106,30 @@ export function GfrPanel() {
         decide there.
       </p>
 
-      {missing.length > 0 && (
+      {!patient.sex && (
         <div className="warn-box">
-          <strong>Missing {missing.join(' and ')}.</strong>
-          Fill the patient's {missing.join(' and ')} in the patient bar before
-          this can compute anything.
+          <strong>Missing sex.</strong>
+          Fill the patient's sex in the patient bar before this can compute
+          anything.
         </div>
       )}
 
       <div className="num-row" style={{ marginBottom: 10 }}>
+        {!patient.ageDays && (
+          <div className="field num" style={{ flex: 1 }}>
+            <label>Age (years)</label>
+            <input
+              inputMode="decimal"
+              aria-label="Age in years"
+              value={ageInput}
+              placeholder="e.g. 45"
+              onChange={(e) => {
+                setAgeInput(e.target.value);
+                setJustRecorded(false);
+              }}
+            />
+          </div>
+        )}
         <div className="field num" style={{ flex: 1 }}>
           <label>Serum creatinine</label>
           <input
@@ -104,7 +137,10 @@ export function GfrPanel() {
             aria-label="Serum creatinine"
             value={creatinine}
             placeholder={unit === 'mg/dL' ? 'e.g. 1.0' : 'e.g. 88'}
-            onChange={(e) => setCreatinine(e.target.value)}
+            onChange={(e) => {
+              setCreatinine(e.target.value);
+              setJustRecorded(false);
+            }}
           />
         </div>
         <div className="opt-group">
@@ -170,10 +206,31 @@ export function GfrPanel() {
               </div>
             )}
           </div>
-          <button className="btn" disabled={!ckdEpi?.ok && !crCl?.ok} onClick={record}>
-            Record {ckdEpi?.ok && crCl?.ok ? 'these results' : 'this result'}
-          </button>
+          <div className="record-row">
+            <button className="btn" disabled={!ckdEpi?.ok && !crCl?.ok} onClick={record}>
+              Record {ckdEpi?.ok && crCl?.ok ? 'these results' : 'this result'}
+            </button>
+            {justRecorded && <span className="pill good">Recorded ✓</span>}
+          </div>
         </>
+      )}
+
+      {recorded.length > 0 && (
+        <div className="rows" style={{ marginTop: 14 }}>
+          <p className="hint" style={{ margin: '0 0 6px' }}>
+            Already recorded on this script. Printing is off by default —
+            turn it on in Settings → Paper &amp; letterhead.
+          </p>
+          {recorded.map((c) => (
+            <div className="row-item" key={c.id}>
+              <span className="who mono">
+                {c.value} {c.unit}
+              </span>
+              <span className="meta">{c.label}</span>
+              <time>{c.computedAt.slice(11, 16)}</time>
+            </div>
+          ))}
+        </div>
       )}
     </section>
   );

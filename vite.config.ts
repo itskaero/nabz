@@ -16,7 +16,7 @@ export default defineConfig({
         short_name: 'Nabz',
         description:
           'Bilingual clinical prescriptions. Records stay on this device.',
-        theme_color: '#0f766e',
+        theme_color: '#0f8055',
         background_color: '#eef1f2',
         display: 'standalone',
         orientation: 'portrait',

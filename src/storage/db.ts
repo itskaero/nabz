@@ -259,6 +259,18 @@ export async function prescriptionCount(): Promise<number> {
   return (await db()).count('prescriptions');
 }
 
+/**
+ * Every prescription, for the Home analytics summary to bucket by month
+ * (domain/analytics.ts's monthlyVolume). Full scan, same idiom as
+ * recentPrescriptions/searchHistory/patientHistory above -- this file has no
+ * function that queries the prescriptions store any other way. Routed
+ * through normalisePrescription for the same reason every other read here is.
+ */
+export async function monthlyVolumeSnapshot(): Promise<Prescription[]> {
+  const all = await (await db()).getAll('prescriptions');
+  return all.map(normalisePrescription);
+}
+
 // --- patients ---------------------------------------------------------------
 
 /**
@@ -535,6 +547,22 @@ export async function promotionCandidates(
 ): Promise<LearnedTerm[]> {
   const rows = await (await db()).getAllFromIndex('learned', 'byField', field);
   return rows.filter((r) => r.count >= minCount).sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Top diagnoses "as written", for the Home analytics summary
+ * (domain/analytics.ts's rankDiagnoses). Reads the SAME indexed `learned`
+ * store as suggest()/promotionCandidates() above, filtered to
+ * field==='diagnosis' -- NOT a full prescriptions scan.
+ *
+ * Case/trim-normalised only (learn()'s own key shape), not fuzzy-grouped:
+ * "URTI" and "Upper respiratory tract infection" stay separate rows.
+ * All-time cumulative -- this store has no per-entry month timestamp (only a
+ * single lastUsed), so it cannot drive a month-on-month diagnosis trend.
+ */
+export async function topDiagnoses(limit = 8): Promise<LearnedTerm[]> {
+  const rows = await (await db()).getAllFromIndex('learned', 'byField', 'diagnosis');
+  return rows.sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
 // --- profile ---------------------------------------------------------------

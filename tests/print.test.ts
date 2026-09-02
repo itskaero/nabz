@@ -426,6 +426,63 @@ describe('advice tiers stay distinguishable on paper', () => {
   });
 });
 
+describe('recorded calculations (eGFR, BMI, scores) on the printed sheet', () => {
+  const gfrResult = {
+    id: 'c1',
+    moduleId: 'gfr',
+    label: 'eGFR (CKD-EPI 2021)',
+    value: 73.4,
+    unit: 'mL/min/1.73m2',
+    method: 'CKD-EPI 2021 (race-free, creatinine)',
+    inputs: { age: '40', sex: 'F', creatinine: '1.0' },
+    computedAt: '2026-08-21T09:00:00.000Z',
+  };
+
+  it('does NOT print when printCalculations is off, even with a recorded result', () => {
+    const text = allText(build({ calculations: [gfrResult] }, profile({ printCalculations: false })));
+    expect(text).not.toContain('CKD-EPI');
+  });
+
+  it('does NOT print an empty section when printCalculations is on but nothing was recorded', () => {
+    const text = allText(build({ calculations: [] }, profile({ printCalculations: true })));
+    expect(text).not.toContain('Calculations');
+  });
+
+  it('prints the value, unit AND method once recorded and the setting is on', () => {
+    // The method is what makes a score result actionable on paper -- "3 / 9"
+    // alone says nothing without its band, so it must appear, not just the number.
+    const text = allText(build({ calculations: [gfrResult] }, profile({ printCalculations: true })));
+    expect(text).toContain('eGFR (CKD-EPI 2021)');
+    expect(text).toContain('73.4');
+    expect(text).toContain('mL/min/1.73m2');
+    expect(text).toContain('CKD-EPI 2021 (race-free, creatinine)');
+  });
+
+  it('prints a score result with its band, not a bare number', () => {
+    const curb65Result = {
+      id: 'c2',
+      moduleId: 'score:curb65',
+      label: 'CURB-65 (pneumonia severity)',
+      value: 3,
+      unit: '/ 5',
+      method: 'High severity',
+      inputs: {},
+      computedAt: '2026-08-21T09:05:00.000Z',
+    };
+    const text = allText(build({ calculations: [curb65Result] }, profile({ printCalculations: true })));
+    expect(text).toContain('CURB-65');
+    expect(text).toContain('High severity');
+  });
+
+  it('preview and print agree, because both come from the same buildDocument call', () => {
+    // Not a separate assertion on the PDF bytes -- `build()` IS the function
+    // both the preview screen and renderPdf() call, so this test file's own
+    // shared path is the guarantee; recorded here so the invariant has a name.
+    const model = build({ calculations: [gfrResult] }, profile({ printCalculations: true }));
+    expect(allText(model)).toContain('CKD-EPI');
+  });
+});
+
 describe('PDF output', () => {
   it('produces a real PDF at the right page size', { timeout: 30_000 }, async () => {
     const bytes = await renderPdf(build());

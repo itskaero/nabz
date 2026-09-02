@@ -22,6 +22,7 @@ import {
   medicineAdviceStrings,
   medicineRedFlagStrings,
   proposedSigTemplateStrings,
+  sigTemplateLabels,
 } from './medicine.strings.ts';
 import type { BilingualString } from './medicine.strings.ts';
 
@@ -46,6 +47,13 @@ function overlay(
 
   const templates: Record<string, string> = { ...base.templates };
   for (const [id, s] of Object.entries(sigTemplates)) templates[id] = s[key];
+
+  // The picker labels for those same templates -- EN-only UI text, so they
+  // merge just once (on the 'en' pass) rather than per-locale like everything
+  // above. See sigTemplateLabels' own doc comment in medicine.strings.ts.
+  if (key === 'en') {
+    for (const [id, label] of Object.entries(sigTemplateLabels)) strings[id] = label;
+  }
 
   return { ...base, templates, advice: { tier1, tier2 }, strings };
 }

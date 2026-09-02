@@ -38,9 +38,9 @@ export const palette = {
   line: '#dfe4e3',
   lineSoft: '#eceeed',
 
-  teal: '#0f766e',
-  tealInk: '#0b5a54',
-  tealWash: '#e6f2f0',
+  teal: '#0f8055',
+  tealInk: '#0b6b3f',
+  tealWash: '#e3f2ea',
 
   alert: '#b4232a',
   alertWash: '#fbeceb',
@@ -52,9 +52,14 @@ export const palette = {
    * DESIGN.md 7: NOT the cream-paper cliche. The patient block is a faint
    * in-palette teal tint so the jump from workspace to document is a gradient
    * within one family rather than a change of app.
+   *
+   * This palette is the printed artifact's ONLY palette (DESIGN.md 14a) --
+   * there is no dark variant here, ever. A printed page has no screen theme;
+   * src/render/screen/styles.css's [data-theme='dark'] block has no
+   * counterpart in this file by design.
    */
-  patientTint: '#f2f7f6',
-  sheet: '#f6f8f8',
+  patientTint: '#f1f8f4',
+  sheet: '#f5f9f7',
 } as const;
 
 export const ink = hexToRgb(palette.ink);

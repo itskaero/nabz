@@ -299,6 +299,30 @@ export const proposedSigTemplateStrings: Record<string, BilingualString> = {
   },
 };
 
+/**
+ * The short button label for each sig template above -- the "Form of
+ * instruction" picker in SigEditor.tsx renders one of these per id, and it
+ * used to fall back to printing the raw id (`sig.injection.im`) when a pack
+ * declared a template the component's own hardcoded label map didn't know
+ * about. CLAUDE.md 6a: specialty content is never a hardcoded component
+ * constant -- this is why these live here, pack-scoped, instead of a bigger
+ * literal added to SigEditor.tsx's own TEMPLATE_LABELS.
+ *
+ * EN only, deliberately: this is doctor-facing picker UI, not printed
+ * patient content -- it never needs a bidi/Urdu counterpart the way the
+ * template SENTENCES above do.
+ */
+export const sigTemplateLabels: Record<string, string> = {
+  'sig.sublingual': 'Sublingual',
+  'sig.injection.sc': 'Injection (under the skin)',
+  'sig.injection.im': 'Injection (into the muscle)',
+  'sig.nebulised': 'Nebulised',
+  'sig.tapering': 'Tapering course',
+  'sig.weekly': 'Once weekly only',
+  'sig.alternate_days': 'Alternate days',
+  'sig.titrated': 'Titrated dose',
+};
+
 export const medicineStrings = {
   ...medicineAdviceStrings,
   ...medicineRedFlagStrings,

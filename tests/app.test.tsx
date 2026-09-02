@@ -43,16 +43,28 @@ afterEach(async () => {
   resetContentCache();
 });
 
-const renderApp = () =>
-  render(
+/**
+ * A doctor device now lands on Home, not the write view (PRODUCT.md's
+ * analytics addendum) -- every test below is about the write-view shell or
+ * a specific tab/module, so this helper does what a real doctor would do
+ * first: tap "New prescription" to get there, the same one-tap primary
+ * action Home is built around.
+ */
+const renderApp = async () => {
+  const result = render(
     <StoreProvider>
       <App />
     </StoreProvider>,
   );
+  const newRx = await screen.findByRole('button', { name: 'New prescription' });
+  await userEvent.click(newRx);
+  await screen.findAllByRole('tab');
+  return result;
+};
 
 describe('shell', () => {
   it('tags every section with the language it prints in', async () => {
-    renderApp();
+    await renderApp();
     const tabs = await screen.findAllByRole('tab');
     const labelled = tabs.map((t) => t.textContent);
     expect(labelled.some((t) => t?.includes('Problems') && t.includes('EN'))).toBe(true);
@@ -62,7 +74,7 @@ describe('shell', () => {
   });
 
   it('says records live on this device, without burying it', async () => {
-    renderApp();
+    await renderApp();
     // findBy, not getBy: the store resolves its content asynchronously, and a
     // synchronous assertion here races that update.
     expect(await screen.findByText(/on this device only/i)).toBeTruthy();
@@ -70,7 +82,7 @@ describe('shell', () => {
 
   it('shows the allergy banner the moment an allergy is entered', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.type(screen.getByPlaceholderText('none known'), 'Penicillin');
     // Exactly one alert on the page, and it is the allergy. Anything else that
     // needs saying uses role="status" (DESIGN.md 3: red, and the alert role
@@ -81,7 +93,7 @@ describe('shell', () => {
   it('explains a typesetting failure instead of showing a blank page', async () => {
     // jsdom has no fetch for /fonts/*, so the shaper genuinely fails to load
     // here -- which makes this the real failure path, not a simulated one.
-    renderApp();
+    await renderApp();
     const status = await screen.findByRole('status');
     expect(status.textContent).toMatch(/preview and print are\s+unavailable/);
     expect(status.textContent).toContain('still write and save');
@@ -92,7 +104,7 @@ describe('shell', () => {
 describe('problems and diagnosis are free text', () => {
   it('accepts anything typed', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.type(screen.getByPlaceholderText(/Fever for 3 days/), 'Fever for 3 days');
     await user.click(screen.getByRole('button', { name: 'Add' }));
     expect(screen.getByText('Fever for 3 days')).toBeTruthy();
@@ -101,7 +113,7 @@ describe('problems and diagnosis are free text', () => {
 
   it('offers no chips for diagnosis', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(await screen.findByRole('tab', { name: /Diagnosis/ }));
     expect(document.querySelectorAll('.chip').length).toBe(0);
     expect(screen.getByText(/diagnosis is judgement/i)).toBeTruthy();
@@ -111,7 +123,7 @@ describe('problems and diagnosis are free text', () => {
 describe('examination chips', () => {
   it('cycles untouched to present to absent, and records the negative', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Exam/ }));
 
     const chip = screen.getByRole('button', { name: /^wheeze:/ });
@@ -139,7 +151,7 @@ describe('examination chips', () => {
 describe('medications', () => {
   it('accepts an unknown drug and never invents the instructions', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Medicines/ }));
 
     await user.type(
@@ -160,7 +172,7 @@ describe('medications', () => {
 
   it('autocompletes a brand name and offers its strength as a suggestion', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Medicines/ }));
     await user.type(screen.getByPlaceholderText(/Brand or generic/), 'Amoxil');
 
@@ -175,7 +187,7 @@ describe('medications', () => {
 
   it('composes both languages live as the doctor fills the slots', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Medicines/ }));
     await user.type(screen.getByPlaceholderText(/Brand or generic/), 'Calpol');
     await user.click(screen.getAllByRole('button', { name: /Calpol/ })[0]!);
@@ -197,7 +209,7 @@ describe('medications', () => {
 describe('advice tiers', () => {
   it('gives red flags no free-text field at all', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Advice/ }));
     await user.click(screen.getByRole('button', { name: 'Red flags' }));
 
@@ -208,7 +220,7 @@ describe('advice tiers', () => {
 
   it('marks the doctor’s own words as not vetted', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Advice/ }));
     await user.click(screen.getByRole('button', { name: 'My own words' }));
 
@@ -223,7 +235,7 @@ describe('advice tiers', () => {
 
   it('adds a vetted red flag with its Urdu already reviewed', async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Advice/ }));
     await user.click(screen.getByRole('button', { name: 'Red flags' }));
     await user.click(screen.getByRole('button', { name: /breathing becomes fast/ }));
@@ -246,7 +258,7 @@ describe('edited content reaches the app', () => {
     resetContentCache();
 
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Exam/ }));
 
     expect(await screen.findByRole('button', { name: /^expiratory wheeze:/ })).toBeTruthy();
@@ -260,7 +272,7 @@ describe('edited content reaches the app', () => {
     resetContentCache();
 
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     await user.click(screen.getByRole('tab', { name: /Medicines/ }));
     await user.type(screen.getByPlaceholderText(/Brand or generic/), 'Calpol');
     await user.click(screen.getAllByRole('button', { name: /Calpol/ })[0]!);
@@ -283,7 +295,7 @@ describe('edited content reaches the app', () => {
     await db.putInstalledPack(stored);
     resetContentCache();
 
-    renderApp();
+    await renderApp();
     // Two independent banners can be on screen at once (this one, and jsdom's
     // real font-load failure) -- findAllByRole resolves the instant ANY status
     // exists, not once every eventual one has mounted, so waitFor is what
@@ -303,7 +315,7 @@ describe('module nav follows the active pack', () => {
   it('medicine (modules: gfr, bmi) shows eGFR, BMI / BSA and Scores, no Growth', async () => {
     await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
     resetContentCache();
-    renderApp();
+    await renderApp();
 
     expect(await screen.findByRole('button', { name: 'eGFR' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'BMI / BSA' })).toBeTruthy();
@@ -312,7 +324,7 @@ describe('module nav follows the active pack', () => {
   });
 
   it('the default pack (paediatrics, no scores) shows Growth, no eGFR/BMI/Scores tab', async () => {
-    renderApp();
+    await renderApp();
     expect(await screen.findByRole('button', { name: 'Growth' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'eGFR' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'BMI / BSA' })).toBeNull();
@@ -322,10 +334,45 @@ describe('module nav follows the active pack', () => {
   it('opening Scores for medicine shows CURB-65 among the choices', async () => {
     await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
     resetContentCache();
-    renderApp();
+    await renderApp();
 
     const scoresBtn = await screen.findByRole('button', { name: 'Scores' });
     await userEvent.click(scoresBtn);
     expect(await screen.findByRole('button', { name: /CURB-65/ })).toBeTruthy();
+  });
+
+  it('the sex select reads Male/Female under medicine, Boy/Girl under paediatrics', async () => {
+    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    resetContentCache();
+    await renderApp();
+    await screen.findByRole('button', { name: 'eGFR' });
+    expect(document.querySelector('.f-sex')!.textContent).toContain('Male');
+    expect(document.querySelector('.f-sex')!.textContent).not.toContain('Boy');
+  });
+
+  it('eGFR is actually usable: an adult patient with no dob can still get a result', async () => {
+    // The regression this pins: patient.ageDays is written ONLY by
+    // GrowthPanel's date-of-birth field, and medicine (the pack that enables
+    // gfr) never enables growth -- so GfrPanel used to be permanently stuck
+    // on "missing age" for every real adult patient, with nothing on screen
+    // that could ever clear it.
+    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    resetContentCache();
+    const user = userEvent.setup();
+    await renderApp();
+
+    const sex = document.querySelector('.f-sex select') as HTMLSelectElement;
+    await user.selectOptions(sex, 'F');
+
+    await user.click(await screen.findByRole('button', { name: 'eGFR' }));
+    await user.type(await screen.findByLabelText('Age in years'), '40');
+    await user.type(await screen.findByLabelText('Serum creatinine'), '1.0');
+
+    const recordBtn = (await screen.findByRole('button', { name: /Record/ })) as HTMLButtonElement;
+    expect(recordBtn.disabled).toBe(false);
+    await user.click(recordBtn);
+
+    expect(await screen.findByText('Recorded ✓')).toBeTruthy();
+    expect(screen.getByText(/Already recorded on this script/)).toBeTruthy();
   });
 });

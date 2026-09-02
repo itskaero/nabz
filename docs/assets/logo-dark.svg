@@ -13,12 +13,12 @@
     HarfBuzz shaper, so the joins are the ones the renderer itself would draw.
 
     This is the variant for dark backgrounds. The teal is lifted two steps:
-    the app's #0f766e is chosen to sit on white paper and goes muddy on
+    the app's #0f8055 is chosen to sit on white paper and goes muddy on
     near-black, where it reads as grey rather than as the brand colour.
   -->
   <defs>
     <linearGradient id="nabz-pulse-dark" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="0" stop-color="#0f8055"/>
       <stop offset="0.6" stop-color="#14b8a6"/>
       <stop offset="1" stop-color="#5eead4"/>
     </linearGradient>

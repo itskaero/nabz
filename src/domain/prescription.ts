@@ -199,9 +199,16 @@ export interface CalcResult {
   computedAt: string;
 }
 
-/** One printable line per recorded result -- "eGFR (CKD-EPI 2021): 73 mL/min/1.73m2". */
+/**
+ * One printable line per recorded result -- "eGFR (CKD-EPI 2021): 73
+ * mL/min/1.73m2 -- CKD-EPI 2021 (race-free, creatinine)". `method` is always
+ * appended: for a score it carries the band ("CURB-65: 3 / 5 -- High
+ * severity"), which is the part of the result that is actually actionable --
+ * dropping it would print a bare number with no interpretation attached, the
+ * same citation discipline dosing suggestions already follow.
+ */
 export function composeCalculations(items: CalcResult[]): string[] {
-  return items.map((c) => `${c.label}: ${c.value} ${c.unit}`);
+  return items.map((c) => `${c.label}: ${c.value} ${c.unit} — ${c.method}`);
 }
 
 // --- the record ------------------------------------------------------------

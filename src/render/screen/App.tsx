@@ -8,7 +8,8 @@
  * Medications is EN·UR and Advice is UR·EN understands the document before
  * printing it.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { languageFor } from '@config/doctorProfile.ts';
 import type { SectionId } from '@config/appDefaults.ts';
 import { appDefaults } from '@config/appDefaults.ts';
@@ -36,8 +37,10 @@ import { canAccess, hasPin } from '@domain/roles.ts';
 import { hasWebCrypto } from '@domain/secureContext.ts';
 import type { DeviceRole } from '@domain/deviceRole.ts';
 import { deviceRole, deviceAllows } from '@domain/deviceRole.ts';
+import { colorScheme, applyColorScheme } from '@domain/colorScheme.ts';
 import { DeviceRolePicker } from './components/DeviceRolePicker.tsx';
 import { useBackgroundSync } from './clinic/useBackgroundSync.ts';
+import { HomePanel } from './components/HomePanel.tsx';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
 const ClinicPanel = lazy(() =>
@@ -66,7 +69,16 @@ const ScoresPanel = lazy(() =>
  * role alone and never on whether the active pack actually offered growth,
  * which meant a pack with `modules: []` still showed a tab leading nowhere.
  */
-type View = 'write' | 'preview' | 'history' | 'settings' | 'builder' | 'clinic' | 'scores' | ModuleId;
+type View =
+  | 'home'
+  | 'write'
+  | 'preview'
+  | 'history'
+  | 'settings'
+  | 'builder'
+  | 'clinic'
+  | 'scores'
+  | ModuleId;
 
 const TAB_ORDER: SectionId[] = [
   'problems',
@@ -102,11 +114,38 @@ function canShareFiles(): boolean {
   }
 }
 
+/**
+ * Scrolls the strip's active child into view whenever `dep` changes -- shared
+ * by the top nav (`[aria-pressed]`, keyed on `view`) and the section-tabs
+ * strip (`role="tab"` uses `[aria-selected]` instead, keyed on `tab`), so
+ * overflowing either one at 390px doesn't lose the doctor's place (critique
+ * P1). A 2nd-pass critique found this covering only the top nav; both strips
+ * go through the same hook now.
+ */
+function useScrollActiveIntoView(ref: RefObject<HTMLElement | null>, dep: unknown): void {
+  useEffect(() => {
+    const active = ref.current?.querySelector('[aria-pressed="true"], [aria-selected="true"]');
+    // scrollIntoView is unimplemented in jsdom (and, defensively, on any
+    // other environment that doesn't offer it) -- this call is a UX nicety,
+    // not something the app depends on to function.
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dep]);
+}
+
 export function App() {
   const store = useStore();
   const { rx, profile, pack, phrases, contentRejected, dirty, save, startNew } = store;
+  /*
+    A doctor's device lands on Home -- the practice-analytics summary, with
+    "New prescription" as its one unmistakable primary action -- rather than
+    dropping straight into a blank script. Reception is unchanged: the queue
+    is the only thing that machine does, so it still opens directly there.
+  */
   const [view, setView] = useState<View>(() =>
-    deviceRole() === 'reception' ? 'clinic' : 'write',
+    deviceRole() === 'reception' ? 'clinic' : 'home',
   );
   const [tab, setTab] = useState<SectionId>('problems');
   const [fontsLoaded, setFontsLoaded] = useState(fontsReady());
@@ -135,6 +174,39 @@ export function App() {
     if (deviceRole() !== null) return;
     void db.prescriptionCount().then((n) => setAskRole(n === 0));
   }, []);
+
+  /*
+    Applies the doctor's chosen (or OS-default) theme before/at first paint --
+    index.html's inline script already did this once to avoid a flash, this
+    keeps it correct if the OS signal changes while the app stays open and
+    the stored preference is 'system' (DESIGN.md 14a).
+  */
+  useEffect(() => {
+    applyColorScheme();
+    // matchMedia is absent in some test/embed contexts (jsdom does not
+    // implement it) -- colorScheme.ts's own functions already guard their
+    // internal use of it, but this listener is opt-in extra behaviour, not
+    // something the app needs to run at all when it is unavailable.
+    if (typeof matchMedia !== 'function') return;
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => {
+      if (colorScheme() === 'system') applyColorScheme();
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Both the top nav and the section-tabs strip scroll sideways at 390px once
+  // enough buttons are on (critique P1) -- this keeps the ACTIVE one in view
+  // on selection in either strip, rather than relying on a doctor noticing
+  // the edge-fade hint and scrolling by hand to find where they already are.
+  // A 2nd-pass critique found this wired to .topbar-nav only -- .tabs (the
+  // in-script Problems/Exam/.../Advice strip) overflows too and had no
+  // coverage at all, so both refs now go through the same effect.
+  const navRef = useRef<HTMLElement>(null);
+  const tabsRef = useRef<HTMLElement>(null);
+  useScrollActiveIntoView(navRef, view);
+  useScrollActiveIntoView(tabsRef, tab);
 
   useEffect(() => {
     if (fontsLoaded) return;
@@ -267,7 +339,7 @@ export function App() {
         <DeviceRolePicker
           onChosen={(chosen) => {
             setRole(chosen);
-            setView(chosen === 'reception' ? 'clinic' : 'write');
+            setView(chosen === 'reception' ? 'clinic' : 'home');
             // The queue is off by default so a solo doctor never meets it, but
             // it is the ONLY thing a front desk does -- leaving it off hands
             // the receptionist a blank screen.
@@ -302,7 +374,16 @@ export function App() {
           not disabled, not PIN-hidden. There is nothing behind them on this
           machine, and a greyed-out button implies there is.
         */}
-        <nav className="topbar-nav">
+        <nav className="topbar-nav" ref={navRef}>
+          {!reception && (
+            <button
+              className="icon-btn"
+              aria-pressed={view === 'home'}
+              onClick={() => setView('home')}
+            >
+              Home
+            </button>
+          )}
           {profile.clinic.enabled && (
             <button
               className="icon-btn"
@@ -445,10 +526,14 @@ export function App() {
         />
       )}
 
+      {!reception && view === 'home' && (
+        <HomePanel onNew={() => setView('write')} onOpenHistory={() => setView('history')} />
+      )}
+
       {shown('write') && view === 'write' && (
         <>
           <PatientBar />
-          <nav className="tabs" role="tablist">
+          <nav className="tabs" role="tablist" ref={tabsRef}>
             {TAB_ORDER.map((id) => {
               const lang = languageFor(profile, id);
               const tag = lang.secondary
@@ -554,6 +639,7 @@ export function App() {
         </Suspense>
       )}
 
+      {view !== 'home' && (
       <footer className="actionbar">
         {view === 'write' && (
           <>
@@ -605,14 +691,20 @@ export function App() {
             </button>
           )}
       </footer>
+      )}
     </div>
   );
 }
 
 function PatientBar() {
-  const { rx, setPatient, patient: identified, clearPatient } = useStore();
+  const { rx, pack, setPatient, patient: identified, clearPatient } = useStore();
   const [picking, setPicking] = useState(false);
   const p = rx.patient;
+  // Sex-label wording and the age placeholder are the one place patient-bar
+  // copy is specialty-specific: "Boy"/"Girl" was hardcoded regardless of the
+  // active pack, so an adult on the medicine pack saw their sex offered as
+  // "Boy"/"Girl". Growth is the paediatric tell; no schema change needed.
+  const paediatric = pack.modules.includes('growth');
   return (
     <div className="patient">
       {/*
@@ -648,7 +740,7 @@ function PatientBar() {
           <label>Age</label>
           <input
             value={p.age ?? ''}
-            placeholder="3 y 2 m"
+            placeholder={paediatric ? '3 y 2 m' : '45 y'}
             onChange={(e) => setPatient({ age: e.target.value })}
           />
         </div>
@@ -661,8 +753,8 @@ function PatientBar() {
             }
           >
             <option value="">—</option>
-            <option value="M">Boy</option>
-            <option value="F">Girl</option>
+            <option value="M">{paediatric ? 'Boy' : 'Male'}</option>
+            <option value="F">{paediatric ? 'Girl' : 'Female'}</option>
           </select>
         </div>
         <div className="field num f-weight">

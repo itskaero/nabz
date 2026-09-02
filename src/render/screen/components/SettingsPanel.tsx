@@ -24,6 +24,8 @@ import { applyPatch } from '@domain/patch.ts';
 import { hasPin, openGate, setPin } from '@domain/roles.ts';
 import { secureContextProblem } from '@domain/secureContext.ts';
 import { deviceRole, setDeviceRole } from '@domain/deviceRole.ts';
+import type { ColorScheme } from '@domain/colorScheme.ts';
+import { colorScheme, setColorScheme, applyColorScheme } from '@domain/colorScheme.ts';
 import type { InstalledPack } from '@storage/db.ts';
 import { installPack, listPacks, removePack } from '@data/provider.ts';
 import { parsePackFile } from '../builder/packFile.ts';
@@ -69,6 +71,9 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
   // page is open, so it is read once.
   const [cryptoProblem] = useState(secureContextProblem);
   const [role, setRole] = useState(deviceRole);
+  // A screen preference, not a doctor preference (@domain/colorScheme.ts's own
+  // doc comment) -- same localStorage-per-device pattern as deviceRole above.
+  const [theme, setTheme] = useState<ColorScheme>(colorScheme);
   const [confirmReception, setConfirmReception] = useState(false);
   const [installedPacks, setInstalledPacks] = useState<InstalledPack[]>([]);
   const [packStatus, setPackStatus] = useState<string | null>(null);
@@ -152,6 +157,39 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
 
   return (
     <div className="body">
+      <section className="card settings-section">
+        <h3>Appearance</h3>
+        <div className="opt-group">
+          <label>Theme</label>
+          <div className="opts">
+            {(
+              [
+                ['light', 'Light'],
+                ['dark', 'Dark'],
+                ['system', 'Match device'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                className="opt"
+                aria-pressed={theme === id}
+                onClick={() => {
+                  setColorScheme(id);
+                  setTheme(id);
+                  applyColorScheme(id);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="ref-note">
+            This screen only — print always comes out on plain white paper,
+            whichever you pick here.
+          </p>
+        </div>
+      </section>
+
       <section className="card settings-section">
         <h3>Your details</h3>
         <div className="field">
@@ -266,6 +304,29 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
             </p>
           </div>
         )}
+        <div className="opt-group" style={{ marginTop: 14 }}>
+          <label>Recorded calculations (eGFR, BMI, scores, ...)</label>
+          <div className="opts">
+            <button
+              className="opt"
+              aria-pressed={!profile.printCalculations}
+              onClick={() => setProfile({ ...profile, printCalculations: false })}
+            >
+              Keep on the chart only
+            </button>
+            <button
+              className="opt"
+              aria-pressed={profile.printCalculations}
+              onClick={() => setProfile({ ...profile, printCalculations: true })}
+            >
+              Also print on the sheet
+            </button>
+          </div>
+          <p className="ref-note">
+            A recorded result is always saved with the prescription either way
+            — this only decides whether it also appears on the printed copy.
+          </p>
+        </div>
       </section>
 
       <section className="card settings-section">
@@ -611,30 +672,6 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
             {packStatus}
           </p>
         )}
-
-        <div className="opt-group">
-          <label>Recorded calculations (eGFR, ...)</label>
-          <div className="opts">
-            <button
-              className="opt"
-              aria-pressed={!profile.printCalculations}
-              onClick={() => setProfile({ ...profile, printCalculations: false })}
-            >
-              Keep on the chart only
-            </button>
-            <button
-              className="opt"
-              aria-pressed={profile.printCalculations}
-              onClick={() => setProfile({ ...profile, printCalculations: true })}
-            >
-              Also print on the sheet
-            </button>
-          </div>
-          <p className="ref-note">
-            A recorded result is always saved with the prescription either way
-            — this only decides whether it also appears on the printed copy.
-          </p>
-        </div>
 
         <div className="warn-box" style={{ margin: '8px 0' }}>
           <strong>Editing content changes what patients are given.</strong>

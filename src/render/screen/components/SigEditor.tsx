@@ -41,6 +41,15 @@ const DOSE_UNITS: Record<string, string[]> = {
   'sig.topical': ['application'],
 };
 
+/**
+ * Base-template labels shared by every pack (paediatrics' own set, present
+ * since before packs carried their own words). A pack-specific template id
+ * (the medicine pack's `sig.sublingual`, `sig.injection.im`, ...) is NOT
+ * hardcoded here -- CLAUDE.md 6a forbids specialty content as a component
+ * constant -- it resolves through `packs.en.strings[id]` instead, which is
+ * where `medicine.ts`'s overlay merges `sigTemplateLabels` in. This map is
+ * only the fallback for the ids every pack can assume.
+ */
 const TEMPLATE_LABELS: Record<string, string> = {
   'sig.oral.liquid': 'Liquid by mouth',
   'sig.oral.solid': 'Tablet / capsule',
@@ -54,6 +63,48 @@ const TEMPLATE_LABELS: Record<string, string> = {
   'sig.inhaled': 'Inhaler',
 };
 
+/**
+ * Last-resort fallback if a future pack ships a template id neither
+ * TEMPLATE_LABELS nor the pack's own strings name -- turns `sig.some_new_id`
+ * into "Some new id" rather than printing the raw dotted key verbatim, so a
+ * missing label reads as unpolished prose instead of as leaked source code.
+ */
+function humanizeTemplateId(id: string): string {
+  const tail = id.replace(/^sig\./, '').replace(/[._]/g, ' ');
+  return tail.charAt(0).toUpperCase() + tail.slice(1);
+}
+
+/**
+ * Route-family grouping for the "Form of instruction" picker. A pack with
+ * both the paediatric base templates and the medicine pack's own set offers
+ * up to 18 options at once -- a flat grid that far past the ~7-item
+ * working-memory floor. Every id a pack can currently declare falls into
+ * exactly one family; an id this map doesn't recognise still renders,
+ * ungrouped under "Other", rather than silently disappearing from the
+ * picker -- a new pack template must never make an existing option vanish.
+ */
+const TEMPLATE_GROUP: Record<string, string> = {
+  'sig.oral.liquid': 'Oral',
+  'sig.oral.solid': 'Oral',
+  'sig.oral.sachet': 'Oral',
+  'sig.sublingual': 'Oral',
+  'sig.topical': 'Topical & drops',
+  'sig.drops.eye': 'Topical & drops',
+  'sig.drops.ear': 'Topical & drops',
+  'sig.drops.nasal': 'Topical & drops',
+  'sig.inhaled': 'Inhaled / nebulised',
+  'sig.nebulised': 'Inhaled / nebulised',
+  'sig.injection.sc': 'Injectable',
+  'sig.injection.im': 'Injectable',
+  'sig.prn': 'As needed',
+  'sig.stat': 'As needed',
+  'sig.tapering': 'Special schedule',
+  'sig.weekly': 'Special schedule',
+  'sig.alternate_days': 'Special schedule',
+  'sig.titrated': 'Special schedule',
+};
+const OTHER_TEMPLATE_GROUP = 'Other';
+
 export function SigEditor({ line, pack, packs, onSave, onClose }: Props) {
   const [sig, setSig] = useState<Sig>(() => ({ ...line.sig, slots: { ...line.sig.slots } }));
 
@@ -61,6 +112,17 @@ export function SigEditor({ line, pack, packs, onSave, onClose }: Props) {
     const template = packs.en.templates[sig.templateId];
     return new Set(template ? templateSlots(template) : []);
   }, [sig.templateId]);
+
+  const templateGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const id of pack.sigTemplates) {
+      const g = TEMPLATE_GROUP[id] ?? OTHER_TEMPLATE_GROUP;
+      const bucket = groups.get(g);
+      if (bucket) bucket.push(id);
+      else groups.set(g, [id]);
+    }
+    return groups;
+  }, [pack.sigTemplates]);
 
   const preview = useMemo(() => {
     const draft: MedicationLine = { ...line, sig };
@@ -108,24 +170,33 @@ export function SigEditor({ line, pack, packs, onSave, onClose }: Props) {
 
         <div className="opt-group">
           <label>Form of instruction</label>
-          <div className="opts">
-            {pack.sigTemplates.map((id) => (
-              <button
-                key={id}
-                className="opt"
-                aria-pressed={sig.templateId === id}
-                onClick={() => {
-                  const nextUnits = DOSE_UNITS[id] ?? units;
-                  set({
-                    templateId: id,
-                    dose: { ...sig.dose, unit: nextUnits[0] ?? sig.dose.unit },
-                  });
-                }}
-              >
-                {TEMPLATE_LABELS[id] ?? id}
-              </button>
-            ))}
-          </div>
+          {[...templateGroups.entries()].map(([group, ids]) => (
+            <div key={group} style={{ marginBottom: 6 }}>
+              {templateGroups.size > 1 && (
+                <p className="hint" style={{ margin: '0 0 4px' }}>
+                  {group}
+                </p>
+              )}
+              <div className="opts">
+                {ids.map((id) => (
+                  <button
+                    key={id}
+                    className="opt"
+                    aria-pressed={sig.templateId === id}
+                    onClick={() => {
+                      const nextUnits = DOSE_UNITS[id] ?? units;
+                      set({
+                        templateId: id,
+                        dose: { ...sig.dose, unit: nextUnits[0] ?? sig.dose.unit },
+                      });
+                    }}
+                  >
+                    {TEMPLATE_LABELS[id] ?? packs.en.strings[id] ?? humanizeTemplateId(id)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         {slots.has('administer') && (

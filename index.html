@@ -6,9 +6,29 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="theme-color" content="#0f8055" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Nabz — Prescription</title>
+    <script>
+      // No-FOUC theme guard: sets [data-theme] before the bundle loads, so a
+      // doctor who chose dark never sees a light flash first. Mirrors
+      // src/domain/colorScheme.ts's own logic -- duplicated deliberately,
+      // since this runs before the module graph exists to import from.
+      (function () {
+        try {
+          var pref = localStorage.getItem('nabz.colorScheme');
+          var resolved =
+            pref === 'dark' || pref === 'light'
+              ? pref
+              : window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.dataset.theme = resolved;
+        } catch (e) {
+          /* storage blocked -- light stays the default register */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
