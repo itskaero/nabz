@@ -1,6 +1,15 @@
 /**
- * The shell (DESIGN.md 11): top bar, allergy banner, section tabs tagged with
- * the language each one prints in, scrolling body, bottom action bar.
+ * The shell (DESIGN.md 11): one nav, a title bar, banners, section tabs
+ * tagged with the language each one prints in, scrolling body, action bar.
+ *
+ * ONE NAV, NOT TWO STRIPS
+ * -----------------------
+ * This used to stack two horizontally-scrolling rows -- up to six destinations
+ * in the header, then the section tabs under them -- and on a 390px phone both
+ * ran off the right edge without saying so. The destinations now live in
+ * `shell/`: a grouped sidebar where there is room, a bottom bar within thumb
+ * reach where there is not, both generated from `navModel.ts` so a pack with
+ * no modules cannot show a TOOLS group leading nowhere.
  *
  * The language tags on the tabs are not decoration. They are the whole product
  * model made visible: this is not a "bilingual app", it is an app where each
@@ -30,7 +39,6 @@ import {
 import { PreviewSheet } from './components/PreviewSheet.tsx';
 import { DocumentKindPicker } from './components/DocumentKindPicker.tsx';
 import { MODULE_PANEL } from './modules/registry.tsx';
-import { MODULE_META } from '@domain/modules/index.ts';
 import type { ModuleId } from '@domain/pack.ts';
 import { SettingsPanel } from './components/SettingsPanel.tsx';
 import { HistoryPanel } from './components/HistoryPanel.tsx';
@@ -43,6 +51,12 @@ import { deviceRole, deviceAllows } from '@domain/deviceRole.ts';
 import { DeviceRolePicker } from './components/DeviceRolePicker.tsx';
 import { useBackgroundSync } from './clinic/useBackgroundSync.ts';
 import { useAppearance } from './useAppearance.ts';
+import type { View } from './shell/navModel.ts';
+import { bottomSlots, navGroups } from './shell/navModel.ts';
+import { SideNav } from './shell/SideNav.tsx';
+import { BottomNav } from './shell/BottomNav.tsx';
+import { SectionTabs } from './shell/SectionTabs.tsx';
+import { useWideLayout } from './shell/useWideLayout.ts';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
 const ClinicPanel = lazy(() =>
@@ -62,16 +76,6 @@ const PackBuilder = lazy(() =>
 const ScoresPanel = lazy(() =>
   import('./components/ScoresPanel.tsx').then((m) => ({ default: m.ScoresPanel })),
 );
-
-/**
- * `ModuleId` folds straight into `View`: every module id IS a valid view,
- * chosen the moment it is added to `domain/pack.ts`'s closed union. That is
- * what lets the nav below be GENERATED from `pack.modules` instead of one
- * hardcoded button per module -- the Growth button used to be gated on device
- * role alone and never on whether the active pack actually offered growth,
- * which meant a pack with `modules: []` still showed a tab leading nowhere.
- */
-type View = 'write' | 'preview' | 'history' | 'settings' | 'builder' | 'clinic' | 'scores' | ModuleId;
 
 /*
   The tab strip used to be this pair of constants. It is now generated from the
@@ -227,6 +231,40 @@ export function App() {
    */
   const shown = (v: View) => deviceAllows(v) && !locked;
 
+  /*
+    One nav, two shapes. `useWideLayout` decides which is BUILT rather than
+    which is hidden: hiding leaves both in the accessibility tree, which is two
+    tab stops to every destination and two elements answering to "Settings".
+  */
+  const wide = useWideLayout();
+  const groups = useMemo(
+    () =>
+      navGroups({
+        modules: pack.modules,
+        scores: pack.scores?.length ?? 0,
+        queue: profile.clinic.enabled,
+        reception,
+      }),
+    [pack.modules, pack.scores, profile.clinic.enabled, reception],
+  );
+  const slots = useMemo(() => bottomSlots(groups), [groups]);
+
+  /*
+    Preview is the one destination that can be unavailable rather than absent,
+    and a disabled button with no reason is a bug report waiting to happen. The
+    same sentence the action bar uses, so they cannot drift apart.
+  */
+  const previewWhy = !fontsLoaded
+    ? 'The Urdu typeface is still loading.'
+    : isBlank(rx)
+      ? 'Nothing written yet.'
+      : missing.length
+        ? `Still needs ${missing.join(', ')}.`
+        : undefined;
+  const navDisabled: Partial<Record<View, string>> = previewWhy
+    ? { preview: previewWhy }
+    : {};
+
   const model = useMemo(() => {
     if (view !== 'preview' || !fontsLoaded) return null;
     return buildDocument({ rx, profile, pack, packs: phrases, defaults: appDefaults });
@@ -275,28 +313,32 @@ export function App() {
   */
   if (role === null && askRole) {
     return (
-      <div className="app">
-        <header className="topbar">
-          <div className="brand">
-            Nabz
-            <small>first-time setup</small>
-          </div>
-        </header>
-        <DeviceRolePicker
-          onChosen={(chosen) => {
-            setRole(chosen);
-            setView(chosen === 'reception' ? 'clinic' : 'write');
-            // The queue is off by default so a solo doctor never meets it, but
-            // it is the ONLY thing a front desk does -- leaving it off hands
-            // the receptionist a blank screen.
-            if (chosen === 'reception' && !profile.clinic.enabled) {
-              store.setProfile({
-                ...profile,
-                clinic: { ...profile.clinic, enabled: true },
-              });
-            }
-          }}
-        />
+      <div className="app app-setup">
+        {/* `.app-main` even with no sidebar beside it: `.app` is a ROW at desk
+            width, so without it the picker would sit next to the header. */}
+        <div className="app-main">
+          <header className="topbar">
+            <div className="brand">
+              Nabz
+              <small>first-time setup</small>
+            </div>
+          </header>
+          <DeviceRolePicker
+            onChosen={(chosen) => {
+              setRole(chosen);
+              setView(chosen === 'reception' ? 'clinic' : 'write');
+              // The queue is off by default so a solo doctor never meets it,
+              // but it is the ONLY thing a front desk does -- leaving it off
+              // hands the receptionist a blank screen.
+              if (chosen === 'reception' && !profile.clinic.enabled) {
+                store.setProfile({
+                  ...profile,
+                  clinic: { ...profile.clinic, enabled: true },
+                });
+              }
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -309,354 +351,305 @@ export function App() {
       one-handed use that does not apply here.
     */
     <div className="app" data-wide={view === 'clinic' || view === 'builder'}>
-      <header className="topbar">
-        <div className="brand">
-          Nabz
-          <small>
-            {reception
-              ? 'front desk'
-              : kind.id === 'prescription'
-                ? 'on this device only'
-                : kind.label}
-          </small>
-        </div>
-        <div className="spacer" />
+      {/*
+        The sidebar is a sibling of everything else, not a child of the
+        header: it has to span the full height of the shell, and the working
+        column has to keep its own scroll.
+      */}
+      {wide && (
+        <SideNav groups={groups} view={view} onGo={setView} disabled={navDisabled} />
+      )}
+      <div className="app-main">
+        <header className="topbar">
+          <div className="brand">
+            Nabz
+            <small>
+              {reception
+                ? 'front desk'
+                : kind.id === 'prescription'
+                  ? 'on this device only'
+                  : kind.label}
+            </small>
+          </div>
+        </header>
+
+        {/* Persistent, above the working area, on every view (DESIGN.md 11). */}
+        {rx.patient.allergies?.trim() && (
+          <div className="banner banner-allergy" role="alert">
+            <span>ALLERGY — {rx.patient.allergies}</span>
+          </div>
+        )}
+
         {/*
-          On a reception station the clinical destinations are NOT RENDERED --
-          not disabled, not PIN-hidden. There is nothing behind them on this
-          machine, and a greyed-out button implies there is.
+          NOT dismissible, and deliberately above the backup nag.
+
+          A plain-HTTP LAN address is not a secure context, so the browser removes
+          crypto.subtle — and with it the encrypted backup, on a device that holds
+          the only copy of every record. It used to fail silently, which is the
+          one behaviour this product cannot afford. Amber rather than red: red is
+          danger and the allergy banner owns it (DESIGN.md 3).
         */}
-        <nav className="topbar-nav">
-          {profile.clinic.enabled && (
+        {!secure && (
+          <div className="banner banner-backup" role="status">
+            <span>
+              <strong>This device cannot back itself up.</strong> The app was
+              opened over a plain connection, so the browser has switched off
+              encrypted backup, the PIN and offline use. Open the address starting{' '}
+              <code>https://</code> that the clinic station prints, or open the app
+              on the computer itself.
+            </span>
+          </div>
+        )}
+
+        {nagBackup && (
+          <div className="banner banner-backup">
+            <span>
+              Records live only on this device. It has been a while since your last
+              backup.
+            </span>
+            <button onClick={() => setView('settings')}>Export now</button>
+          </div>
+        )}
+
+        {!fontsLoaded && !fontError && (
+          <div className="banner banner-backup">
+            <span>Loading the Urdu typeface… the preview needs it to be exact.</span>
+          </div>
+        )}
+
+        {/*
+          Amber, not red, and role="status", not "alert". Red is danger only
+          (DESIGN.md 3) and the allergy banner owns it; a typesetting failure is
+          serious but it is not a clinical hazard, and there must be exactly one
+          thing on this screen that shouts.
+        */}
+        {fontError && (
+          <div className="banner banner-backup" role="status">
+            <span>
+              The typesetting engine did not load, so preview and print are
+              unavailable. You can still write and save this script. ({fontError})
+            </span>
             <button
-              className="icon-btn"
-              aria-pressed={view === 'clinic'}
-              onClick={() => setView(view === 'clinic' ? 'write' : 'clinic')}
+              onClick={() => {
+                setFontError(null);
+                setFontsLoaded(false);
+              }}
             >
-              Queue
+              Retry
             </button>
-          )}
-          {!reception &&
-            pack.modules.map((id) => (
-              <button
-                key={id}
-                className="icon-btn"
-                aria-pressed={view === id}
-                onClick={() => setView(view === id ? 'write' : id)}
-              >
-                {MODULE_META[id].label}
-              </button>
-            ))}
-          {!reception && (pack.scores?.length ?? 0) > 0 && (
-            <button
-              className="icon-btn"
-              aria-pressed={view === 'scores'}
-              onClick={() => setView(view === 'scores' ? 'write' : 'scores')}
-            >
-              Scores
-            </button>
-          )}
-          {!reception && (
-            <button
-              className="icon-btn"
-              aria-pressed={view === 'history'}
-              onClick={() => setView(view === 'history' ? 'write' : 'history')}
-            >
-              History
-            </button>
-          )}
-          <button
-            className="icon-btn"
-            aria-pressed={view === 'settings'}
-            onClick={() =>
-              setView(view === 'settings' ? (reception ? 'clinic' : 'write') : 'settings')
+          </div>
+        )}
+
+        {/*
+          An edited pack that fails validation is IGNORED, not patched up, and
+          the doctor is told rather than left to notice that a chip went missing.
+          See data/provider.ts.
+        */}
+
+        {contentRejected.length > 0 && (
+          <div className="banner banner-backup" role="status">
+            <span>
+              Your edited content did not load and the built-in packs are being
+              used instead: {contentRejected[0]}
+              {contentRejected.length > 1 ? ` (+${contentRejected.length - 1} more)` : ''}
+            </span>
+            <button onClick={() => setView('builder')}>Open builder</button>
+          </div>
+        )}
+
+        {pickingKind && (
+          <DocumentKindPicker
+            kinds={kinds}
+            current={kind.id}
+            onChoose={(chosen) => {
+              startNew(chosen);
+              setTab(DOCUMENT_META[chosen].sections[0] ?? 'problems');
+              setPickingKind(false);
+            }}
+            onClose={() => setPickingKind(false)}
+          />
+        )}
+
+        {locked && (
+          <RoleGateLock
+            onUnlock={() => {
+              setUnlocked(true);
+            }}
+          />
+        )}
+
+        {shown('write') && view === 'write' && (
+          <>
+            <PatientBar />
+            {/*
+              Said on the page, not only in the button's tooltip: a phone has no
+              hover, so a tooltip on the one control a doctor is trying to press
+              is a tooltip nobody reads.
+            */}
+            {missing.length > 0 && (
+              <div className="banner banner-backup" role="status">
+                <span>
+                  This {kind.label.toLowerCase()} still needs {missing.join(', ')}{' '}
+                  before it can be printed. It saves either way.
+                </span>
+              </div>
+            )}
+            <SectionTabs
+              tabs={kind.sections.map((id) => {
+                const lang = languageFor(profile, id);
+                return {
+                  id,
+                  label: sectionLabelFor(kind, id, SECTION_LABEL[id]),
+                  tag: lang.secondary
+                    ? `${SHORT[lang.primary]}·${SHORT[lang.secondary]}`
+                    : (SHORT[lang.primary] ?? ''),
+                  count: counts[id],
+                };
+              })}
+              active={kind.sections.includes(tab) ? tab : (kind.sections[0] ?? tab)}
+              onSelect={setTab}
+            />
+
+            <div className="body">
+              {(() => {
+                // A `tab` left over from the previous document may not exist in
+                // this kind (restored state, or a queue visit opened as a
+                // different kind). Fall back to its first section rather than
+                // rendering nothing, which reads as a broken app.
+                const active = kind.sections.includes(tab) ? tab : kind.sections[0];
+                const Panel = active ? SECTION_PANEL[active] : null;
+                return Panel ? <Panel /> : null;
+              })()}
+            </div>
+          </>
+        )}
+
+        {shown('preview') && view === 'preview' && (
+          <>
+            {model ? (
+              <PreviewSheet model={model} />
+            ) : (
+              <div className="body">
+                <p className="empty">Preparing the document…</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {shown('builder') && view === 'builder' && (
+          <Suspense
+            fallback={
+              <div className="body">
+                <p className="empty">Opening the pack builder…</p>
+              </div>
             }
           >
-            Settings
-          </button>
-        </nav>
-      </header>
+            <PackBuilder onDone={() => setView('write')} />
+          </Suspense>
+        )}
 
-      {/* Persistent, above the working area, on every view (DESIGN.md 11). */}
-      {rx.patient.allergies?.trim() && (
-        <div className="banner banner-allergy" role="alert">
-          <span>ALLERGY — {rx.patient.allergies}</span>
-        </div>
-      )}
-
-      {/*
-        NOT dismissible, and deliberately above the backup nag.
-
-        A plain-HTTP LAN address is not a secure context, so the browser removes
-        crypto.subtle — and with it the encrypted backup, on a device that holds
-        the only copy of every record. It used to fail silently, which is the
-        one behaviour this product cannot afford. Amber rather than red: red is
-        danger and the allergy banner owns it (DESIGN.md 3).
-      */}
-      {!secure && (
-        <div className="banner banner-backup" role="status">
-          <span>
-            <strong>This device cannot back itself up.</strong> The app was
-            opened over a plain connection, so the browser has switched off
-            encrypted backup, the PIN and offline use. Open the address starting{' '}
-            <code>https://</code> that the clinic station prints, or open the app
-            on the computer itself.
-          </span>
-        </div>
-      )}
-
-      {nagBackup && (
-        <div className="banner banner-backup">
-          <span>
-            Records live only on this device. It has been a while since your last
-            backup.
-          </span>
-          <button onClick={() => setView('settings')}>Export now</button>
-        </div>
-      )}
-
-      {!fontsLoaded && !fontError && (
-        <div className="banner banner-backup">
-          <span>Loading the Urdu typeface… the preview needs it to be exact.</span>
-        </div>
-      )}
-
-      {/*
-        Amber, not red, and role="status", not "alert". Red is danger only
-        (DESIGN.md 3) and the allergy banner owns it; a typesetting failure is
-        serious but it is not a clinical hazard, and there must be exactly one
-        thing on this screen that shouts.
-      */}
-      {fontError && (
-        <div className="banner banner-backup" role="status">
-          <span>
-            The typesetting engine did not load, so preview and print are
-            unavailable. You can still write and save this script. ({fontError})
-          </span>
-          <button
-            onClick={() => {
-              setFontError(null);
-              setFontsLoaded(false);
-            }}
+        {view === 'clinic' && (
+          <Suspense
+            fallback={
+              <div className="body">
+                <p className="empty">Opening the queue…</p>
+              </div>
+            }
           >
-            Retry
-          </button>
-        </div>
-      )}
+            <ClinicPanel onOpenScript={() => setView('write')} sync={sync} />
+          </Suspense>
+        )}
 
-      {/*
-        An edited pack that fails validation is IGNORED, not patched up, and
-        the doctor is told rather than left to notice that a chip went missing.
-        See data/provider.ts.
-      */}
+        {shown('history') && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
+        {view === 'settings' && (
+          <SettingsPanel onOpenBuilder={() => setView('builder')} appearance={appearance} />
+        )}
+        {pack.modules.includes(view as ModuleId) && shown(view) && (
+          <Suspense fallback={<div className="body"><p className="empty">Opening…</p></div>}>
+            <div className="body">
+              {(() => {
+                const Panel = MODULE_PANEL[view as ModuleId];
+                return <Panel />;
+              })()}
+            </div>
+          </Suspense>
+        )}
+        {view === 'scores' && (pack.scores?.length ?? 0) > 0 && shown('scores') && (
+          <Suspense fallback={<div className="body"><p className="empty">Opening…</p></div>}>
+            <div className="body">
+              <ScoresPanel />
+            </div>
+          </Suspense>
+        )}
 
-      {contentRejected.length > 0 && (
-        <div className="banner banner-backup" role="status">
-          <span>
-            Your edited content did not load and the built-in packs are being
-            used instead: {contentRejected[0]}
-            {contentRejected.length > 1 ? ` (+${contentRejected.length - 1} more)` : ''}
-          </span>
-          <button onClick={() => setView('builder')}>Open builder</button>
-        </div>
-      )}
-
-      {pickingKind && (
-        <DocumentKindPicker
-          kinds={kinds}
-          current={kind.id}
-          onChoose={(chosen) => {
-            startNew(chosen);
-            setTab(DOCUMENT_META[chosen].sections[0] ?? 'problems');
-            setPickingKind(false);
-          }}
-          onClose={() => setPickingKind(false)}
-        />
-      )}
-
-      {locked && (
-        <RoleGateLock
-          onUnlock={() => {
-            setUnlocked(true);
-          }}
-        />
-      )}
-
-      {shown('write') && view === 'write' && (
-        <>
-          <PatientBar />
+        <footer className="actionbar">
+          {view === 'write' && (
+            <>
+              {/*
+                One kind offered: New means new, with no question. More than one:
+                ask, because "New" silently producing the same kind as last time
+                is how a doctor ends up typing a discharge summary into a
+                prescription's tabs.
+              */}
+              <button
+                className="btn quiet"
+                onClick={() => (kinds.length > 1 ? setPickingKind(true) : startNew(kind.id))}
+              >
+                New
+              </button>
+              <button className="btn ghost" onClick={doSave} disabled={isBlank(rx) || !!busy}>
+                {busy ?? (dirty ? 'Save on this device' : 'Saved')}
+              </button>
+              <button
+                className="btn"
+                onClick={() => setView('preview')}
+                disabled={isBlank(rx) || !fontsLoaded || missing.length > 0}
+                // A disabled button with no reason is a bug report waiting to
+                // happen; the kind says what it needs and this repeats it.
+                title={missing.length ? `Still needs ${missing.join(', ')}.` : undefined}
+              >
+                Preview &amp; print
+              </button>
+            </>
+          )}
+          {view === 'preview' && (
+            <>
+              <button className="btn quiet" onClick={() => setView('write')}>
+                Back
+              </button>
+              <button className="btn ghost" onClick={doSave} disabled={!!busy}>
+                {busy ?? 'Save on this device'}
+              </button>
+              <button className="btn" onClick={deliverPdf} disabled={!model || !!busy}>
+                {busy ?? (canShareFiles() ? 'Send / print' : 'Download PDF')}
+              </button>
+            </>
+          )}
           {/*
-            Said on the page, not only in the button's tooltip: a phone has no
-            hover, so a tooltip on the one control a doctor is trying to press
-            is a tooltip nobody reads.
+            A front desk has no script to go back to -- offering one names a
+            surface that does not exist on that machine. It goes back to the
+            queue, and from the queue there is nowhere further back.
           */}
-          {missing.length > 0 && (
-            <div className="banner banner-backup" role="status">
-              <span>
-                This {kind.label.toLowerCase()} still needs {missing.join(', ')}{' '}
-                before it can be printed. It saves either way.
-              </span>
-            </div>
-          )}
-          <nav className="tabs" role="tablist">
-            {kind.sections.map((id) => {
-              const lang = languageFor(profile, id);
-              const tag = lang.secondary
-                ? `${SHORT[lang.primary]}·${SHORT[lang.secondary]}`
-                : SHORT[lang.primary];
-              return (
-                <button
-                  key={id}
-                  role="tab"
-                  className="tab"
-                  aria-selected={tab === id}
-                  onClick={() => setTab(id)}
-                >
-                  <strong>
-                    {sectionLabelFor(kind, id, SECTION_LABEL[id])}
-                    {counts[id] > 0 && <span className="badge">{counts[id]}</span>}
-                  </strong>
-                  <span>{tag}</span>
-                </button>
-              );
-            })}
-          </nav>
+          {(view === 'history' ||
+            view === 'settings' ||
+            pack.modules.includes(view as ModuleId) ||
+            view === 'scores' ||
+            view === 'builder' ||
+            view === 'clinic') &&
+            !(reception && view === 'clinic') && (
+              <button
+                className="btn quiet"
+                onClick={() => setView(reception ? 'clinic' : 'write')}
+              >
+                {reception ? 'Back to the queue' : 'Back to the script'}
+              </button>
+            )}
+        </footer>
 
-          <div className="body">
-            {(() => {
-              // A `tab` left over from the previous document may not exist in
-              // this kind (restored state, or a queue visit opened as a
-              // different kind). Fall back to its first section rather than
-              // rendering nothing, which reads as a broken app.
-              const active = kind.sections.includes(tab) ? tab : kind.sections[0];
-              const Panel = active ? SECTION_PANEL[active] : null;
-              return Panel ? <Panel /> : null;
-            })()}
-          </div>
-        </>
-      )}
-
-      {shown('preview') && view === 'preview' && (
-        <>
-          {model ? (
-            <PreviewSheet model={model} />
-          ) : (
-            <div className="body">
-              <p className="empty">Preparing the document…</p>
-            </div>
-          )}
-        </>
-      )}
-
-      {shown('builder') && view === 'builder' && (
-        <Suspense
-          fallback={
-            <div className="body">
-              <p className="empty">Opening the pack builder…</p>
-            </div>
-          }
-        >
-          <PackBuilder onDone={() => setView('write')} />
-        </Suspense>
-      )}
-
-      {view === 'clinic' && (
-        <Suspense
-          fallback={
-            <div className="body">
-              <p className="empty">Opening the queue…</p>
-            </div>
-          }
-        >
-          <ClinicPanel onOpenScript={() => setView('write')} sync={sync} />
-        </Suspense>
-      )}
-
-      {shown('history') && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
-      {view === 'settings' && (
-        <SettingsPanel onOpenBuilder={() => setView('builder')} appearance={appearance} />
-      )}
-      {pack.modules.includes(view as ModuleId) && shown(view) && (
-        <Suspense fallback={<div className="body"><p className="empty">Opening…</p></div>}>
-          <div className="body">
-            {(() => {
-              const Panel = MODULE_PANEL[view as ModuleId];
-              return <Panel />;
-            })()}
-          </div>
-        </Suspense>
-      )}
-      {view === 'scores' && (pack.scores?.length ?? 0) > 0 && shown('scores') && (
-        <Suspense fallback={<div className="body"><p className="empty">Opening…</p></div>}>
-          <div className="body">
-            <ScoresPanel />
-          </div>
-        </Suspense>
-      )}
-
-      <footer className="actionbar">
-        {view === 'write' && (
-          <>
-            {/*
-              One kind offered: New means new, with no question. More than one:
-              ask, because "New" silently producing the same kind as last time
-              is how a doctor ends up typing a discharge summary into a
-              prescription's tabs.
-            */}
-            <button
-              className="btn quiet"
-              onClick={() => (kinds.length > 1 ? setPickingKind(true) : startNew(kind.id))}
-            >
-              New
-            </button>
-            <button className="btn ghost" onClick={doSave} disabled={isBlank(rx) || !!busy}>
-              {busy ?? (dirty ? 'Save on this device' : 'Saved')}
-            </button>
-            <button
-              className="btn"
-              onClick={() => setView('preview')}
-              disabled={isBlank(rx) || !fontsLoaded || missing.length > 0}
-              // A disabled button with no reason is a bug report waiting to
-              // happen; the kind says what it needs and this repeats it.
-              title={missing.length ? `Still needs ${missing.join(', ')}.` : undefined}
-            >
-              Preview &amp; print
-            </button>
-          </>
+        {!wide && (
+          <BottomNav slots={slots} view={view} onGo={setView} disabled={navDisabled} />
         )}
-        {view === 'preview' && (
-          <>
-            <button className="btn quiet" onClick={() => setView('write')}>
-              Back
-            </button>
-            <button className="btn ghost" onClick={doSave} disabled={!!busy}>
-              {busy ?? 'Save on this device'}
-            </button>
-            <button className="btn" onClick={deliverPdf} disabled={!model || !!busy}>
-              {busy ?? (canShareFiles() ? 'Send / print' : 'Download PDF')}
-            </button>
-          </>
-        )}
-        {/*
-          A front desk has no script to go back to -- offering one names a
-          surface that does not exist on that machine. It goes back to the
-          queue, and from the queue there is nowhere further back.
-        */}
-        {(view === 'history' ||
-          view === 'settings' ||
-          pack.modules.includes(view as ModuleId) ||
-          view === 'scores' ||
-          view === 'builder' ||
-          view === 'clinic') &&
-          !(reception && view === 'clinic') && (
-            <button
-              className="btn quiet"
-              onClick={() => setView(reception ? 'clinic' : 'write')}
-            >
-              {reception ? 'Back to the queue' : 'Back to the script'}
-            </button>
-          )}
-      </footer>
+      </div>
     </div>
   );
 }
