@@ -13,7 +13,8 @@
 import { describe, expect, it } from 'vitest';
 import { packs } from '@data/phrases/index.ts';
 import { paediatrics } from '@data/packs/index.ts';
-import type { ContentPack } from '@domain/pack.ts';
+import type { ContentPack, FormularyEntry } from '@domain/pack.ts';
+import { packErrors, validateContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import { diffPack } from '@render/screen/builder/diff.ts';
 
@@ -192,5 +193,55 @@ describe('the rest of the pack', () => {
     const d = diffPack(live(), after);
     expect(d.total).toBe(2);
     expect(d.patientFacing).toBe(1);
+  });
+});
+
+describe('reconciling a row against DRAP', () => {
+  const row = (over: Partial<FormularyEntry> = {}): FormularyEntry => ({
+    brand: 'Panadol', generic: 'paracetamol', provenance: 'manual', ...over,
+  });
+  const issuesFor = (r: FormularyEntry) =>
+    validateContentPack({ ...paediatrics, formularySeed: [r] }).filter((i) =>
+      i.where.includes('Panadol'),
+    );
+
+  it('still refuses a DRAP claim with no registration number', () => {
+    // The existing rule, unchanged: this one is an error.
+    const errors = issuesFor(row({ provenance: 'DRAP' })).filter((i) => i.severity === 'error');
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.message).toContain('no registration number');
+  });
+
+  it('warns when a DRAP claim has nobody’s name on it', () => {
+    const issues = issuesFor(row({ provenance: 'DRAP', drapRegNo: '012345' }));
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe('warning');
+    expect(issues[0]?.message).toContain('nobody');
+  });
+
+  it('is satisfied once a person and a date are recorded', () => {
+    expect(
+      issuesFor(
+        row({
+          provenance: 'DRAP',
+          drapRegNo: '012345',
+          drapChecked: { by: 'Dr A. Tahir', date: '2026-09-20' },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('says nothing about a row that makes no claim', () => {
+    // Every shipped row is `manual` and honest about it; being unreconciled is
+    // not a defect, it is a state of work.
+    expect(issuesFor(row())).toEqual([]);
+  });
+
+  it('never blocks export, so an existing pack survives the upgrade', () => {
+    const errors = packErrors({
+      ...paediatrics,
+      formularySeed: [row({ provenance: 'DRAP', drapRegNo: '012345' })],
+    });
+    expect(errors.filter((e) => e.where.includes('Panadol'))).toEqual([]);
   });
 });

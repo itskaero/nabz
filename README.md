@@ -74,7 +74,7 @@ npm run dev
 committed" below.
 
 ```bash
-npm test            # 562 tests
+npm test            # 599 tests
 npm run build       # typecheck + production build
 npm run preview     # serve the built PWA
 ```
@@ -259,6 +259,16 @@ with no registration number, a phrase written in one language and not the other,
 locales whose slot sets have drifted apart, an unsigned red flag, or one generic
 spelled two ways. Those are the failures that reach a patient without anything
 on the printed script looking wrong.
+
+Its second job is showing. Every sig template, advice line and red flag renders
+underneath its fields as the **sentence a patient will read**, in both locales,
+through the same `composeSig`/`composeAdvice` the printed script uses — because
+asking a clinician to vouch for wording they cannot read in context is asking
+for a signature on nothing. Saving opens a **diff** first, counting separately
+the changes that alter what a patient reads. And a DRAP claim now records *who*
+checked the row and *when*: DRAP publishes no bulk download and no API
+(re-checked September 2026), so reconciliation is one row at a time by a human,
+and the builder links to the registry and then records that it happened.
 
 Edited content lives in IndexedDB and overrides the shipped packs — but only if
 it validates. If it does not, the app runs on the shipped packs and says so

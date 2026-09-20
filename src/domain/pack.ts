@@ -33,6 +33,20 @@ export interface FormularyEntry {
   price?: { amount: number; currency: string };
   alternates?: string[];
   provenance: 'DRAP' | 'manual';
+  /**
+   * WHO checked this row against the registry, and WHEN.
+   *
+   * `provenance: 'DRAP'` plus a registration number says the claim was made.
+   * It does not say who made it, and a claim nobody's name is on is a claim
+   * nobody can be asked about -- which is the same reasoning that put a named
+   * person on a red flag and on a dosing row.
+   *
+   * DRAP publishes no bulk download and no API (re-checked September 2026;
+   * `eapp.dra.gov.pk/WebProductIndex.php` is a search form), so reconciliation
+   * is one row at a time by a human. This records that it happened rather than
+   * pretending an import could.
+   */
+  drapChecked?: { by: string; date: string };
 }
 
 /**
@@ -442,6 +456,20 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
         severity: 'error',
         where: `formularySeed[${i}] ${row.brand}`,
         message: 'claims DRAP provenance but carries no registration number',
+      });
+    }
+    /*
+      A warning rather than an error: every row shipped today predates this
+      field, and a pack that became un-exportable on upgrade would push
+      authors away from the thing instead of toward it. The same reasoning as
+      tier-1 sign-off.
+    */
+    if (row.provenance === 'DRAP' && row.drapRegNo && !row.drapChecked?.by?.trim()) {
+      issues.push({
+        severity: 'warning',
+        where: `formularySeed[${i}] ${row.brand}`,
+        message:
+          'says it was checked against DRAP, but nobody\u2019s name is on it. A claim nobody signed is a claim nobody can be asked about.',
       });
     }
   });
