@@ -65,7 +65,12 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-latin);
-  font-size: 15px;
+  /*
+   * The density axis, not a literal. `compact` is the reception desk with a
+   * mouse and twenty rows to scan; `comfortable` is a phone held one-handed
+   * at OPD speed (theme.ts, DENSITIES).
+   */
+  font-size: var(--font-base);
   line-height: 1.45;
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
@@ -579,6 +584,105 @@ select {
   font-weight: 600;
 }
 
+/* ---------- the setup checklist ---------- */
+
+/*
+ * THE RAIL IS NOT RED.
+ *
+ * Green/amber/red is the obvious scheme and the wrong one here. Red in this
+ * app means danger and nothing else -- an allergy, a red flag -- and spending
+ * it on "you have not typed your registration number yet" costs that meaning
+ * for something a doctor will fix in fifteen seconds. Teal is already this
+ * app's "vetted / safe" and amber its "not vetted"; the difference between
+ * blocking and merely outstanding is carried by a WORD, the way every other
+ * safety state here carries a word as well as a colour.
+ */
+.setup-card {
+  max-width: 620px;
+  margin: 10px auto;
+}
+
+/*
+ * Every property `.card > h2` sets, reset. Winning on specificity only wins
+ * the properties you declare, and the ones left undeclared are exactly the
+ * ones that make a card heading a small uppercase section label -- which this
+ * is not. This is the page's title.
+ */
+.setup-card > .setup-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.setup-summary {
+  margin: 4px 0 14px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+}
+
+.setup-list {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack);
+}
+
+.setup-step {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--caution);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  padding: 10px 12px;
+}
+
+.setup-step[data-state='done'] {
+  border-left-color: var(--accent);
+  background: var(--bg);
+}
+
+.setup-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+  /* At 390px "Your name and registration" and "NEEDED BEFORE YOU START"
+     do not share a line without one of them losing a word. */
+  flex-wrap: wrap;
+}
+
+.setup-head strong {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.setup-state {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--caution-ink);
+}
+
+.setup-step[data-state='done'] .setup-state {
+  color: var(--accent-ink);
+}
+
+.setup-why {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.setup-step .btn {
+  margin-top: 10px;
+}
+
 /* ---------- patient bar ---------- */
 
 .patient {
@@ -632,7 +736,9 @@ select {
 .field select {
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  padding: 7px 9px;
+  /* One step tighter than a button: a field is a box you type in, not a
+     target you aim at, and its own height already makes it findable. */
+  padding: calc(var(--ctl-pad-y) - 3px) calc(var(--ctl-pad-x) - 5px);
   background: var(--surface);
   min-width: 0;
 }
@@ -779,8 +885,8 @@ select {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: var(--card-pad);
+  margin-bottom: var(--stack);
   box-shadow: var(--shadow);
 }
 
@@ -869,7 +975,7 @@ select {
   background: var(--teal);
   color: var(--on-accent);
   border-radius: var(--r-sm);
-  padding: 8px 13px;
+  padding: var(--ctl-pad-y) var(--ctl-pad-x);
   cursor: pointer;
   font-weight: 500;
   white-space: nowrap;

@@ -38,6 +38,7 @@ import type { ModuleId } from '@domain/pack.ts';
  * a pack with `modules: []` still showed a tab leading nowhere.
  */
 export type View =
+  | 'home'
   | 'write'
   | 'preview'
   | 'history'
@@ -103,7 +104,14 @@ export function navGroups(input: NavInput): NavGroup[] {
     ]);
   }
 
+  /*
+    Setup stays in the nav after it is finished, rather than being a first-run
+    screen that disappears. The backup row keeps its colour until a file has
+    actually been written, and the collapsed status line (`StatusNotices`)
+    deliberately says less than it used to -- both need somewhere to lead.
+  */
   push('clinic', 'Clinic', [
+    { id: 'home', label: 'Setup', hint: 'What this device still needs' },
     ...(input.queue
       ? [{ id: 'clinic' as const, label: 'Queue', hint: 'Today’s waiting list' }]
       : []),

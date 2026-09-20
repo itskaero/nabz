@@ -26,11 +26,24 @@ import * as db from '@storage/db.ts';
 
 /**
  * These tests are about the clinical app, not first-run setup. A device with no
- * role and no records is a fresh install, and the shell correctly asks what the
- * machine is for before anything else -- so say it is the doctor's, the way a
- * real one would have been answered once. Onboarding has its own tests.
+ * role, no name and no records is a fresh install, and the shell correctly
+ * shows the setup checklist before anything else -- so answer it the way a
+ * real one would have been answered once, and get on with the clinical part.
+ * Setup has its own tests (`setup.test.ts`, and the shell half below).
  */
-beforeEach(() => setDeviceRole('consulting'));
+export const setUp = {
+  ...defaultDoctorProfile,
+  doctor: {
+    ...defaultDoctorProfile.doctor,
+    name: 'Dr A. Tahir',
+    registration: { authority: 'PMDC', number: '12345-P' },
+  },
+};
+
+beforeEach(async () => {
+  setDeviceRole('consulting');
+  await db.saveProfile(setUp);
+});
 
 afterEach(async () => {
   clearDeviceRole();
@@ -312,7 +325,7 @@ describe('edited content reaches the app', () => {
 
 describe('module nav follows the active pack', () => {
   it('medicine (modules: gfr, bmi) shows eGFR, BMI / BSA and Scores, no Growth', async () => {
-    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    await db.saveProfile({ ...setUp, packId: medicine.id });
     resetContentCache();
     renderApp();
 
@@ -335,7 +348,7 @@ describe('module nav follows the active pack', () => {
     // Adult internal medicine does not run a feeding programme, and a tab
     // leading to a module that specialty never uses costs a scroll on every
     // patient. The difference is pack data; no component knows about it.
-    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    await db.saveProfile({ ...setUp, packId: medicine.id });
     resetContentCache();
     renderApp();
     expect(await screen.findByRole('button', { name: 'eGFR' })).toBeTruthy();
@@ -368,7 +381,7 @@ describe('module nav follows the active pack', () => {
   });
 
   it('opening Scores for medicine shows CURB-65 among the choices', async () => {
-    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    await db.saveProfile({ ...setUp, packId: medicine.id });
     resetContentCache();
     renderApp();
 

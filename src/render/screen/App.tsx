@@ -57,6 +57,11 @@ import { SideNav } from './shell/SideNav.tsx';
 import { BottomNav } from './shell/BottomNav.tsx';
 import { SectionTabs } from './shell/SectionTabs.tsx';
 import { StatusNotices } from './shell/StatusNotices.tsx';
+import { HomeView } from './components/HomeView.tsx';
+import type { SetupDestination } from '@domain/setup.ts';
+import { setupComplete, setupSteps } from '@domain/setup.ts';
+import { pairedCode } from '@storage/clinicSync.ts';
+import { secureContextProblem } from '@domain/secureContext.ts';
 import type { Notice } from './shell/StatusNotices.tsx';
 import { useWideLayout } from './shell/useWideLayout.ts';
 
@@ -118,7 +123,19 @@ export function App() {
   const [fontsLoaded, setFontsLoaded] = useState(fontsReady());
   const [fontError, setFontError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [nagBackup, setNagBackup] = useState(false);
+  /*
+    What this machine can be asked about itself, read once per navigation.
+
+    One read rather than three: the backup nag, the first-run role question
+    and the setup checklist were all asking storage the same two questions,
+    and a checklist built from a different snapshot than the banner above it
+    is a checklist that contradicts the banner above it.
+  */
+  const [facts, setFacts] = useState<{
+    records: number;
+    lastBackupAt: string | undefined;
+    paired: string | null;
+  } | null>(null);
   // Read once: whether the browser has given us real crypto does not change
   // while the page is open.
   const [secure] = useState(hasWebCrypto);
@@ -136,13 +153,9 @@ export function App() {
    * noise, and the answer is already implied by the records sitting there.
    * They can still switch in Settings.
    */
-  const [askRole, setAskRole] = useState(false);
+  const askRole = role === null && facts !== null && facts.records === 0;
   /** Open while the doctor is choosing what kind of document to start. */
   const [pickingKind, setPickingKind] = useState(false);
-  useEffect(() => {
-    if (deviceRole() !== null) return;
-    void db.prescriptionCount().then((n) => setAskRole(n === 0));
-  }, []);
 
   useEffect(() => {
     if (fontsLoaded) return;
@@ -164,17 +177,60 @@ export function App() {
       });
   }, [fontsLoaded]);
 
-  // The backup nag is deliberately repeated rather than dismissed forever.
+  // Re-read on navigation, so a backup just taken or a station just paired
+  // turns its row green without a reload.
   useEffect(() => {
     void (async () => {
-      const [last, count] = await Promise.all([db.lastBackupAt(), db.prescriptionCount()]);
-      if (count === 0) return;
-      const days = last
-        ? (Date.now() - Date.parse(last)) / 86400000
-        : Number.POSITIVE_INFINITY;
-      setNagBackup(days > appDefaults.backupReminderDays);
+      const [count, last] = await Promise.all([
+        db.prescriptionCount(),
+        db.lastBackupAt(),
+      ]);
+      setFacts({ records: count, lastBackupAt: last, paired: pairedCode() });
     })();
   }, [view]);
+
+  // The backup nag is deliberately repeated rather than dismissed forever.
+  const nagBackup = useMemo(() => {
+    if (!facts || facts.records === 0) return false;
+    const days = facts.lastBackupAt
+      ? (Date.now() - Date.parse(facts.lastBackupAt)) / 86400000
+      : Number.POSITIVE_INFINITY;
+    return days > appDefaults.backupReminderDays;
+  }, [facts]);
+
+  const steps = useMemo(
+    () =>
+      setupSteps({
+        deviceRole: role,
+        hasRecords: (facts?.records ?? 0) > 0,
+        doctorName: profile.doctor.name,
+        registrationNumber: profile.doctor.registration.number,
+        packId: profile.packId,
+        lastBackupAt: facts?.lastBackupAt,
+        clinicMode: profile.clinic.enabled,
+        pairedCode: facts?.paired ?? null,
+        canEncrypt: secure,
+        // Quoted, not reworded: two wordings of one fact is how they drift.
+        cryptoProblem: secureContextProblem(),
+      }),
+    [role, facts, profile, secure],
+  );
+  const ready = setupComplete(steps);
+
+  /*
+    The home screen shows until the blocking steps are answered, and then gets
+    out of the way for good: after that the app opens on a blank script as it
+    always did, so nothing is added to the OPD path. Routed once, on the first
+    snapshot -- a doctor who navigates to Setup deliberately must not be
+    bounced back out of it, and one who is mid-script must never be bounced
+    INTO it.
+  */
+  const [routed, setRouted] = useState(false);
+  useEffect(() => {
+    if (routed || facts === null) return;
+    setRouted(true);
+    if (!ready) setView('home');
+  }, [routed, facts, ready]);
 
   /*
     The queue syncs wherever the doctor is looking, not only on the queue
@@ -345,6 +401,13 @@ export function App() {
     return buildDocument({ rx, profile, pack, packs: phrases, defaults: appDefaults });
   }, [view, fontsLoaded, rx, profile, pack, phrases]);
 
+  /*
+    A checklist row's button. `SetupDestination` is a tiny closed union rather
+    than a `View` so that `domain/setup.ts` stays framework-free and knows
+    nothing about this shell's routing.
+  */
+  const goSetup = useCallback((where: SetupDestination) => setView(where), []);
+
   const doSave = useCallback(async () => {
     setBusy('Saving…');
     try {
@@ -401,7 +464,13 @@ export function App() {
           <DeviceRolePicker
             onChosen={(chosen) => {
               setRole(chosen);
-              setView(chosen === 'reception' ? 'clinic' : 'write');
+              /*
+                Not straight to a blank script. A device that has just been
+                classified has, by construction, never had a name typed into
+                it or a backup taken, and the checklist is where both of those
+                are said once instead of arriving as interruptions later.
+              */
+              setView('home');
               // The queue is off by default so a solo doctor never meets it,
               // but it is the ONLY thing a front desk does -- leaving it off
               // hands the receptionist a blank screen.
@@ -480,6 +549,15 @@ export function App() {
             onUnlock={() => {
               setUnlocked(true);
             }}
+          />
+        )}
+
+        {view === 'home' && (
+          <HomeView
+            steps={steps}
+            onGo={goSetup}
+            onStart={() => setView(reception ? 'clinic' : 'write')}
+            canStart={ready}
           />
         )}
 

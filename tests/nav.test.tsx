@@ -56,8 +56,13 @@ describe('what the nav offers', () => {
   });
 
   it('offers the queue only when the clinic mode is on', () => {
-    expect(ids(navGroups(doctor), 'clinic')).toEqual(['clinic', 'settings']);
-    expect(ids(navGroups({ ...doctor, queue: false }), 'clinic')).toEqual(['settings']);
+    // Setup and Settings are always there; the Queue is the part that depends
+    // on whether this clinic runs one.
+    expect(ids(navGroups(doctor), 'clinic')).toEqual(['home', 'clinic', 'settings']);
+    expect(ids(navGroups({ ...doctor, queue: false }), 'clinic')).toEqual([
+      'home',
+      'settings',
+    ]);
   });
 
   it('gives a reception station the queue and settings, and nothing clinical', () => {
@@ -65,7 +70,11 @@ describe('what the nav offers', () => {
     // destinations on that machine, and a greyed-out button implies there is.
     const groups = navGroups({ ...doctor, reception: true });
     expect(groups.map((g) => g.id)).toEqual(['clinic']);
-    expect(groups.flatMap((g) => g.items.map((i) => i.id))).toEqual(['clinic', 'settings']);
+    expect(groups.flatMap((g) => g.items.map((i) => i.id))).toEqual([
+      'home',
+      'clinic',
+      'settings',
+    ]);
   });
 });
 
@@ -85,10 +94,21 @@ describe('folding the nav onto a phone', () => {
     expect(shape({ ...doctor, modules: [] })).toEqual(['Script', 'Queue', 'More']);
   });
 
-  it('gives a reception station two real buttons, not one and a menu', () => {
-    // A single leftover is rendered as itself: putting Settings behind "More"
-    // on a machine with two destinations is a menu protecting one item.
-    expect(shape({ ...doctor, reception: true })).toEqual(['Queue', 'Settings']);
+  it('gives a reception station its queue, and the rest behind More', () => {
+    expect(shape({ ...doctor, reception: true })).toEqual(['Queue', 'More']);
+  });
+
+  it('renders a single leftover as itself rather than a menu of one', () => {
+    // A "More" protecting one item is a tap that buys nothing. This is the
+    // narrowest the nav ever gets: no queue, no tools, nothing but Setup.
+    const bare = bottomSlots([
+      {
+        id: 'clinic' as const,
+        label: 'Clinic',
+        items: [{ id: 'home' as const, label: 'Setup' }],
+      },
+    ]);
+    expect(bare).toEqual([{ kind: 'item', item: { id: 'home', label: 'Setup' } }]);
   });
 
   it('loses no destination on the way down', () => {
