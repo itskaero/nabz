@@ -74,7 +74,7 @@ npm run dev
 committed" below.
 
 ```bash
-npm test            # 441 tests
+npm test            # 450 tests
 npm run build       # typecheck + production build
 npm run preview     # serve the built PWA
 ```

@@ -33,6 +33,7 @@ import { DosingTab } from './tabs/DosingTab.tsx';
 import { AdviceTab } from './tabs/AdviceTab.tsx';
 import { PhrasesTab } from './tabs/PhrasesTab.tsx';
 import { ReviewTab } from './tabs/ReviewTab.tsx';
+import { Dialog } from '../components/Dialog.tsx';
 
 type Tab = 'exam' | 'labs' | 'formulary' | 'dosing' | 'advice' | 'phrases' | 'review';
 
@@ -203,7 +204,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           replaces 150 reconciled medicines expecting to replace six chips.
         */}
         {incoming && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Import a pack" onClose={() => setIncoming(null)}>
             <div className="sheet-modal">
               <h3>What should be taken from this file?</h3>
               <p className="hint" style={{ marginTop: 0 }}>
@@ -252,7 +253,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
         )}
 
         {/*
@@ -262,7 +263,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           on the way in, but they would still have left the building.
         */}
         {exporting && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Export this pack" onClose={() => setExporting(false)}>
             <div className="sheet-modal">
               <h3>What should this file contain?</h3>
               <p className="hint" style={{ marginTop: 0 }}>
@@ -306,11 +307,11 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
         )}
 
         {confirmRevert && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Discard your edits" onClose={() => setConfirmRevert(false)}>
             <div className="sheet-modal">
               <h3>Discard your edits?</h3>
               <div className="warn-box" style={{ margin: '10px 0' }}>
@@ -328,7 +329,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
         )}
       </div>
 

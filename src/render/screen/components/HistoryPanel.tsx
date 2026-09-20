@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import type { Prescription } from '@domain/prescription.ts';
 import * as db from '@storage/db.ts';
 import { useStore } from '../store.tsx';
+import { Dialog } from './Dialog.tsx';
 
 export function HistoryPanel({ onDone }: { onDone: () => void }) {
   const { refillFrom } = useStore();
@@ -77,7 +78,7 @@ export function HistoryPanel({ onDone }: { onDone: () => void }) {
       </div>
 
       {confirming && (
-        <div className="scrim" role="dialog" aria-modal="true">
+        <Dialog label="Confirm" onClose={() => setConfirming(null)}>
           <div className="sheet-modal">
             <h3>Reuse this script?</h3>
             <p className="sub">
@@ -112,7 +113,7 @@ export function HistoryPanel({ onDone }: { onDone: () => void }) {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

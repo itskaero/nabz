@@ -13,6 +13,7 @@
  */
 import type { DocumentKindMeta } from '@domain/documents/index.ts';
 import type { DocumentKindId } from '@domain/documents/index.ts';
+import { Dialog } from './Dialog.tsx';
 
 interface Props {
   kinds: DocumentKindMeta[];
@@ -23,7 +24,7 @@ interface Props {
 
 export function DocumentKindPicker({ kinds, current, onChoose, onClose }: Props) {
   return (
-    <div className="scrim" role="dialog" aria-modal="true" aria-label="Start a new document">
+    <Dialog label="Start a new document" onClose={onClose}>
       <div className="sheet-modal">
         <h3>Start a new document</h3>
         <p className="sub">
@@ -49,7 +50,7 @@ export function DocumentKindPicker({ kinds, current, onChoose, onClose }: Props)
           Cancel
         </button>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

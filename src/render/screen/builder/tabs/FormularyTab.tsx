@@ -25,6 +25,7 @@ import type { Draft } from '../useDraft.ts';
 import { cleanGeneric } from '../useDraft.ts';
 import type { CsvImportResult } from '../csv.ts';
 import { newGenerics, parseFormularyCsv } from '../csv.ts';
+import { Dialog } from '../../components/Dialog.tsx';
 
 type Filter = 'all' | 'unreconciled' | 'no-dosing';
 
@@ -149,7 +150,7 @@ export function FormularyTab({ draft }: { draft: Draft }) {
       </section>
 
       {preview && (
-        <div className="scrim" role="dialog" aria-modal="true">
+        <Dialog label="Preview" onClose={() => setPreview(null)}>
           <div className="sheet-modal">
             <h3>Import {preview.rows.length} medicines?</h3>
             <div className="warn-box" style={{ margin: '10px 0' }}>
@@ -218,7 +219,7 @@ export function FormularyTab({ draft }: { draft: Draft }) {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       <div className="rows">

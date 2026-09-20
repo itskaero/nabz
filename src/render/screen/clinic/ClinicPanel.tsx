@@ -30,6 +30,7 @@ import type { BackgroundSync } from './useBackgroundSync.ts';
 import type { Sex } from '@domain/prescription.ts';
 import * as db from '@storage/db.ts';
 import { newId, useStore } from '../store.tsx';
+import { Dialog } from '../components/Dialog.tsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -349,7 +350,7 @@ export function ClinicPanel({
         doctor can use to catch it is on this one screen.
       */}
       {confirming && (
-        <div className="scrim" role="dialog" aria-modal="true">
+        <Dialog label="Confirm" onClose={() => setConfirming(null)}>
           <div className="sheet-modal">
             <h3>Start a script for this patient?</h3>
             <div className="confirm-patient">
@@ -383,11 +384,11 @@ export function ClinicPanel({
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {removing && (
-        <div className="scrim" role="dialog" aria-modal="true">
+        <Dialog label="Remove from the queue" onClose={() => setRemoving(null)}>
           <div className="sheet-modal">
             <h3>Remove token {removing.token} from the queue?</h3>
             <p className="hint">
@@ -410,7 +411,7 @@ export function ClinicPanel({
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

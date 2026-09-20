@@ -47,7 +47,8 @@ describe('what kind a record is', () => {
     // The property that lets this ship without a schema bump or a migration
     // pass over an encrypted backup.
     expect(kindOf({}).id).toBe('prescription');
-    expect(kindOf({ kind: undefined }).id).toBe('prescription');
+    // and an explicit undefined, which is what a restored JSON record has
+    expect(kindOf(JSON.parse('{"kind":null}') as { kind?: never }).id).toBe('prescription');
   });
 
   it('writes no kind at all for a new prescription', () => {
