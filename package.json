@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
-  "description": "Bilingual clinical prescription PWA — on-device only, EN + ur-PK patient instructions.",
+  "description": "Bilingual clinical prescription PWA \u2014 on-device only, EN + ur-PK patient instructions.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b --noEmit && vite build",
@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit",
+    "theme:tokens": "node scripts/build-tokens.mjs",
     "assets:growth": "node scripts/fetch-growth-tables.mjs",
     "assets:fonts": "node scripts/fetch-fonts.mjs",
     "assets": "npm run assets:growth && npm run assets:fonts",

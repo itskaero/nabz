@@ -27,6 +27,8 @@ import { deviceRole, setDeviceRole } from '@domain/deviceRole.ts';
 import type { InstalledPack } from '@storage/db.ts';
 import { installPack, listPacks, removePack } from '@data/provider.ts';
 import { parsePackFile } from '../builder/packFile.ts';
+import type { AppearanceControl } from '../useAppearance.ts';
+import { AppearanceSection } from './AppearanceSection.tsx';
 
 const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   {
@@ -46,7 +48,14 @@ const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   },
 ];
 
-export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) {
+export function SettingsPanel({
+  onOpenBuilder,
+  appearance,
+}: {
+  onOpenBuilder: () => void;
+  /** Owned by App, so one hook drives the whole document. */
+  appearance: AppearanceControl;
+}) {
   // Does the origin this app came from run a clinic station? A static host
   // (Railway, or a file the doctor installed) says no, and there is nothing to
   // pair with -- so the pairing box does not appear at all.
@@ -152,6 +161,8 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
 
   return (
     <div className="body">
+      <AppearanceSection appearance={appearance} />
+
       <section className="card settings-section">
         <h3>Your details</h3>
         <div className="field">

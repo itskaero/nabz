@@ -11,37 +11,18 @@
  * amber = "the doctor's own words", red = danger. Nothing else is coloured.
  */
 
+@import './tokens.css';
+
+/*
+ * Type, and only type. Every colour, density, radius and motion token is
+ * GENERATED into ./tokens.css from src/render/theme.ts, so the screen cannot
+ * drift from what the PDF draws with. The font stack stays here because it is
+ * meaningless without the @font-face rules directly below it.
+ */
 :root {
-  --bg: #eef1f2;
-  --surface: #ffffff;
-  --ink: #14201f;
-  --ink-soft: #55635f;
-  --ink-faint: #8a9691;
-  --line: #dfe4e3;
-  --line-soft: #eceeed;
-
-  --teal: #0f766e;
-  --teal-ink: #0b5a54;
-  --teal-wash: #e6f2f0;
-
-  --alert: #b4232a;
-  --alert-wash: #fbeceb;
-
-  --unvetted: #a8722a;
-  --warn-wash: #f6eddf;
-
-  --patient-tint: #f2f7f6;
-  --sheet: #f6f8f8;
-
-  --r: 8px;
-  --r-sm: 6px;
-  --shadow: 0 1px 2px rgba(20, 32, 31, 0.06), 0 4px 10px rgba(20, 32, 31, 0.04);
-
   --font-latin: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --font-urdu: 'Noto Nastaliq Urdu', serif;
-
-  --bar-h: 56px;
 }
 
 @font-face {
@@ -96,6 +77,86 @@ textarea,
 select {
   font: inherit;
   color: inherit;
+}
+
+/* ---------- foundations ---------- */
+
+/*
+ * A visible focus ring on EVERYTHING, not just the inputs.
+ *
+ * Every custom-styled button in this app -- .btn, .chip, .tab, .icon-btn,
+ * .opt, .slot, .mini, .row-item -- used to fall through to the user agent's
+ * default ring, which on a styled button in Safari is effectively nothing.
+ * The reception station is a desk machine with a keyboard, and a receptionist
+ * tabbing through a queue could not see where they were (WCAG 2.4.7).
+ *
+ * :focus-visible, not :focus, so a mouse click does not leave a ring behind.
+ * The offset puts the page behind the ring, which is why --focus is held to
+ * 3:1 against --bg rather than against whatever the control is filled with.
+ */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/*
+ * The floor for anything tappable, from the density axis. 44px on a phone,
+ * 32px at the reception desk, never below the WCAG 2.2 minimum of 24
+ * (tests/theme.test.ts enforces that).
+ *
+ * min-height rather than height: a chip whose label wraps must grow, and a row
+ * that is already taller than the floor is left alone.
+ */
+:where(.btn, .icon-btn, .chip, .tab, .opt, .slot, .mini, .tier-picker button, .library button, .mode, .row-item, .suggestion) {
+  min-height: var(--tap);
+}
+
+/*
+ * A white input on a white card is a rectangle you can only find by its
+ * border, so that border is the affordance and owes 3:1 (WCAG 1.4.11).
+ * --line stays the decorative hairline for card edges and dividers, which sit
+ * next to a background change and a shadow and do not have to carry it alone.
+ */
+:where(.field, .compose) :where(input, textarea, select),
+.chip-value,
+.pay-select,
+.vocab-row input,
+.unit-row input,
+.chip-editor input {
+  border-color: var(--line-strong);
+}
+
+/*
+ * Animate nothing that is not saying where something came from, and honour the
+ * OS switch: --motion-* resolve to 0ms under prefers-reduced-motion, so a
+ * transition never has to be written twice.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Windows high-contrast mode replaces the palette wholesale, which erases the
+ * BACKGROUND that several states here are carried by -- a selected tab, a
+ * present finding. They keep a border so the state survives.
+ */
+@media (forced-colors: active) {
+  .tab[aria-selected='true'],
+  .chip[data-state='present'],
+  .opt[aria-pressed='true'],
+  .icon-btn[aria-pressed='true'],
+  .mode[aria-pressed='true'] {
+    border: 2px solid ButtonText;
+    forced-color-adjust: none;
+  }
 }
 
 .mono {
@@ -244,7 +305,7 @@ select {
 
 .banner-backup {
   background: var(--warn-wash);
-  color: #6d4a1b;
+  color: var(--caution-ink);
   border-left: 4px solid var(--unvetted);
 }
 
@@ -372,11 +433,12 @@ select {
 .tab[aria-selected='true'] {
   background: var(--teal);
   border-color: var(--teal);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .tab[aria-selected='true'] span {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--on-accent);
+  opacity: 0.8;
 }
 
 .badge {
@@ -394,8 +456,10 @@ select {
 }
 
 .tab[aria-selected='true'] .badge {
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  /* A surface-coloured pill on the accent, not a translucent white one:
+     translucent white disappears on the LIGHT accent dark mode uses. */
+  background: var(--surface);
+  color: var(--accent-ink);
 }
 
 /* ---------- body ---------- */
@@ -499,7 +563,7 @@ select {
 .btn {
   border: 1px solid var(--teal);
   background: var(--teal);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: var(--r-sm);
   padding: 8px 13px;
   cursor: pointer;
@@ -612,7 +676,7 @@ select {
 .system > summary::before {
   content: '›';
   color: var(--ink-faint);
-  transition: transform 0.12s;
+  transition: transform var(--motion-fast) var(--ease);
   display: inline-block;
 }
 
@@ -646,7 +710,7 @@ select {
 .chip[data-state='present'] {
   background: var(--teal);
   border-color: var(--teal);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 500;
 }
 
@@ -961,7 +1025,7 @@ select {
 .scrim {
   position: fixed;
   inset: 0;
-  background: rgba(20, 32, 31, 0.35);
+  background: var(--scrim);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1029,7 +1093,7 @@ select {
 .opt[aria-pressed='true'] {
   background: var(--teal);
   border-color: var(--teal);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .num-row {
@@ -1068,8 +1132,8 @@ select {
 }
 
 .sheet-page {
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(20, 32, 31, 0.14), 0 8px 24px rgba(20, 32, 31, 0.08);
+  background: var(--paper);
+  box-shadow: var(--shadow-lifted);
   margin: 0 auto 14px;
   display: block;
   max-width: 100%;
@@ -1228,7 +1292,7 @@ select {
   border-radius: var(--r-sm);
   padding: 10px 12px;
   font-size: 12.5px;
-  color: #6d4a1b;
+  color: var(--caution-ink);
 }
 
 .warn-box strong {
@@ -1340,7 +1404,7 @@ select {
 .pill.warn {
   border-color: var(--unvetted);
   background: var(--warn-wash);
-  color: #6d4a1b;
+  color: var(--caution-ink);
 }
 
 .badge.bad {

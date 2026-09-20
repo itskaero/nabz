@@ -38,6 +38,7 @@ import type { DeviceRole } from '@domain/deviceRole.ts';
 import { deviceRole, deviceAllows } from '@domain/deviceRole.ts';
 import { DeviceRolePicker } from './components/DeviceRolePicker.tsx';
 import { useBackgroundSync } from './clinic/useBackgroundSync.ts';
+import { useAppearance } from './useAppearance.ts';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
 const ClinicPanel = lazy(() =>
@@ -104,6 +105,10 @@ function canShareFiles(): boolean {
 
 export function App() {
   const store = useStore();
+  // One hook for the whole document: it writes `data-theme` / `data-density`
+  // onto <html>, so every surface below — including the lazy ones — is themed
+  // without any of them knowing a theme exists.
+  const appearance = useAppearance();
   const { rx, profile, pack, phrases, contentRejected, dirty, save, startNew } = store;
   const [view, setView] = useState<View>(() =>
     deviceRole() === 'reception' ? 'clinic' : 'write',
@@ -535,7 +540,9 @@ export function App() {
       )}
 
       {shown('history') && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
-      {view === 'settings' && <SettingsPanel onOpenBuilder={() => setView('builder')} />}
+      {view === 'settings' && (
+        <SettingsPanel onOpenBuilder={() => setView('builder')} appearance={appearance} />
+      )}
       {pack.modules.includes(view as ModuleId) && shown(view) && (
         <Suspense fallback={<div className="body"><p className="empty">Opening…</p></div>}>
           <div className="body">
