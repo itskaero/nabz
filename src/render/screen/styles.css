@@ -446,7 +446,7 @@ select {
   min-width: 16px;
   margin-left: 6px;
   padding: 0 4px;
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   background: var(--teal-wash);
   color: var(--teal-ink);
   font-family: var(--font-mono);
@@ -698,7 +698,7 @@ select {
 .chip {
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 5px 11px;
   font-size: 13px;
   cursor: pointer;
@@ -734,7 +734,7 @@ select {
 .chip-value {
   width: 74px;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 4px 9px;
   font-family: var(--font-mono);
   font-size: 12px;
@@ -833,7 +833,7 @@ select {
   border: 1px solid var(--teal);
   background: var(--teal-wash);
   color: var(--teal-ink);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 4px 10px;
   font-size: 12.5px;
   cursor: pointer;
@@ -1084,7 +1084,7 @@ select {
 .opt {
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 5px 11px;
   font-size: 13px;
   cursor: pointer;
@@ -1379,7 +1379,7 @@ select {
 /* Status pills reuse the §3 colour discipline: teal = safe, red = blocking. */
 .pill {
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 2px 9px;
   font-size: 11px;
   color: var(--ink-soft);

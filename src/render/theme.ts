@@ -214,7 +214,17 @@ export interface ThemeTokens {
 }
 
 const LIGHT: ThemeTokens = {
-  bg: '#eef1f2',
+  /*
+    The ground is warm, not cool.
+
+    It was #eef1f2 -- a grey-green that photographs as "hospital corridor".
+    This is the same family moved toward a faint warm green, at roughly a third
+    of the saturation the reference dashboards use: enough that a long OPD
+    session reads as calm rather than clinical-cold, not so much that the app
+    turns into a cream-paper skin. The print palette does NOT follow; paper
+    already has its own warmth and its own reviewed values.
+  */
+  bg: '#eff5f1',
   surface: '#ffffff',
   surfaceRaised: '#ffffff',
   ink: '#14201f',
@@ -222,13 +232,13 @@ const LIGHT: ThemeTokens = {
   // was #8a9691 -- 3.06:1 on white and 2.70:1 on the app background, i.e.
   // below the text floor everywhere it was used, which was every field label.
   inkFaint: '#616e6a',
-  line: '#dfe4e3',
-  lineSoft: '#eceeed',
+  line: '#dde7e2',
+  lineSoft: '#e9efeb',
   lineStrong: '#808d89',
 
   accent: '#0f766e',
   accentInk: '#0b5a54',
-  accentWash: '#e6f2f0',
+  accentWash: '#e3f1ee',
   onAccent: '#ffffff',
 
   danger: '#b4232a',
@@ -238,15 +248,21 @@ const LIGHT: ThemeTokens = {
 
   caution: '#a8722a',
   cautionInk: '#6d4a1b',
-  cautionWash: '#f6eddf',
+  cautionWash: '#f7efe2',
 
-  patientTint: '#f2f7f6',
-  sheet: '#f6f8f8',
+  patientTint: '#f1f8f5',
+  sheet: '#f4f7f5',
 
   focus: '#0f766e',
   scrim: 'rgba(20, 32, 31, 0.35)',
-  shadow1: '0 1px 2px rgba(20, 32, 31, 0.06), 0 4px 10px rgba(20, 32, 31, 0.04)',
-  shadow2: '0 1px 3px rgba(20, 32, 31, 0.14), 0 8px 24px rgba(20, 32, 31, 0.08)',
+  /*
+    Softer, and warmer to match the ground. The old shadows were grey-cast and
+    tight, which on a warm background reads as a smudge under the card rather
+    than light falling across it. Wider radius, lower alpha, same two-layer
+    shape (a contact shadow plus an ambient one).
+  */
+  shadow1: '0 1px 2px rgba(23, 43, 36, 0.05), 0 4px 12px rgba(23, 43, 36, 0.05)',
+  shadow2: '0 1px 3px rgba(23, 43, 36, 0.1), 0 10px 28px rgba(23, 43, 36, 0.09)',
 
   paper: '#ffffff',
   paperInk: '#14201f',
@@ -382,7 +398,9 @@ export const DENSITIES: Record<Density, DensityTokens> = {
     tap: '44px',
     ctlPadY: '10px',
     ctlPadX: '14px',
-    cardPad: '12px',
+    // 12px against a 12px radius left the corner eating the first character
+    // of the first row. The extra 4px is what the larger radius costs.
+    cardPad: '16px',
     stack: '10px',
     fontBase: '15px',
   },
@@ -419,7 +437,16 @@ export const MOTION = {
   ease: 'cubic-bezier(0.2, 0, 0.2, 1)',
 } as const;
 
-export const RADII = { r: '8px', rSm: '6px', rPill: '999px' } as const;
+/**
+ * Corner radius, in three steps.
+ *
+ * 8px was a compromise from when every surface was a bordered box. Cards and
+ * sheets now carry their edge with a shadow and a tint, and at that weight 8px
+ * reads as a rounded rectangle rather than a rounded card. 12px is the
+ * reference dashboards' one genuinely transferable habit; `rSm` follows it up
+ * so a chip inside a card still nests visually instead of matching it.
+ */
+export const RADII = { r: '12px', rSm: '9px', rPill: '999px' } as const;
 
 // --- generated CSS ---------------------------------------------------------
 
