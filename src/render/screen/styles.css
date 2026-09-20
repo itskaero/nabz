@@ -584,6 +584,122 @@ select {
   font-weight: 600;
 }
 
+/* ---------- the backup recovery sheet ---------- */
+
+/*
+ * A sheet for the drawer the clinic already locks. Printed rather than
+ * downloaded: a PDF of a password in the Downloads folder of the device being
+ * backed up protects nothing.
+ */
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.recovery-sheet h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.recovery-who {
+  margin: 2px 0 16px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.recovery-label {
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/*
+ * Big, spaced and monospaced, because this will be read off paper in bad
+ * light and typed back in months later, possibly by somebody else.
+ */
+.recovery-code {
+  margin: 4px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+
+.recovery-body p {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+}
+
+.recovery-note {
+  color: var(--ink-soft);
+}
+
+/*
+ * Print: this sheet, and nothing else on the page.
+ *
+ * `visibility` rather than `display`, so the sheet keeps its place in the
+ * layout while everything around it goes -- a `display: none` on an ancestor
+ * would take the sheet with it, and the sheet is inside a modal inside the
+ * app shell.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  /*
+   * Hidden ancestors still paint their backgrounds, and the app's ground is a
+   * tinted green. A whole sheet of it is ink a clinic paid for.
+   */
+  body,
+  .app,
+  .app-main,
+  .scrim,
+  .sheet-modal {
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .recovery-sheet,
+  .recovery-sheet * {
+    visibility: visible;
+  }
+
+  .recovery-sheet {
+    position: absolute;
+    inset: 0 auto auto 0;
+    /* Millimetres, because the target is a sheet of paper. */
+    width: 100%;
+    max-width: 165mm;
+    padding: 12mm 0 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .recovery-who,
+  .recovery-note {
+    color: #333;
+  }
+
+  .recovery-code {
+    border-color: #000;
+  }
+
+  /* The buttons that produced this page are not part of it. */
+  .recovery-sheet ~ .actionbar {
+    display: none;
+  }
+}
+
 /* ---------- the setup checklist ---------- */
 
 /*
