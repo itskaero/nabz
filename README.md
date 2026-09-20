@@ -74,7 +74,7 @@ npm run dev
 committed" below.
 
 ```bash
-npm test            # 531 tests
+npm test            # 562 tests
 npm run build       # typecheck + production build
 npm run preview     # serve the built PWA
 ```
@@ -173,6 +173,8 @@ npm run artifact:visual   # -> artifacts/visual/*.png rasterised pages, to look 
 src/
   domain/     pure clinical logic — no React, no DOM, no storage
     documents/    what KIND of document this is: prescription, discharge summary
+    addon.ts      what a clinic may install: data and enablement, never code
+    addonSignature.ts  who really wrote it (ECDSA P-256 over canonical JSON)
     appearance.ts theme and density, per DEVICE — never in the backup
     sig.ts        structured medication line -> a sentence, per locale
     phrases.ts    locale-pack shape, template grammar, cross-locale validation
@@ -187,7 +189,7 @@ src/
     modules/      clinical-tool modules: eGFR, BMI/BSA, acute malnutrition
     pack.ts       ContentPack + the "no dose without a citation" validator
   data/       content: locale packs, formulary seed, dosing seed, paeds pack,
-              growth tables (generated)
+              growth tables (generated), shipped addons
   config/     appDefaults (shipped) and doctorProfile (per-doctor) — kept apart
   storage/    IndexedDB + encrypted export/import
   render/
@@ -325,7 +327,53 @@ it is a fact about a machine, not about a doctor. The tablet in the room and
 the PC at the front desk want different answers, and the profile travels inside
 the backup.
 
-### 7. A document has a kind, and a discharge summary is not a second app
+### 7. An addon carries data and settings, never code
+
+A clinic that wants a clinical tool should not have to wait for a release. But
+a module in this app is *code* — a formula with a green suite behind it
+(`ModuleId` is a closed union precisely so a data file cannot invent one), and
+that property is worth more than the flexibility of giving it up.
+
+So an addon is a single JSON file that **switches on** a module this build
+already has, configures it, and adds content. An addon naming a module this
+build does not have is **refused at install, by name** — never filtered out
+quietly, because a file that drops the capability it was installed for is worse
+than one that will not install.
+
+Two rules do most of the work:
+
+- **It may add, never overwrite.** Lists append; a map key that already exists
+  is a refusal. An addon that could silently replace the wording of a tier-2
+  red flag would be a way to change what a patient is told with nobody
+  reviewing it — which is exactly what `RedFlagReview` exists to prevent. The
+  one deliberate exception is a module's *settings*, which an addon may replace
+  because swapping protocols is the point — and the install says so out loud
+  rather than doing it quietly.
+- **It is a layer, never a rewrite.** Addons are applied over the installed
+  pack at resolve time (`data/provider.ts`), so removing one is complete by
+  construction: the base pack never carried the contributions, and there is no
+  snapshot to keep or to get wrong.
+
+Refuse at install, where a human is standing there and can read why; degrade
+rather than block at runtime. That is the same split the builder already uses,
+where `validateContentPack` warns about an unsigned red flag and `useDraft`
+escalates it to blocking at the moment somebody can actually sign it off.
+
+Addons can be signed (ECDSA P-256, via `crypto.subtle` — not the `node-forge`
+the *server* uses, which has no business in a phone bundle). A signature that
+does not match refuses; a missing one warns and is badged; a device with no
+`crypto.subtle` at all — a plain-http LAN address — records "not checked"
+rather than refusing, because refusing there would make an addon uninstallable
+on exactly the machines this app is built for. The installer shows the key's
+fingerprint rather than a green tick: the cryptography proves the file has not
+changed, not that the signer is who the manifest says.
+
+`npm run addon:export` writes `src/data/addons/who-wasting-2023.ts` out as the
+file a clinic would actually install — it swaps the shipped paediatric pack
+from Pakistan's MUAC-only criteria to WHO 2023, which changes who gets
+classified, and nothing executable crosses the boundary to do it.
+
+### 8. A document has a kind, and a discharge summary is not a second app
 
 `domain/documents` says what a kind *is* — its tabs, its printed blocks, what
 it refuses to print without. Everything else is reused: `MedicationLine`,

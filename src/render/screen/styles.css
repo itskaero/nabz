@@ -1657,3 +1657,32 @@ select {
   color: var(--danger);
   font-weight: 600;
 }
+
+/* ---------- addons ---------- */
+/*
+ * A layer over a pack, so it reads as a row in a list rather than a card of
+ * its own -- and its warnings stay visible for as long as it is installed,
+ * rather than appearing once in a message nobody reads twice.
+ */
+.addon-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.addon-row .meta {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.addon-row .addon-warn {
+  color: var(--caution-ink);
+  border-left: 3px solid var(--caution);
+  padding-left: 8px;
+  margin-top: 5px;
+}

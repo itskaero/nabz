@@ -21,8 +21,11 @@ import { packErrors } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import { validatePacks } from '@domain/phrases.ts';
 import { DEFAULT_PACK_ID, contentPacks, isShippedPack, packById, phrasesForShippedPack } from './packs/index.ts';
-import type { InstalledPack, StoredContent } from '@storage/db.ts';
+import type { InstalledAddon, InstalledPack, StoredContent } from '@storage/db.ts';
 import * as db from '@storage/db.ts';
+import type { Addon, AddonIssue } from '@domain/addon.ts';
+import { addonErrors, appliesTo, mergeAddons, parseAddon, validateAddon } from '@domain/addon.ts';
+import { verifyAddon } from '@domain/addonSignature.ts';
 
 export const APP_CONTENT_VERSION = '1';
 
@@ -38,11 +41,20 @@ export interface ResolvedContent {
    * running on the shipped default despite an edited copy existing on the device.
    */
   rejected: string[];
+  /** the addons layered over this pack, in install order */
+  addons: InstalledAddon[];
 }
 
 function shippedResolved(packId: string): ResolvedContent {
   const pack = packById(packId);
-  return { pack, phrases: phrasesForShippedPack(packId), edited: false, verified: pack.verified, rejected: [] };
+  return {
+    pack,
+    phrases: phrasesForShippedPack(packId),
+    edited: false,
+    verified: pack.verified,
+    rejected: [],
+    addons: [],
+  };
 }
 
 /** Structural check applied to anything before it is allowed to drive the app. */
@@ -140,12 +152,137 @@ export async function resolveContent(packId: string = DEFAULT_PACK_ID): Promise<
     return resolved;
   }
 
-  const rejected = contentErrors(entry.pack, entry.phrases);
+  /*
+    Addons are a LAYER, applied here and never written into the pack. That is
+    what makes removing one complete: the base pack was never touched, so
+    deleting the row restores exactly what was there before, with no snapshot
+    to keep and no snapshot to be wrong.
+  */
+  const installed = (await db.listInstalledAddons()).filter((a) => appliesTo(a.addon, packId));
+  const layered = installed.length
+    ? mergeAddons(entry.pack, entry.phrases, installed.map((a) => a.addon))
+    : { pack: entry.pack, phrases: entry.phrases };
+
+  /*
+    The MERGED result is validated, not just the base pack. An addon is
+    refused at install if it would break things (where a human is present to
+    read why), but a pack edited afterwards could still leave the combination
+    invalid -- and this file's rule is that invalid content never runs.
+  */
+  const rejected = contentErrors(layered.pack, layered.phrases);
   const resolved: ResolvedContent = rejected.length
     ? { ...shippedResolved(packId), rejected }
-    : { pack: entry.pack, phrases: entry.phrases, edited: entry.edited, verified: entry.verified, rejected: [] };
+    : {
+        pack: layered.pack,
+        phrases: layered.phrases,
+        edited: entry.edited,
+        verified: entry.verified,
+        rejected: [],
+        addons: installed,
+      };
   cache.set(packId, resolved);
   return resolved;
+}
+
+// --- addons ----------------------------------------------------------------
+
+export interface AddonInstallResult {
+  ok: boolean;
+  /** what refused the install; empty when it succeeded */
+  errors: AddonIssue[];
+  /** things worth saying that did not refuse it */
+  warnings: AddonIssue[];
+  addon?: Addon;
+}
+
+/**
+ * Install an addon file, against the pack it will apply to.
+ *
+ * Refuses at INSTALL rather than degrading at runtime, which is the split the
+ * builder already uses (`useDraft` escalates the red-flag warning to blocking
+ * at the moment a human can sign off). An install is that moment: somebody is
+ * standing there and can read why.
+ */
+export async function installAddon(
+  raw: unknown,
+  packId: string = DEFAULT_PACK_ID,
+): Promise<AddonInstallResult> {
+  const parsed = parseAddon(raw);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors, warnings: [] };
+  const addon = parsed.addon;
+
+  const base = await db.getInstalledPack(packId);
+  const pack = base?.pack ?? packById(packId);
+  const phrases = base?.phrases ?? phrasesForShippedPack(packId);
+
+  const issues = validateAddon(addon, pack, phrases);
+
+  /*
+    A signature that does not hold up is a refusal; one that is merely absent
+    is a warning. And "this device cannot check" is neither -- a plain-http
+    LAN origin has no crypto.subtle at all, and refusing there would make an
+    addon uninstallable on exactly the machines this app is built for.
+  */
+  const verdict = await verifyAddon(addon);
+  if (verdict === 'invalid') {
+    issues.push({
+      severity: 'error',
+      where: 'signature',
+      message:
+        'the signature does not match the contents. This file has been changed since it was signed — do not install it.',
+    });
+  }
+  if (verdict === 'unverifiable') {
+    issues.push({
+      severity: 'warning',
+      where: 'signature',
+      message:
+        'this device cannot check signatures, so the one on this addon has not been verified',
+    });
+  }
+
+  const errors = addonErrors(issues);
+  const warnings = issues.filter((i) => i.severity === 'warning');
+  if (errors.length) return { ok: false, errors, warnings };
+
+  /*
+    Belt and braces: simulate the merge and make sure the RESULT is content
+    this app would run. `validateAddon` checks the addon; this checks what it
+    produces, so a contribution that is individually fine but collectively
+    breaks the pack cannot get in.
+  */
+  const merged = mergeAddons(pack, phrases, [addon]);
+  const broken = contentErrors(merged.pack, merged.phrases);
+  if (broken.length) {
+    return {
+      ok: false,
+      warnings,
+      errors: broken.map((message) => ({ severity: 'error' as const, where: 'result', message })),
+    };
+  }
+
+  await db.putInstalledAddon({
+    id: addon.manifest.id,
+    addon,
+    verdict,
+    warnings: warnings.map((w) => `${w.where}: ${w.message}`),
+    installedAt: new Date().toISOString(),
+  });
+  cache.clear();
+  return { ok: true, errors: [], warnings, addon };
+}
+
+export async function listAddons(): Promise<InstalledAddon[]> {
+  return db.listInstalledAddons();
+}
+
+/**
+ * Remove an addon. Complete by construction -- the base pack never carried
+ * the addon's contributions, so there is nothing to unpick.
+ */
+export async function removeAddon(id: string): Promise<void> {
+  await db.deleteInstalledAddon(id);
+  cache.clear();
 }
 
 /** Every pack in the library, for the Settings picker. Seeds first if needed. */
@@ -174,7 +311,7 @@ export async function publishContent(
     installedAt: prior?.installedAt ?? now,
     updatedAt: now,
   });
-  cache.set(packId, { pack, phrases, edited: true, verified: pack.verified, rejected: [] });
+  cache.delete(packId);
   return { ok: true };
 }
 

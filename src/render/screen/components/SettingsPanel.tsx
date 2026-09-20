@@ -29,6 +29,7 @@ import { installPack, listPacks, removePack } from '@data/provider.ts';
 import { parsePackFile } from '../builder/packFile.ts';
 import type { AppearanceControl } from '../useAppearance.ts';
 import { AppearanceSection } from './AppearanceSection.tsx';
+import { AddonSection } from './AddonSection.tsx';
 
 const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   {
@@ -68,7 +69,8 @@ export function SettingsPanel({
     return () => ac.abort();
   }, []);
 
-  const { profile, setProfile, pack, contentRejected, contentVerified } = useStore();
+  const { profile, setProfile, pack, contentRejected, contentVerified, refreshContent } =
+    useStore();
   const [passphrase, setPassphrase] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [newPin, setNewPin] = useState('');
@@ -673,6 +675,12 @@ export function SettingsPanel({
           />
         </div>
       </section>
+
+      {/*
+        Directly under the pack library, because an addon is a layer over one
+        of those packs and reading them apart makes neither make sense.
+      */}
+      <AddonSection packId={profile.packId} onChanged={() => void refreshContent()} />
     </div>
   );
 }

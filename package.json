@@ -18,6 +18,7 @@
     "artifact:pdf": "node scripts/artifact.mjs pdf",
     "artifact:visual": "node scripts/artifact.mjs visual",
     "pack:export": "node scripts/pack-export.mjs",
+    "addon:export": "node scripts/addon-export.mjs",
     "build:deploy": "npm run assets && npm run build",
     "start": "node server/index.mjs",
     "start:clinic": "node scripts/clinic.mjs",

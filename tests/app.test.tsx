@@ -331,6 +331,15 @@ describe('module nav follows the active pack', () => {
     expect(screen.queryByRole('button', { name: 'Malnutrition' })).toBeNull();
   });
 
+  it('Settings offers addons, and says what one can and cannot be', async () => {
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    expect(await screen.findByRole('heading', { name: 'Addons' })).toBeTruthy();
+    // The claim the whole design rests on, said where a doctor will read it.
+    expect(screen.getByText(/carries settings and words/)).toBeTruthy();
+    expect(screen.getByText('Nothing installed.')).toBeTruthy();
+  });
+
   it('opening Malnutrition asks about oedema before it will classify', async () => {
     renderApp();
     const btn = await screen.findByRole('button', { name: 'Malnutrition' });
