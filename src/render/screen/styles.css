@@ -493,6 +493,17 @@ select {
   border-left: 4px solid var(--unvetted);
 }
 
+/*
+ * No colour at all. Amber means "not vetted" and red means danger; a font
+ * that is still downloading is neither, and giving progress a warning colour
+ * is how a palette stops meaning anything.
+ */
+.banner-progress {
+  background: var(--surface);
+  color: var(--ink-soft);
+  border-left: 4px solid var(--line-strong);
+}
+
 .banner button {
   margin-left: auto;
   border: 1px solid currentColor;
@@ -503,6 +514,69 @@ select {
   cursor: pointer;
   color: inherit;
   white-space: nowrap;
+}
+
+/*
+ * Two or more notices collapse to one line (see `shell/StatusNotices.tsx`).
+ * The whole summary row is the control, so the target is the full width of
+ * the screen rather than the eight characters of the word "Show".
+ */
+.status-line {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+/*
+ * `.status-line .status-summary`, not `.status-summary`: `.banner button`
+ * above is (0,1,1) and would otherwise win, leaving the summary wearing the
+ * small outlined button the actions use.
+ */
+.status-line .status-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  /* Overrides `.banner button`, which is the small outlined kind. */
+  margin-left: 0;
+  min-height: var(--tap);
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.status-toggle {
+  flex: 0 0 auto;
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.status-details {
+  margin: 0;
+  padding: 0 14px 10px;
+  list-style: none;
+  font-weight: 400;
+}
+
+.status-details li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--unvetted);
+}
+
+/* The rows are already inside an amber field; a second outline is noise. */
+.status-details strong {
+  font-weight: 600;
 }
 
 /* ---------- patient bar ---------- */

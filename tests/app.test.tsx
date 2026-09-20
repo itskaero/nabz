@@ -82,10 +82,15 @@ describe('shell', () => {
     // jsdom has no fetch for /fonts/*, so the shaper genuinely fails to load
     // here -- which makes this the real failure path, not a simulated one.
     renderApp();
-    const status = await screen.findByRole('status');
-    expect(status.textContent).toMatch(/preview and print are\s+unavailable/);
+    // The load announces itself before it fails, so wait for the failure
+    // rather than for the first status to appear.
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    const status = retry.closest('[role="status"]')!;
+    // One notice does not collapse: this is the only thing needing attention
+    // here, and "1 thing needs attention [Show]" would be a tap to read one
+    // sentence (see shell/StatusNotices.tsx).
+    expect(status.textContent).toMatch(/Preview and print are\s+unavailable/);
     expect(status.textContent).toContain('still write and save');
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 });
 
@@ -284,10 +289,16 @@ describe('edited content reaches the app', () => {
     resetContentCache();
 
     renderApp();
-    // Two independent banners can be on screen at once (this one, and jsdom's
-    // real font-load failure) -- findAllByRole resolves the instant ANY status
-    // exists, not once every eventual one has mounted, so waitFor is what
-    // actually waits for THIS banner's text rather than racing the other one.
+    /*
+      Two things need attention at once here -- this, and jsdom's real
+      font-load failure -- so the shell collapses them to a count and the
+      content is one tap away. What matters is that the tap still gets you the
+      whole sentence, id and all.
+    */
+    const summary = await screen.findByRole('button', { name: /things need attention/ });
+    expect(summary.textContent).toContain('2 things need attention');
+    await userEvent.click(summary);
+
     await waitFor(() => {
       const message = screen
         .getAllByRole('status')

@@ -56,6 +56,8 @@ import { bottomSlots, navGroups } from './shell/navModel.ts';
 import { SideNav } from './shell/SideNav.tsx';
 import { BottomNav } from './shell/BottomNav.tsx';
 import { SectionTabs } from './shell/SectionTabs.tsx';
+import { StatusNotices } from './shell/StatusNotices.tsx';
+import type { Notice } from './shell/StatusNotices.tsx';
 import { useWideLayout } from './shell/useWideLayout.ts';
 
 /** Lazy: an authoring/ops surface should not weigh on opening a script. */
@@ -265,6 +267,79 @@ export function App() {
     ? { preview: previewWhy }
     : {};
 
+  /*
+    What the shell has to say about the DEVICE and the APP, as data.
+
+    Assembled here rather than as four JSX blocks because the interesting
+    property is how many there are: one renders as the banner it always was,
+    two or more collapse behind a count (`StatusNotices`). The allergy banner
+    is deliberately not in this list, and neither is "still needs a patient
+    name" -- see that file's header for why.
+  */
+  const notices = useMemo(() => {
+    const out: Notice[] = [];
+    if (!secure) {
+      out.push({
+        id: 'insecure',
+        title: 'This device cannot back itself up.',
+        body: (
+          <>
+            The app was opened over a plain connection, so the browser has
+            switched off encrypted backup, the PIN and offline use. Open the
+            address starting <code>https://</code> that the clinic station
+            prints, or open the app on the computer itself.
+          </>
+        ),
+      });
+    }
+    if (nagBackup) {
+      out.push({
+        id: 'backup',
+        title: 'Records live only on this device.',
+        body: 'It has been a while since your last backup.',
+        action: { label: 'Export now', run: () => setView('settings') },
+      });
+    }
+    if (!fontsLoaded && !fontError) {
+      out.push({
+        id: 'fonts-loading',
+        tone: 'progress',
+        title: 'Loading the Urdu typeface…',
+        body: 'The preview needs it to be exact.',
+      });
+    }
+    if (fontError) {
+      out.push({
+        id: 'fonts-failed',
+        title: 'The typesetting engine did not load.',
+        body: `Preview and print are unavailable. You can still write and save this script. (${fontError})`,
+        action: {
+          label: 'Retry',
+          run: () => {
+            setFontError(null);
+            setFontsLoaded(false);
+          },
+        },
+      });
+    }
+    /*
+      An edited pack that fails validation is IGNORED, not patched up, and the
+      doctor is told rather than left to notice that a chip went missing.
+      See data/provider.ts.
+    */
+    if (contentRejected.length > 0) {
+      out.push({
+        id: 'content-rejected',
+        title: 'Your edited content did not load.',
+        body: `The built-in packs are being used instead: ${contentRejected[0]}${
+          contentRejected.length > 1 ? ` (+${contentRejected.length - 1} more)` : ''
+        }`,
+        action: { label: 'Open builder', run: () => setView('builder') },
+      });
+    }
+    return out;
+  }, [secure, nagBackup, fontsLoaded, fontError, contentRejected]);
+
   const model = useMemo(() => {
     if (view !== 'preview' || !fontsLoaded) return null;
     return buildDocument({ rx, profile, pack, packs: phrases, defaults: appDefaults });
@@ -381,81 +456,11 @@ export function App() {
         )}
 
         {/*
-          NOT dismissible, and deliberately above the backup nag.
-
-          A plain-HTTP LAN address is not a secure context, so the browser removes
-          crypto.subtle — and with it the encrypted backup, on a device that holds
-          the only copy of every record. It used to fail silently, which is the
-          one behaviour this product cannot afford. Amber rather than red: red is
-          danger and the allergy banner owns it (DESIGN.md 3).
+          Amber, never red, and one line until asked. Red is danger and the
+          allergy banner above owns it (DESIGN.md 3); everything here has been
+          true since the app opened and will still be true in an hour.
         */}
-        {!secure && (
-          <div className="banner banner-backup" role="status">
-            <span>
-              <strong>This device cannot back itself up.</strong> The app was
-              opened over a plain connection, so the browser has switched off
-              encrypted backup, the PIN and offline use. Open the address starting{' '}
-              <code>https://</code> that the clinic station prints, or open the app
-              on the computer itself.
-            </span>
-          </div>
-        )}
-
-        {nagBackup && (
-          <div className="banner banner-backup">
-            <span>
-              Records live only on this device. It has been a while since your last
-              backup.
-            </span>
-            <button onClick={() => setView('settings')}>Export now</button>
-          </div>
-        )}
-
-        {!fontsLoaded && !fontError && (
-          <div className="banner banner-backup">
-            <span>Loading the Urdu typeface… the preview needs it to be exact.</span>
-          </div>
-        )}
-
-        {/*
-          Amber, not red, and role="status", not "alert". Red is danger only
-          (DESIGN.md 3) and the allergy banner owns it; a typesetting failure is
-          serious but it is not a clinical hazard, and there must be exactly one
-          thing on this screen that shouts.
-        */}
-        {fontError && (
-          <div className="banner banner-backup" role="status">
-            <span>
-              The typesetting engine did not load, so preview and print are
-              unavailable. You can still write and save this script. ({fontError})
-            </span>
-            <button
-              onClick={() => {
-                setFontError(null);
-                setFontsLoaded(false);
-              }}
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/*
-          An edited pack that fails validation is IGNORED, not patched up, and
-          the doctor is told rather than left to notice that a chip went missing.
-          See data/provider.ts.
-        */}
-
-        {contentRejected.length > 0 && (
-          <div className="banner banner-backup" role="status">
-            <span>
-              Your edited content did not load and the built-in packs are being
-              used instead: {contentRejected[0]}
-              {contentRejected.length > 1 ? ` (+${contentRejected.length - 1} more)` : ''}
-            </span>
-            <button onClick={() => setView('builder')}>Open builder</button>
-          </div>
-        )}
+        <StatusNotices notices={notices} />
 
         {pickingKind && (
           <DocumentKindPicker
