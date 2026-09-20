@@ -74,7 +74,7 @@ npm run dev
 committed" below.
 
 ```bash
-npm test            # 292 tests
+npm test            # 441 tests
 npm run build       # typecheck + production build
 npm run preview     # serve the built PWA
 ```
@@ -172,6 +172,8 @@ npm run artifact:visual   # -> artifacts/visual/*.png rasterised pages, to look 
 ```
 src/
   domain/     pure clinical logic — no React, no DOM, no storage
+    documents/    what KIND of document this is: prescription, discharge summary
+    appearance.ts theme and density, per DEVICE — never in the backup
     sig.ts        structured medication line -> a sentence, per locale
     phrases.ts    locale-pack shape, template grammar, cross-locale validation
     pluralize/    per-locale number grammar
@@ -188,9 +190,12 @@ src/
   config/     appDefaults (shipped) and doctorProfile (per-doctor) — kept apart
   storage/    IndexedDB + encrypted export/import
   render/
+    theme.ts  ONE source of colour: the frozen print palette, and the three
+              screen themes that generate screen/tokens.css
     text/     HarfBuzz shaping + bidi line layout
     pdf/      page model, document layout, PDF and SVG backends
     screen/   the React app
+      documents/  section id -> the component that edits it
       builder/  the pack builder — content authoring + its refusals
   app/        PWA entry
 server/       the clinic station: serves the app, shares the queue, issues its
@@ -286,6 +291,58 @@ the evidence (generic → mg/kg, with a **mandatory citation**). They are separa
 tables so commercial catalogue data can never become prescribing evidence. A test
 fails the build if any dosing row has an empty `reference`.
 
+### 6. Colour has one source, and paper is not the screen
+
+`render/theme.ts` owns both palettes. `palette` is what the PDF draws with and
+is **frozen** — a clinician has looked at what comes out of the printer.
+`THEMES` is the screen, and it generates `screen/tokens.css`, so a hex cannot
+exist in two files and disagree with itself.
+
+They are *separate* palettes because paper and screen have different contrast
+physics: a 3:1 grey at 7.2pt on a 300dpi laser is comfortable, and the same
+grey at 10px on a phone under an OPD window is not. Splitting them is what let
+the screen half be held to WCAG floors without touching a printed document.
+
+`tests/theme.test.ts` asserts every pair the UI actually puts together, in all
+three modes, and fails if `tokens.css` drifts from the file that generates it.
+It caught two values that looked fine.
+
+Three modes because one working day spans them: **light** for OPD, **dark** for
+a ward round at 03:00, **high contrast** for sunlight and for a doctor who is
+sixty. The preview sheet stays on white paper in all three — a dark-mode
+preview is a preview of a document that does not exist.
+
+Appearance is stored per device, next to `deviceRole` and for the same reason:
+it is a fact about a machine, not about a doctor. The tablet in the room and
+the PC at the front desk want different answers, and the profile travels inside
+the backup.
+
+### 7. A document has a kind, and a discharge summary is not a second app
+
+`domain/documents` says what a kind *is* — its tabs, its printed blocks, what
+it refuses to print without. Everything else is reused: `MedicationLine`,
+`AdviceItem`, `LabOrder` and `ExamSystem` are unchanged, and the whole discharge
+summary adds exactly one new section and one new painter.
+
+The consequence worth stating: **it adds no new translation surface.** Every
+sentence a family takes home comes through the tier-1/2/3 advice machinery the
+pack already vouches for in both languages. The admission block is English
+clinical prose for the next clinician, and nothing in it is patient-facing.
+
+`kind` is optional on the record and absent means prescription. Records written
+before this existed are the only copy their practice has, and a migration that
+goes wrong there does not lose a row — it loses a history.
+
+Readiness is checked at **print**, not at save: finishing a summary the morning
+after is normal, and a form that refuses to save at 2am is a form people
+photograph instead. It refuses to print without a diagnosis, the admission
+date, and a follow-up — the last because the commonest failure of a discharge
+is not a wrong drug, it is nobody knowing whose clinic the patient belongs to
+now.
+
+Which kinds exist is pack data. Adult internal medicine offers the discharge
+summary; paediatrics does not; no component knows the difference.
+
 ---
 
 ## Status of the shipped content
@@ -315,7 +372,9 @@ content is not ours to write.
 
 No cloud sync, no accounts, no licence enforcement (all v2). No interaction
 checker. No auto-translation anywhere. No geo-locking. No national formulary. No
-chips on diagnosis. No bulk-parsing of copyrighted reference PDFs.
+chips on diagnosis. No bulk-parsing of copyrighted reference PDFs. No
+appointments, no billing, no analytics — a clinic-management product is a
+different product, and the queue is as far into one as this goes.
 
 And two rules the code structure enforces rather than documents: nothing loads a
 prior prescription by matching a patient, and the app never fills a clinical
