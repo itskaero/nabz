@@ -158,7 +158,14 @@ export type AdviceTier = AdviceItem['kind'];
 
 // --- growth ----------------------------------------------------------------
 
-export type GrowthMeasureId = 'weight' | 'length' | 'height' | 'hc' | 'bmi';
+/**
+ * `muac` is here rather than in the malnutrition module because MUAC-for-age
+ * is an ordinary age-keyed growth chart -- it plots, it has percentiles, and a
+ * paediatric pack may legitimately want to track it over time. Weight-for-
+ * height is NOT in this list, because it is keyed by centimetres rather than
+ * by age and everything that consumes a GrowthMeasureId assumes an age axis.
+ */
+export type GrowthMeasureId = 'weight' | 'length' | 'height' | 'hc' | 'bmi' | 'muac';
 
 /** One plotted point, stored WITH the reference that produced its percentile. */
 export interface GrowthPoint {

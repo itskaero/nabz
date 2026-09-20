@@ -311,12 +311,40 @@ describe('module nav follows the active pack', () => {
     expect(screen.queryByRole('button', { name: 'Growth' })).toBeNull();
   });
 
-  it('the default pack (paediatrics, no scores) shows Growth, no eGFR/BMI/Scores tab', async () => {
+  it('the default pack (paediatrics, no scores) shows Growth and Malnutrition, no eGFR/BMI/Scores tab', async () => {
     renderApp();
     expect(await screen.findByRole('button', { name: 'Growth' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Malnutrition' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'eGFR' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'BMI / BSA' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Scores' })).toBeNull();
+  });
+
+  it('the medicine pack offers no Malnutrition tab', async () => {
+    // Adult internal medicine does not run a feeding programme, and a tab
+    // leading to a module that specialty never uses costs a scroll on every
+    // patient. The difference is pack data; no component knows about it.
+    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    resetContentCache();
+    renderApp();
+    expect(await screen.findByRole('button', { name: 'eGFR' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Malnutrition' })).toBeNull();
+  });
+
+  it('opening Malnutrition asks about oedema before it will classify', async () => {
+    renderApp();
+    const btn = await screen.findByRole('button', { name: 'Malnutrition' });
+    await userEvent.click(btn);
+
+    // The protocol the pack names is on screen, because a clinic following
+    // the national programme and one following WHO 2023 get different answers.
+    expect(await screen.findByText(/National Guideline/)).toBeTruthy();
+    // Three states, not a checkbox: "not assessed" and "absent" differ, and
+    // oedema outranks every number in the module.
+    expect(screen.getByRole('button', { name: 'Not assessed' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Present' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Absent' })).toBeTruthy();
+    expect(await screen.findByText(/Not enough to classify/)).toBeTruthy();
   });
 
   it('opening Scores for medicine shows CURB-65 among the choices', async () => {

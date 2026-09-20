@@ -189,7 +189,7 @@ export interface ScoreDefinition {
  * code it names (`domain/modules/`); an id with no matching code is a build
  * error, and that is the property this union exists to buy (CLAUDE.md 6d).
  */
-export type ModuleId = 'growth' | 'gfr' | 'bmi';
+export type ModuleId = 'growth' | 'gfr' | 'bmi' | 'malnutrition';
 
 /** Re-exported so a pack author reads one file, not two. */
 export type { DocumentKindId };
@@ -262,6 +262,25 @@ export interface ContentPack {
     growth?: {
       measures: GrowthMeasureId[];
       defaultReference: 'WHO' | 'CDC';
+    };
+    /**
+     * The acute-malnutrition protocol this specialty follows.
+     *
+     * Required rather than defaulted, because there is no safe default: WHO's
+     * 2023 guideline admits on weight-for-height OR MUAC OR oedema, while
+     * Pakistan's national programme admits on MUAC or oedema alone. Shipping
+     * one as "the" default would silently apply another country's case
+     * definition to a clinic's caseload.
+     */
+    malnutrition?: {
+      /** which criteria this protocol admits on */
+      criteria: Array<'oedema' | 'whz' | 'muac'>;
+      muacSevereMm: number;
+      muacModerateMm: number;
+      whzSevere: number;
+      whzModerate: number;
+      /** source + edition. REQUIRED and non-empty, exactly like DosingEntry. */
+      reference: string;
     };
   };
   /**
@@ -434,6 +453,55 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
       where: 'moduleConfig.growth',
       message: 'pack enables the growth module but does not configure it',
     });
+  }
+
+  /*
+    Malnutrition is configured or it is off. Unlike growth, there is no safe
+    default to fall back to: WHO 2023 and Pakistan's national programme use
+    different case definitions, and picking one silently would apply another
+    country's criteria to a clinic's caseload.
+  */
+  if (pack.modules.includes('malnutrition')) {
+    const cfg = pack.moduleConfig?.malnutrition;
+    if (!cfg) {
+      issues.push({
+        severity: 'error',
+        where: 'moduleConfig.malnutrition',
+        message:
+          'pack enables the malnutrition module but names no protocol. WHO 2023 and national programmes admit on different criteria; there is no default.',
+      });
+    } else {
+      if (!cfg.criteria?.length) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition.criteria',
+          message: 'a protocol that admits on no criteria can never classify a child',
+        });
+      }
+      // Same rule as DosingEntry and ScoreDefinition: a cut-off with no
+      // citation is a number with no provenance in front of a doctor.
+      if (!cfg.reference?.trim()) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition.reference',
+          message: 'no source for these cut-offs. A threshold with no citation is not a threshold.',
+        });
+      }
+      if (cfg.muacSevereMm >= cfg.muacModerateMm) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition',
+          message: `severe MUAC cut-off (${cfg.muacSevereMm}mm) must be below the moderate one (${cfg.muacModerateMm}mm)`,
+        });
+      }
+      if (cfg.whzSevere >= cfg.whzModerate) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition',
+          message: `severe WHZ cut-off (${cfg.whzSevere}) must be below the moderate one (${cfg.whzModerate})`,
+        });
+      }
+    }
   }
 
   // Same rule as dosing: a score with no citation is a number with no

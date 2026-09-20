@@ -94,6 +94,26 @@ describe('paediatrics pack', () => {
     expect(paediatrics.moduleConfig?.growth?.defaultReference).toBe('WHO');
   });
 
+  it('enables the malnutrition module and names the protocol it follows', () => {
+    expect(paediatrics.modules).toContain('malnutrition');
+    const cfg = paediatrics.moduleConfig?.malnutrition;
+    expect(cfg?.reference).toMatch(/Pakistan/);
+    // Pakistan's national programme admits on MUAC or oedema alone. This is a
+    // deliberate divergence from WHO 2023, which also admits on
+    // weight-for-height, and it changes who gets treated -- so it is asserted
+    // rather than left to whoever next edits the pack.
+    expect(cfg?.criteria).toEqual(['oedema', 'muac']);
+    expect(cfg?.muacSevereMm).toBe(115);
+    expect(cfg?.muacModerateMm).toBe(125);
+  });
+
+  it('offers MUAC as a plottable growth measure too', () => {
+    // Classifying once and following a child through a feeding programme are
+    // different jobs; MUAC-for-age is an ordinary age-keyed chart and serves
+    // the second.
+    expect(paediatrics.moduleConfig?.growth?.measures).toContain('muac');
+  });
+
   it('does not chip-ify diagnosis', () => {
     // Diagnosis is judgement; chips push click-convenience over it (PRODUCT.md 8).
     expect(Object.keys(paediatrics.findingsPalette)).not.toContain('diagnosis');
@@ -252,6 +272,60 @@ describe('medicine pack', () => {
     expect(medicine.sigDefaults?.slots?.administer).toBe('take');
     const medicinePhrases = phrasesForShippedPack(medicine.id);
     expect(medicinePhrases['ur-PK'].vocab.administer?.take).toBe('لیں');
+  });
+});
+
+describe('the malnutrition protocol is configured or the module is off', () => {
+  const enable = (cfg: unknown) =>
+    packErrors({
+      ...paediatrics,
+      modules: ['malnutrition'],
+      moduleConfig: cfg === undefined ? {} : { malnutrition: cfg },
+    } as typeof paediatrics).filter((e) => e.where.includes('malnutrition'));
+
+  it('refuses the module with no protocol at all', () => {
+    // There is no safe default: WHO 2023 and national programmes use
+    // different case definitions, and picking one silently would apply
+    // another country's criteria to a clinic's caseload.
+    const errors = enable(undefined);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]?.severity).toBe('error');
+  });
+
+  it('refuses cut-offs with no citation', () => {
+    const errors = enable({
+      criteria: ['muac'], muacSevereMm: 115, muacModerateMm: 125,
+      whzSevere: -3, whzModerate: -2, reference: '   ',
+    });
+    expect(errors.some((e) => e.where.endsWith('reference'))).toBe(true);
+  });
+
+  it('refuses a protocol that admits on nothing', () => {
+    const errors = enable({
+      criteria: [], muacSevereMm: 115, muacModerateMm: 125,
+      whzSevere: -3, whzModerate: -2, reference: 'somewhere',
+    });
+    expect(errors.some((e) => e.where.endsWith('criteria'))).toBe(true);
+  });
+
+  it('refuses cut-offs that are the wrong way round', () => {
+    // A severe threshold above the moderate one would classify every
+    // moderately wasted child as severe and never fire the moderate band.
+    const muac = enable({
+      criteria: ['muac'], muacSevereMm: 125, muacModerateMm: 115,
+      whzSevere: -3, whzModerate: -2, reference: 'somewhere',
+    });
+    expect(muac.some((e) => e.message.includes('MUAC'))).toBe(true);
+
+    const whz = enable({
+      criteria: ['whz'], muacSevereMm: 115, muacModerateMm: 125,
+      whzSevere: -2, whzModerate: -3, reference: 'somewhere',
+    });
+    expect(whz.some((e) => e.message.includes('WHZ'))).toBe(true);
+  });
+
+  it('accepts the shipped paediatric protocol', () => {
+    expect(packErrors(paediatrics).filter((e) => e.where.includes('malnutrition'))).toEqual([]);
   });
 });
 

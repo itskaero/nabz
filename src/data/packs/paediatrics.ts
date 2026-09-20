@@ -259,14 +259,37 @@ export const paediatrics: ContentPack = {
   formularySeed,
   dosing: dosingSeed,
 
-  modules: ['growth'],
+  modules: ['growth', 'malnutrition'],
   moduleConfig: {
     growth: {
-      measures: ['weight', 'length', 'height', 'hc', 'bmi'],
+      // MUAC is offered alongside the rest: it is an ordinary age-keyed chart,
+      // and a child being followed through a feeding programme is one whose
+      // arm circumference is worth plotting over time rather than only
+      // classifying once.
+      measures: ['weight', 'length', 'height', 'hc', 'bmi', 'muac'],
       // WHO is the default: openly licensed, standard in Pakistan and global
       // health, and it covers 0-19. CDC stays available because the two
       // genuinely disagree under age 2 and some practices follow CDC.
       defaultReference: 'WHO',
+    },
+    /**
+     * Pakistan's national programme, not WHO 2023, because this pack is for a
+     * Pakistani paediatric clinic and the two differ in a way that changes who
+     * gets treated: the national protocol admits on MUAC or bilateral pitting
+     * oedema alone, while WHO 2023 also admits on weight-for-height.
+     *
+     * That is a real, deliberate divergence and not an omission. A clinic
+     * following the global guideline changes `criteria` to include `'whz'` in
+     * the pack builder; nothing in the app changes.
+     */
+    malnutrition: {
+      criteria: ['oedema', 'muac'],
+      muacSevereMm: 115,
+      muacModerateMm: 125,
+      whzSevere: -3,
+      whzModerate: -2,
+      reference:
+        'National Guideline for the Management of Acute Malnutrition, Ministry of National Health Services, Pakistan, May 2019',
     },
   },
 

@@ -74,7 +74,7 @@ npm run dev
 committed" below.
 
 ```bash
-npm test            # 450 tests
+npm test            # 531 tests
 npm run build       # typecheck + production build
 npm run preview     # serve the built PWA
 ```
@@ -183,7 +183,8 @@ src/
     advice.ts     the three advice tiers and what the app vouches for
     deviceRole.ts what a machine is for; a front desk cannot store a script
     secureContext.ts  a plain-http origin has no crypto.subtle -- say so loudly
-    growth/       LMS -> z-score -> percentile
+    growth/       LMS -> z-score -> percentile, incl. WHO's tail rule below -3 SD
+    modules/      clinical-tool modules: eGFR, BMI/BSA, acute malnutrition
     pack.ts       ContentPack + the "no dose without a citation" validator
   data/       content: locale packs, formulary seed, dosing seed, paeds pack,
               growth tables (generated)
@@ -227,9 +228,16 @@ selectable. The delivery format is paper handed to a parent.
 
 - **Growth tables** — WHO Child Growth Standards (0–5y) and WHO Growth Reference
   (5–19y) from WHO's own reference implementations, plus CDC 2000 from NCHS.
-  ~17,000 LMS rows, stored with the source URL for every range. A percentile bug
+  ~21,000 LMS rows, stored with the source URL for every range. A percentile bug
   is a clinical-safety bug, so nobody types these by hand and nobody edits the
   generated file.
+
+  Two of them are not age tables. **Weight-for-length** (45–110 cm, recumbent)
+  and **weight-for-height** (65–120 cm, standing) are keyed by centimetres, so
+  they are written to their own `wasting` key rather than into `charts` —
+  everything that reads `charts` compares `x` against an age in days, and a
+  cm-keyed table in that list would be matched on the wrong axis and answer
+  confidently. The generator asserts each table's axis before writing it.
 - **Fonts** — Noto Nastaliq Urdu, IBM Plex Sans, IBM Plex Mono (all SIL OFL 1.1),
   with a manifest of sizes and hashes.
 
