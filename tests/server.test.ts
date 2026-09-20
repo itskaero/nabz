@@ -520,6 +520,71 @@ describe('TLS on the clinic station', () => {
     const cert = await fetch(`http://127.0.0.1:${HTTP_PORT}/ca.crt`);
     expect(cert.status).toBe(200);
   });
+
+  it('shows the fingerprint beside the instruction to trust something', async () => {
+    /*
+      Never tell somebody to install a certificate authority, or to click
+      through a warning, without showing them the thing that makes it safe to
+      do. A doctor who has been taught to accept warnings has been taught to
+      ignore the one that stops a stranger on the clinic wifi serving them a
+      fake app.
+    */
+    const caPem = await readFile(join(tlsDir, 'tls', 'ca.crt'), 'utf8');
+    const forge = (await import('node-forge')).default;
+    const der = forge.asn1
+      .toDer(forge.pki.certificateToAsn1(forge.pki.certificateFromPem(caPem)))
+      .getBytes();
+    const hex = forge.md.sha256.create().update(der).digest().toHex().toUpperCase();
+    const expected = (hex.match(/../g) ?? []).join(':');
+
+    const html = await (await fetch(`http://127.0.0.1:${HTTP_PORT}/setup`)).text();
+    expect(html).toContain(expected);
+  });
+
+  it('puts the address AND the pairing code in a QR, so neither is typed', async () => {
+    /*
+      The four steps this replaces: read an IP off a terminal, type it in, get
+      past a certificate warning, read a six-digit code off the same terminal
+      and type that too. Two of those look, to a non-technical person, exactly
+      like the things they have been taught to be afraid of.
+
+      Decoded rather than pattern-matched: an `<svg>` that is present and
+      unreadable is the same failure as no QR at all, and it arrives in a
+      clinic rather than here.
+    */
+    const pairing = JSON.parse(
+      await readFile(join(tlsDir, 'pairing.json'), 'utf8'),
+    ).code as string;
+
+    const html = await (await fetch(`http://127.0.0.1:${HTTP_PORT}/setup`)).text();
+    expect(html).toContain(pairing);
+
+    const [{ encodeQr }, jsQR] = await Promise.all([
+      // @ts-expect-error -- plain ESM on the station side, no types and none wanted
+      import('../server/qr.mjs'),
+      import('jsqr').then((m) => m.default),
+    ]);
+    const link = `https://127.0.0.1:${TLS_PORT}/#pair=${pairing}`;
+    const { modules, size } = encodeQr(link) as { modules: number[][]; size: number };
+    const scale = 6;
+    const quiet = 4;
+    const span = (size + quiet * 2) * scale;
+    const px = new Uint8ClampedArray(span * span * 4).fill(255);
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (!modules[r]![c]) continue;
+        for (let y = 0; y < scale; y++) {
+          for (let x = 0; x < scale; x++) {
+            const i = (((r + quiet) * scale + y) * span + (c + quiet) * scale + x) * 4;
+            px[i] = px[i + 1] = px[i + 2] = 0;
+          }
+        }
+      }
+    }
+    expect(jsQR(px, span, span)?.data).toBe(link);
+    // And the page really is drawing that link, not a decorative square.
+    expect(html).toContain(`#pair=${pairing}`);
+  });
 });
 
 describe('serve mode — what Railway runs', () => {

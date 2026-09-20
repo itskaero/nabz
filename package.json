@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
-  "description": "Bilingual clinical prescription PWA \u2014 on-device only, EN + ur-PK patient instructions.",
+  "description": "Bilingual clinical prescription PWA — on-device only, EN + ur-PK patient instructions.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b --noEmit && vite build",
@@ -47,6 +47,7 @@
     "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
+    "jsqr": "^1.4.0",
     "playwright-core": "^1.62.1",
     "postject": "^1.0.0-alpha.6",
     "typescript": "~5.9.0",

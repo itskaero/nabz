@@ -53,6 +53,23 @@ function certNames(common, org) {
   ];
 }
 
+/**
+ * The CA's SHA-256 fingerprint, in the colon-separated uppercase hex every
+ * browser and every operating system's certificate viewer shows.
+ *
+ * It is the only thing that makes "accept the warning" a safe instruction. A
+ * doctor told to click through a certificate error has been taught to ignore
+ * exactly the warning that stops a stranger on the clinic wifi serving them a
+ * fake app; told to compare six characters first, they have been taught to
+ * check. Never print the instruction without the fingerprint.
+ */
+export function fingerprint(certPem) {
+  const cert = forge.pki.certificateFromPem(certPem);
+  const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
+  const hex = forge.md.sha256.create().update(der).digest().toHex().toUpperCase();
+  return (hex.match(/../g) ?? []).join(':');
+}
+
 /** Serial numbers must be positive; a leading zero byte keeps them so. */
 function serial() {
   return '00' + forge.util.bytesToHex(forge.random.getBytesSync(16));
@@ -187,10 +204,12 @@ export async function ensureCertificates(dir, addresses) {
     reissued = !created;
   }
 
+  const caPem = forge.pki.certificateToPem(ca.cert);
   return {
     key: leaf.keyPem,
     cert: leaf.pem,
-    caPem: forge.pki.certificateToPem(ca.cert),
+    caPem,
+    caFingerprint: fingerprint(caPem),
     addresses: wanted,
     created,
     reissued,
