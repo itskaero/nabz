@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ContentPack } from '@domain/pack.ts';
-import { redFlagWording, unreviewedRedFlags, validateContentPack } from '@domain/pack.ts';
+import { redFlagWording, unreviewedAdvice, unreviewedRedFlags, validateContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import { validatePacks } from '@domain/phrases.ts';
 import type { Locale } from '@domain/locale.ts';
@@ -61,6 +61,8 @@ export interface Draft {
   };
   /** wording fingerprint for a red flag, across every locale */
   wordingOf: (redFlagId: string) => string;
+  /** the same hash, over a tier-1 line's wording */
+  adviceWordingOf: (adviceId: string) => string;
   /** near-duplicate check for a generic being typed right now */
   checkGeneric: (candidate: string) => ReturnType<typeof nearDuplicates>;
 }
@@ -149,6 +151,13 @@ export function useDraft(
     [phrases],
   );
 
+  /** The same hash, over the tier-1 wording. A sign-off is on a sentence, not an id. */
+  const adviceWordingOf = useCallback(
+    (adviceId: string) =>
+      redFlagWording(LOCALES.map((l) => phrases[l].advice.tier1[adviceId] ?? '')),
+    [phrases],
+  );
+
   const vocabulary = useMemo(() => genericVocabulary(pack), [pack]);
 
   const gates = useMemo<Gate[]>(() => {
@@ -168,6 +177,24 @@ export function useDraft(
           flag.reason === 'never-reviewed'
             ? 'red flag has never been signed off. Nothing automatic can catch a wrong translation of a return precaution.'
             : 'the wording changed after it was signed off. Review it again.',
+      });
+    }
+
+    /*
+      Tier-1 advice, the same check one tier down -- but a WARNING even here,
+      where tier 2 is escalated to blocking. Tier-1 prose reaches a patient
+      and deserves a human's name on it, but every pack that predates this
+      field would become un-exportable the day it was added, which would make
+      the feature something authors route around rather than use.
+    */
+    for (const line of unreviewedAdvice(pack, adviceWordingOf)) {
+      out.push({
+        severity: 'warning',
+        where: `advicePacks.tier1.${line.id}`,
+        message:
+          line.reason === 'never-reviewed'
+            ? 'nobody has read this line and confirmed it. It prints to a patient in both languages.'
+            : 'the wording changed after it was signed off. Read it again.',
       });
     }
 
@@ -213,7 +240,7 @@ export function useDraft(
     }
 
     return out;
-  }, [pack, phrases, vocabulary, wordingOf]);
+  }, [pack, phrases, vocabulary, wordingOf, adviceWordingOf]);
 
   const errors = useMemo(() => gates.filter((g) => g.severity === 'error'), [gates]);
 
@@ -250,6 +277,7 @@ export function useDraft(
     exportable: errors.length === 0,
     stats,
     wordingOf,
+    adviceWordingOf,
     checkGeneric,
   };
 }

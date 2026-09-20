@@ -17,6 +17,8 @@ import { useState } from 'react';
 import { LOCALES } from '@domain/locale.ts';
 import { templateSlots } from '@domain/phrases.ts';
 import type { Draft } from '../useDraft.ts';
+import { SentencePreview } from '../SentencePreview.tsx';
+import { renderAdviceTemplate, renderRedFlag } from '../specimen.ts';
 
 /** ids are used in stored prescriptions, so they must be stable and typeable. */
 function slugify(text: string, prefix: string): string {
@@ -98,6 +100,26 @@ export function AdviceTab({ draft }: { draft: Draft }) {
           reviewedBy: reviewer.trim(),
           date: new Date().toISOString().slice(0, 10),
           wording: draft.wordingOf(id),
+        },
+      },
+    });
+  };
+
+  /**
+   * The same act, one tier down. Kept as a separate handler rather than a
+   * parameterised one because the two write to different maps for a reason --
+   * see `ContentPack.adviceReview`.
+   */
+  const signOffAdvice = (id: string) => {
+    if (!reviewer.trim()) return;
+    draft.setPack({
+      ...draft.pack,
+      adviceReview: {
+        ...draft.pack.adviceReview,
+        [id]: {
+          reviewedBy: reviewer.trim(),
+          date: new Date().toISOString().slice(0, 10),
+          wording: draft.adviceWordingOf(id),
         },
       },
     });
@@ -212,6 +234,11 @@ export function AdviceTab({ draft }: { draft: Draft }) {
                 />
               </div>
             ))}
+            {/*
+              Directly above the sign-off, because this is the sentence being
+              signed off. The button says "I have read this"; this is the this.
+            */}
+            <SentencePreview renderings={renderRedFlag(id, draft.phrases)} />
             <div className="actionbar" style={{ padding: 0, borderTop: 'none' }}>
               {signed ? (
                 <p className="hint" style={{ flex: 1, margin: 0 }}>
@@ -278,11 +305,18 @@ export function AdviceTab({ draft }: { draft: Draft }) {
             .map((s) => templateSlots(s.text!).join(',')),
         );
         const missing = slotsPerLocale.filter((s) => s.text === undefined);
+        const adviceReview = draft.pack.adviceReview?.[id];
+        const adviceStale =
+          !!adviceReview?.reviewedBy && adviceReview.wording !== draft.adviceWordingOf(id);
+        const adviceSigned = !!adviceReview?.reviewedBy && !adviceStale;
 
         return (
           <section className="card" key={id}>
             <h2>
               {id}
+              <span className={adviceSigned ? 'badge' : 'badge bad'}>
+                {adviceSigned ? 'signed off' : adviceStale ? 'wording changed' : 'not reviewed'}
+              </span>
               <button
                 className="btn quiet"
                 style={{ float: 'right' }}
@@ -313,6 +347,38 @@ export function AdviceTab({ draft }: { draft: Draft }) {
                 />
               </div>
             ))}
+            <SentencePreview
+              renderings={renderAdviceTemplate(id, draft.phrases)}
+              note="Numbers in a tier-1 line are chosen per patient; the specimen uses 2."
+            />
+            <div className="actionbar" style={{ padding: 0, borderTop: 'none' }}>
+              {adviceSigned ? (
+                <p className="hint" style={{ flex: 1, margin: 0 }}>
+                  Read and confirmed by {adviceReview.reviewedBy} on{' '}
+                  {adviceReview.date}. Editing the wording clears this.
+                </p>
+              ) : (
+                <>
+                  <p className="hint" style={{ flex: 1, margin: 0 }}>
+                    {/*
+                      A warning, not a block. Tier-1 prose reaches a patient
+                      and deserves a name on it, but making every existing
+                      pack un-exportable would turn this into something
+                      authors route around.
+                    */}
+                    Not blocking — but this prints to a patient in both
+                    languages.
+                  </p>
+                  <button
+                    className="btn ghost"
+                    disabled={!reviewer.trim()}
+                    onClick={() => signOffAdvice(id)}
+                  >
+                    {adviceStale ? 'Re-confirm this wording' : 'I have read this and it is correct'}
+                  </button>
+                </>
+              )}
+            </div>
             {missing.length > 0 && (
               <div className="warn-box">
                 <strong>Not written in {missing.map((m) => m.locale).join(', ')}.</strong>

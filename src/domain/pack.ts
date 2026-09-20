@@ -257,6 +257,17 @@ export interface ContentPack {
   documents?: DocumentKindId[];
   /** redFlagId -> who signed the wording off, and when */
   redFlagReview?: Record<string, RedFlagReview>;
+  /**
+   * tier-1 advice id -> the same sign-off, for the same reason.
+   *
+   * A SEPARATE map rather than one keyed by any advice id, because the two
+   * carry different enforcement: an unreviewed red flag BLOCKS export, and an
+   * unreviewed tier-1 line only warns. Tier-1 prose reaches a patient too and
+   * deserves a human's name on it, but a pack that predates this field must
+   * not become un-exportable the day it is added. Merging the maps would make
+   * which rule applies a matter of reading the id prefix.
+   */
+  adviceReview?: Record<string, RedFlagReview>;
   /** module-specific configuration, e.g. which growth measures to offer */
   moduleConfig?: {
     growth?: {
@@ -564,9 +575,29 @@ export function unreviewedRedFlags(
   pack: ContentPack,
   wordingOf: (redFlagId: string) => string,
 ): Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> {
+  return unreviewed(pack.advicePacks.tier2, pack.redFlagReview, wordingOf);
+}
+
+/**
+ * The same, for tier-1 advice. Reported as a warning everywhere, including in
+ * the builder -- see `ContentPack.adviceReview` for why the enforcement
+ * differs from tier 2's.
+ */
+export function unreviewedAdvice(
+  pack: ContentPack,
+  wordingOf: (adviceId: string) => string,
+): Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> {
+  return unreviewed(pack.advicePacks.tier1, pack.adviceReview, wordingOf);
+}
+
+function unreviewed(
+  ids: string[],
+  reviews: Record<string, RedFlagReview> | undefined,
+  wordingOf: (id: string) => string,
+): Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> {
   const out: Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> = [];
-  for (const id of pack.advicePacks.tier2) {
-    const review = pack.redFlagReview?.[id];
+  for (const id of ids) {
+    const review = reviews?.[id];
     if (!review?.reviewedBy?.trim()) out.push({ id, reason: 'never-reviewed' });
     else if (review.wording !== wordingOf(id)) out.push({ id, reason: 'wording-changed' });
   }

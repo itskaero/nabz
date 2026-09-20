@@ -1686,3 +1686,54 @@ select {
   padding-left: 8px;
   margin-top: 5px;
 }
+
+/* ---------- the builder's sentence preview ---------- */
+/*
+ * Deliberately shaped like the printed patient block rather than like the
+ * editor around it -- same tint, same Nastaliq, same alignment. What the
+ * author is checking is a document, so it reads as one.
+ */
+.specimen {
+  margin-top: 10px;
+  padding: 9px 11px;
+  background: var(--patient-tint);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+.specimen-label {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 4px;
+}
+
+.specimen-line {
+  margin: 0 0 2px;
+  font-size: 13.5px;
+}
+
+.specimen-line.ur {
+  font-size: 15px;
+}
+
+.specimen-empty {
+  color: var(--danger);
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.specimen-missing {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--caution-ink);
+}
+
+.specimen-note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
