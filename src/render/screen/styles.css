@@ -1647,3 +1647,13 @@ select {
 .app[data-wide='true'] {
   max-width: 1200px;
 }
+
+/* ---------- the admission block ---------- */
+/*
+ * The one section a discharge summary adds. Everything else it edits is a
+ * surface the prescription already had, which is why there is so little here.
+ */
+.stay-bad {
+  color: var(--danger);
+  font-weight: 600;
+}

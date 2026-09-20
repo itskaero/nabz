@@ -19,12 +19,16 @@ import { renderPdfBlob, sharePrescription } from '@render/pdf/renderPdf.ts';
 import { loadFonts, fontsReady } from '@render/text/engine.ts';
 import * as db from '@storage/db.ts';
 import { useStore } from './store.tsx';
-import { ListSection } from './sections/ListSection.tsx';
-import { ExamSection } from './sections/ExamSection.tsx';
-import { LabsSection } from './sections/LabsSection.tsx';
-import { MedicationsSection } from './sections/MedicationsSection.tsx';
-import { AdviceSection } from './sections/AdviceSection.tsx';
+import { SECTION_LABEL, SECTION_PANEL } from './documents/registry.tsx';
+import {
+  DOCUMENT_META,
+  documentsFor,
+  kindOf,
+  missingForPrint,
+  sectionLabelFor,
+} from '@domain/documents/index.ts';
 import { PreviewSheet } from './components/PreviewSheet.tsx';
+import { DocumentKindPicker } from './components/DocumentKindPicker.tsx';
 import { MODULE_PANEL } from './modules/registry.tsx';
 import { MODULE_META } from '@domain/modules/index.ts';
 import type { ModuleId } from '@domain/pack.ts';
@@ -69,23 +73,14 @@ const ScoresPanel = lazy(() =>
  */
 type View = 'write' | 'preview' | 'history' | 'settings' | 'builder' | 'clinic' | 'scores' | ModuleId;
 
-const TAB_ORDER: SectionId[] = [
-  'problems',
-  'examination',
-  'diagnosis',
-  'labs',
-  'medications',
-  'advice',
-];
-
-const TAB_LABEL: Record<SectionId, string> = {
-  problems: 'Problems',
-  examination: 'Exam',
-  diagnosis: 'Diagnosis',
-  labs: 'Tests',
-  medications: 'Medicines',
-  advice: 'Advice',
-};
+/*
+  The tab strip used to be this pair of constants. It is now generated from the
+  document kind (`domain/documents`), for the reason the module nav is
+  generated from `pack.modules`: a hardcoded list is a list that keeps offering
+  a destination after the thing behind it has moved. A discharge summary shows
+  an Admission tab and calls its Problems tab "On admission"; a prescription
+  has neither, and neither of them had to be special-cased here to get it.
+*/
 
 const SHORT: Record<string, string> = { en: 'EN', 'ur-PK': 'UR' };
 
@@ -136,6 +131,8 @@ export function App() {
    * They can still switch in Settings.
    */
   const [askRole, setAskRole] = useState(false);
+  /** Open while the doctor is choosing what kind of document to start. */
+  const [pickingKind, setPickingKind] = useState(false);
   useEffect(() => {
     if (deviceRole() !== null) return;
     void db.prescriptionCount().then((n) => setAskRole(n === 0));
@@ -184,9 +181,25 @@ export function App() {
     watching: view === 'clinic',
   });
 
-  const counts = useMemo(
+  /** The kind of document open. Chosen when it is started, never afterwards. */
+  const kind = kindOf(rx);
+  /** The kinds this pack offers. One is the normal case and shows no chooser. */
+  const kinds = useMemo(() => documentsFor(pack.documents), [pack.documents]);
+
+  /**
+   * What this kind still needs before it can go to a printer. Empty for a
+   * prescription, which requires nothing: a script with only advice on it is a
+   * legitimate "no medicine, here is what to do".
+   */
+  const missing = useMemo(() => missingForPrint(kind, rx), [kind, rx]);
+
+  const counts: Record<SectionId, number> = useMemo(
     () => ({
       problems: rx.problems.length,
+      stay:
+        (rx.stay?.course.length ?? 0) +
+        (rx.stay?.procedures.length ?? 0) +
+        (rx.stay?.admittedOn ? 1 : 0),
       examination: rx.examination.reduce((n, s) => n + findingCount(s), 0),
       diagnosis: rx.diagnosis.length,
       labs: rx.labs.length,
@@ -299,7 +312,13 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           Nabz
-          <small>{reception ? 'front desk' : 'on this device only'}</small>
+          <small>
+            {reception
+              ? 'front desk'
+              : kind.id === 'prescription'
+                ? 'on this device only'
+                : kind.label}
+          </small>
         </div>
         <div className="spacer" />
         {/*
@@ -442,6 +461,19 @@ export function App() {
         </div>
       )}
 
+      {pickingKind && (
+        <DocumentKindPicker
+          kinds={kinds}
+          current={kind.id}
+          onChoose={(chosen) => {
+            startNew(chosen);
+            setTab(DOCUMENT_META[chosen].sections[0] ?? 'problems');
+            setPickingKind(false);
+          }}
+          onClose={() => setPickingKind(false)}
+        />
+      )}
+
       {locked && (
         <RoleGateLock
           onUnlock={() => {
@@ -453,8 +485,21 @@ export function App() {
       {shown('write') && view === 'write' && (
         <>
           <PatientBar />
+          {/*
+            Said on the page, not only in the button's tooltip: a phone has no
+            hover, so a tooltip on the one control a doctor is trying to press
+            is a tooltip nobody reads.
+          */}
+          {missing.length > 0 && (
+            <div className="banner banner-backup" role="status">
+              <span>
+                This {kind.label.toLowerCase()} still needs {missing.join(', ')}{' '}
+                before it can be printed. It saves either way.
+              </span>
+            </div>
+          )}
           <nav className="tabs" role="tablist">
-            {TAB_ORDER.map((id) => {
+            {kind.sections.map((id) => {
               const lang = languageFor(profile, id);
               const tag = lang.secondary
                 ? `${SHORT[lang.primary]}·${SHORT[lang.secondary]}`
@@ -468,7 +513,7 @@ export function App() {
                   onClick={() => setTab(id)}
                 >
                   <strong>
-                    {TAB_LABEL[id]}
+                    {sectionLabelFor(kind, id, SECTION_LABEL[id])}
                     {counts[id] > 0 && <span className="badge">{counts[id]}</span>}
                   </strong>
                   <span>{tag}</span>
@@ -478,27 +523,15 @@ export function App() {
           </nav>
 
           <div className="body">
-            {tab === 'problems' && (
-              <ListSection
-                field="problems"
-                title="Presenting complaints"
-                placeholder="e.g. Fever for 3 days"
-                note="Free text. Suggestions come from what you have written before."
-              />
-            )}
-            {tab === 'examination' && <ExamSection />}
-            {tab === 'diagnosis' && (
-              <ListSection
-                field="diagnosis"
-                title="Diagnosis"
-                placeholder="e.g. Community-acquired pneumonia"
-                strong
-                note="Free text on purpose — diagnosis is judgement, not a list to pick from."
-              />
-            )}
-            {tab === 'labs' && <LabsSection />}
-            {tab === 'medications' && <MedicationsSection />}
-            {tab === 'advice' && <AdviceSection />}
+            {(() => {
+              // A `tab` left over from the previous document may not exist in
+              // this kind (restored state, or a queue visit opened as a
+              // different kind). Fall back to its first section rather than
+              // rendering nothing, which reads as a broken app.
+              const active = kind.sections.includes(tab) ? tab : kind.sections[0];
+              const Panel = active ? SECTION_PANEL[active] : null;
+              return Panel ? <Panel /> : null;
+            })()}
           </div>
         </>
       )}
@@ -564,7 +597,16 @@ export function App() {
       <footer className="actionbar">
         {view === 'write' && (
           <>
-            <button className="btn quiet" onClick={startNew}>
+            {/*
+              One kind offered: New means new, with no question. More than one:
+              ask, because "New" silently producing the same kind as last time
+              is how a doctor ends up typing a discharge summary into a
+              prescription's tabs.
+            */}
+            <button
+              className="btn quiet"
+              onClick={() => (kinds.length > 1 ? setPickingKind(true) : startNew(kind.id))}
+            >
               New
             </button>
             <button className="btn ghost" onClick={doSave} disabled={isBlank(rx) || !!busy}>
@@ -573,7 +615,10 @@ export function App() {
             <button
               className="btn"
               onClick={() => setView('preview')}
-              disabled={isBlank(rx) || !fontsLoaded}
+              disabled={isBlank(rx) || !fontsLoaded || missing.length > 0}
+              // A disabled button with no reason is a bug report waiting to
+              // happen; the kind says what it needs and this repeats it.
+              title={missing.length ? `Still needs ${missing.join(', ')}.` : undefined}
             >
               Preview &amp; print
             </button>

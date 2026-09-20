@@ -12,6 +12,7 @@
  * never translated (PRODUCT.md rule 3.8).
  */
 import type { Locale } from './locale.ts';
+import type { DocumentKindId } from './documents/index.ts';
 
 /** A number with a unit id. The unit id keys into the locale pack, not a string. */
 export interface Quantity {
@@ -204,10 +205,63 @@ export function composeCalculations(items: CalcResult[]): string[] {
   return items.map((c) => `${c.label}: ${c.value} ${c.unit}`);
 }
 
+// --- the admission ---------------------------------------------------------
+
+/**
+ * What a discharge summary knows that a prescription does not.
+ *
+ * Deliberately small, and deliberately all English clinical prose or a date.
+ * Nothing here is patient-facing: the sentences a family takes home come
+ * through `advice`, which is already vetted in both languages. A discharge
+ * summary therefore adds no new translation surface, which is the property
+ * that makes it safe to add at all (PRODUCT.md 9 -- nothing reaches a patient
+ * in Urdu that the pack has not vouched for).
+ *
+ * Every field is optional and NOTHING is computed. `domain/documents` decides
+ * what a discharge cannot be PRINTED without; a half-written one still saves,
+ * because finishing a summary the morning after the admission is normal
+ * practice and a form that refuses to save at 2am is a form people photograph
+ * instead.
+ */
+export interface StayRecord {
+  /** ISO date. Typed, never inferred from the record's own createdAt. */
+  admittedOn?: string;
+  dischargedOn?: string;
+  /** free text: "Paediatric Ward B", "HDU" */
+  ward?: string;
+  /** English clinical prose, one paragraph per entry: what happened, in order */
+  course: string[];
+  /** procedures and interventions performed during the admission */
+  procedures: string[];
+  /**
+   * How the patient was on the day they left. Free text for the same reason
+   * `diagnosis` is: it is a judgement, and a chip list would quietly become
+   * the set of judgements the app is willing to accept.
+   */
+  condition?: string;
+  /**
+   * Who sees them next, and where. Separate from `followUp`, which carries
+   * only the interval: the commonest failure of a discharge is not a wrong
+   * drug, it is nobody knowing whose clinic the patient belongs to now, and an
+   * interval with no name attached does not fix that.
+   */
+  followUpWith?: string;
+  followUpWhere?: string;
+}
+
 // --- the record ------------------------------------------------------------
 
 export interface Prescription {
   id: string;
+  /**
+   * Which kind of document this is (`domain/documents`).
+   *
+   * OPTIONAL, and absent means 'prescription'. Every record written before
+   * document kinds existed has no `kind`, and those records are the only copy
+   * their practice has -- so absence is given a meaning rather than a schema
+   * bump and a migration pass over an encrypted backup.
+   */
+  kind?: DocumentKindId;
   /** ISO datetime of creation */
   createdAt: string;
   /** ISO date shown on the script */
@@ -237,6 +291,8 @@ export interface Prescription {
   growth?: GrowthPoint[];
   /** results from a clinical-tool module (eGFR, ...); printing is a setting */
   calculations?: CalcResult[];
+  /** present on a discharge summary; ignored by every other kind */
+  stay?: StayRecord;
   followUp?: { in: Quantity } | undefined;
   /** which content pack was loaded when this was written */
   packId: string;
@@ -246,10 +302,30 @@ export interface Prescription {
 
 export const PRESCRIPTION_SCHEMA_VERSION = 1 as const;
 
-export function emptyPrescription(packId: string, id: string, now = new Date()): Prescription {
+/**
+ * A blank document of the given kind.
+ *
+ * `kind` is left OFF for a prescription rather than written out, so a script
+ * saved today is byte-identical to one saved before document kinds existed --
+ * which keeps `kindOf`'s "absent means prescription" reading true of new
+ * records as well as old ones, instead of only of old ones.
+ *
+ * The `stay` block is created empty for a discharge summary so the section has
+ * something to edit; it is NOT created for a prescription, because a
+ * prescription that carries an empty admission record would print a heading
+ * for an admission that never happened.
+ */
+export function emptyPrescription(
+  packId: string,
+  id: string,
+  now = new Date(),
+  kind: DocumentKindId = 'prescription',
+): Prescription {
   const iso = now.toISOString();
   return {
     id,
+    ...(kind === 'prescription' ? {} : { kind }),
+    ...(kind === 'discharge' ? { stay: { course: [], procedures: [] } } : {}),
     createdAt: iso,
     date: iso.slice(0, 10),
     patient: { name: '' },
@@ -264,10 +340,27 @@ export function emptyPrescription(packId: string, id: string, now = new Date()):
   };
 }
 
+function hasStayContent(stay: StayRecord | undefined): boolean {
+  if (!stay) return false;
+  return Boolean(
+    stay.admittedOn ||
+      stay.dischargedOn ||
+      stay.ward?.trim() ||
+      stay.condition?.trim() ||
+      stay.followUpWith?.trim() ||
+      stay.followUpWhere?.trim() ||
+      stay.course.length ||
+      stay.procedures.length,
+  );
+}
+
 /** True when there is nothing worth saving or printing. */
 export function isBlank(rx: Prescription): boolean {
   return (
     rx.patient.name.trim() === '' &&
+    // A discharge summary whose only content so far is "admitted on the 4th"
+    // is not blank: it is the first thing anyone types into one.
+    !hasStayContent(rx.stay) &&
     rx.problems.length === 0 &&
     rx.diagnosis.length === 0 &&
     rx.labs.length === 0 &&

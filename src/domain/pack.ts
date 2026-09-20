@@ -11,6 +11,7 @@
  * schema is open; the content is not ours to write. A pack authored by a
  * non-specialist is a liability with someone's name on it.
  */
+import type { DocumentKindId } from './documents/index.ts';
 import type { GrowthMeasureId } from './prescription.ts';
 
 // --- catalogue vs evidence, kept apart on purpose ---------------------------
@@ -190,6 +191,9 @@ export interface ScoreDefinition {
  */
 export type ModuleId = 'growth' | 'gfr' | 'bmi';
 
+/** Re-exported so a pack author reads one file, not two. */
+export type { DocumentKindId };
+
 /**
  * Sign-off on one tier-2 red flag.
  *
@@ -244,6 +248,13 @@ export interface ContentPack {
   /** clinical scores this specialty offers -- see ScoreDefinition above */
   scores?: ScoreDefinition[];
   modules: ModuleId[];
+  /**
+   * The document kinds this specialty offers (`domain/documents`). Absent or
+   * empty means prescriptions only, which is what every pack written before
+   * this existed meant -- a paediatric OPD pack has no business offering a
+   * discharge summary, and a ward pack has no business hiding one.
+   */
+  documents?: DocumentKindId[];
   /** redFlagId -> who signed the wording off, and when */
   redFlagReview?: Record<string, RedFlagReview>;
   /** module-specific configuration, e.g. which growth measures to offer */
