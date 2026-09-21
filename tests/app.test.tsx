@@ -26,11 +26,24 @@ import * as db from '@storage/db.ts';
 
 /**
  * These tests are about the clinical app, not first-run setup. A device with no
- * role and no records is a fresh install, and the shell correctly asks what the
- * machine is for before anything else -- so say it is the doctor's, the way a
- * real one would have been answered once. Onboarding has its own tests.
+ * role, no name and no records is a fresh install, and the shell correctly
+ * shows the setup checklist before anything else -- so answer it the way a
+ * real one would have been answered once, and get on with the clinical part.
+ * Setup has its own tests (`setup.test.ts`, and the shell half below).
  */
-beforeEach(() => setDeviceRole('consulting'));
+export const setUp = {
+  ...defaultDoctorProfile,
+  doctor: {
+    ...defaultDoctorProfile.doctor,
+    name: 'Dr A. Tahir',
+    registration: { authority: 'PMDC', number: '12345-P' },
+  },
+};
+
+beforeEach(async () => {
+  setDeviceRole('consulting');
+  await db.saveProfile(setUp);
+});
 
 afterEach(async () => {
   clearDeviceRole();
@@ -82,10 +95,15 @@ describe('shell', () => {
     // jsdom has no fetch for /fonts/*, so the shaper genuinely fails to load
     // here -- which makes this the real failure path, not a simulated one.
     renderApp();
-    const status = await screen.findByRole('status');
-    expect(status.textContent).toMatch(/preview and print are\s+unavailable/);
+    // The load announces itself before it fails, so wait for the failure
+    // rather than for the first status to appear.
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    const status = retry.closest('[role="status"]')!;
+    // One notice does not collapse: this is the only thing needing attention
+    // here, and "1 thing needs attention [Show]" would be a tap to read one
+    // sentence (see shell/StatusNotices.tsx).
+    expect(status.textContent).toMatch(/Preview and print are\s+unavailable/);
     expect(status.textContent).toContain('still write and save');
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 });
 
@@ -284,10 +302,16 @@ describe('edited content reaches the app', () => {
     resetContentCache();
 
     renderApp();
-    // Two independent banners can be on screen at once (this one, and jsdom's
-    // real font-load failure) -- findAllByRole resolves the instant ANY status
-    // exists, not once every eventual one has mounted, so waitFor is what
-    // actually waits for THIS banner's text rather than racing the other one.
+    /*
+      Two things need attention at once here -- this, and jsdom's real
+      font-load failure -- so the shell collapses them to a count and the
+      content is one tap away. What matters is that the tap still gets you the
+      whole sentence, id and all.
+    */
+    const summary = await screen.findByRole('button', { name: /things need attention/ });
+    expect(summary.textContent).toContain('2 things need attention');
+    await userEvent.click(summary);
+
     await waitFor(() => {
       const message = screen
         .getAllByRole('status')
@@ -301,7 +325,7 @@ describe('edited content reaches the app', () => {
 
 describe('module nav follows the active pack', () => {
   it('medicine (modules: gfr, bmi) shows eGFR, BMI / BSA and Scores, no Growth', async () => {
-    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    await db.saveProfile({ ...setUp, packId: medicine.id });
     resetContentCache();
     renderApp();
 
@@ -311,16 +335,53 @@ describe('module nav follows the active pack', () => {
     expect(screen.queryByRole('button', { name: 'Growth' })).toBeNull();
   });
 
-  it('the default pack (paediatrics, no scores) shows Growth, no eGFR/BMI/Scores tab', async () => {
+  it('the default pack (paediatrics, no scores) shows Growth and Malnutrition, no eGFR/BMI/Scores tab', async () => {
     renderApp();
     expect(await screen.findByRole('button', { name: 'Growth' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Malnutrition' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'eGFR' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'BMI / BSA' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Scores' })).toBeNull();
   });
 
+  it('the medicine pack offers no Malnutrition tab', async () => {
+    // Adult internal medicine does not run a feeding programme, and a tab
+    // leading to a module that specialty never uses costs a scroll on every
+    // patient. The difference is pack data; no component knows about it.
+    await db.saveProfile({ ...setUp, packId: medicine.id });
+    resetContentCache();
+    renderApp();
+    expect(await screen.findByRole('button', { name: 'eGFR' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Malnutrition' })).toBeNull();
+  });
+
+  it('Settings offers addons, and says what one can and cannot be', async () => {
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    expect(await screen.findByRole('heading', { name: 'Addons' })).toBeTruthy();
+    // The claim the whole design rests on, said where a doctor will read it.
+    expect(screen.getByText(/carries settings and words/)).toBeTruthy();
+    expect(screen.getByText('Nothing installed.')).toBeTruthy();
+  });
+
+  it('opening Malnutrition asks about oedema before it will classify', async () => {
+    renderApp();
+    const btn = await screen.findByRole('button', { name: 'Malnutrition' });
+    await userEvent.click(btn);
+
+    // The protocol the pack names is on screen, because a clinic following
+    // the national programme and one following WHO 2023 get different answers.
+    expect(await screen.findByText(/National Guideline/)).toBeTruthy();
+    // Three states, not a checkbox: "not assessed" and "absent" differ, and
+    // oedema outranks every number in the module.
+    expect(screen.getByRole('button', { name: 'Not assessed' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Present' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Absent' })).toBeTruthy();
+    expect(await screen.findByText(/Not enough to classify/)).toBeTruthy();
+  });
+
   it('opening Scores for medicine shows CURB-65 among the choices', async () => {
-    await db.saveProfile({ ...defaultDoctorProfile, packId: medicine.id });
+    await db.saveProfile({ ...setUp, packId: medicine.id });
     resetContentCache();
     renderApp();
 

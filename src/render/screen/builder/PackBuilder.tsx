@@ -17,6 +17,9 @@ import { useStore } from '../store.tsx';
 import { forkForEditing, publishContent, revertToShipped } from '@data/provider.ts';
 import { isShippedPack } from '@data/packs/index.ts';
 import { useDraft } from './useDraft.ts';
+import { diffPack } from './diff.ts';
+import type { PackDiff } from './diff.ts';
+import { PublishDiff } from './PublishDiff.tsx';
 import type { PackFile, PackSection } from './packFile.ts';
 import {
   downloadPack,
@@ -33,6 +36,7 @@ import { DosingTab } from './tabs/DosingTab.tsx';
 import { AdviceTab } from './tabs/AdviceTab.tsx';
 import { PhrasesTab } from './tabs/PhrasesTab.tsx';
 import { ReviewTab } from './tabs/ReviewTab.tsx';
+import { Dialog } from '../components/Dialog.tsx';
 
 type Tab = 'exam' | 'labs' | 'formulary' | 'dosing' | 'advice' | 'phrases' | 'review';
 
@@ -66,8 +70,27 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
   const [incoming, setIncoming] = useState<{ name: string; file: PackFile } | null>(null);
   /** Open while someone is choosing how much of their pack to write out. */
   const [exporting, setExporting] = useState(false);
+  /**
+   * What saving would change, held open for confirmation.
+   *
+   * The import path already says what it is about to replace before it does
+   * it. This is the same courtesy for the operation that actually reaches
+   * patients.
+   */
+  const [pendingPublish, setPendingPublish] = useState<PackDiff | null>(null);
+
+  /** Compared against what is LIVE, not against what shipped. */
+  const reviewChanges = () => {
+    setPendingPublish(
+      diffPack(
+        { pack: store.pack, phrases: store.phrases },
+        { pack: draft.pack, phrases: draft.phrases },
+      ),
+    );
+  };
 
   const save = async () => {
+    setPendingPublish(null);
     const result = await publishContent(draft.pack.id, draft.pack, draft.phrases);
     if (!result.ok) {
       setStatus(`Not saved — ${result.errors.length} problem(s) must be fixed first.`);
@@ -203,7 +226,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           replaces 150 reconciled medicines expecting to replace six chips.
         */}
         {incoming && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Import a pack" onClose={() => setIncoming(null)}>
             <div className="sheet-modal">
               <h3>What should be taken from this file?</h3>
               <p className="hint" style={{ marginTop: 0 }}>
@@ -252,7 +275,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
         )}
 
         {/*
@@ -262,7 +285,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           on the way in, but they would still have left the building.
         */}
         {exporting && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Export this pack" onClose={() => setExporting(false)}>
             <div className="sheet-modal">
               <h3>What should this file contain?</h3>
               <p className="hint" style={{ marginTop: 0 }}>
@@ -306,11 +329,19 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
+        )}
+
+        {pendingPublish && (
+          <PublishDiff
+            diff={pendingPublish}
+            onConfirm={() => void save()}
+            onCancel={() => setPendingPublish(null)}
+          />
         )}
 
         {confirmRevert && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Discard your edits" onClose={() => setConfirmRevert(false)}>
             <div className="sheet-modal">
               <h3>Discard your edits?</h3>
               <div className="warn-box" style={{ margin: '10px 0' }}>
@@ -328,7 +359,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
         )}
       </div>
 
@@ -366,7 +397,11 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
             Reset
           </button>
         )}
-        <button className="btn" disabled={!draft.dirty || !draft.exportable} onClick={save}>
+        <button
+          className="btn"
+          disabled={!draft.dirty || !draft.exportable}
+          onClick={reviewChanges}
+        >
           Save
         </button>
       </footer>

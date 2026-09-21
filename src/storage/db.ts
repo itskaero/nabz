@@ -22,9 +22,11 @@ import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import type { PatientRecord, LegacyGrowthLink } from '@domain/patient.ts';
 import type { QueueEntry } from '@domain/clinic.ts';
+import type { Addon } from '@domain/addon.ts';
+import type { Verdict } from '@domain/addonSignature.ts';
 
 const DB_NAME = 'nabz';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 /**
  * Edited content: the specialty pack and the locale packs, as authored in the
@@ -68,6 +70,24 @@ export interface InstalledPack {
   edited: boolean;
   installedAt: string;
   updatedAt: string;
+}
+
+/**
+ * An addon as installed on this device.
+ *
+ * `verdict` is recorded at install time rather than recomputed on every read:
+ * a machine on a plain-http LAN address has no `crypto.subtle` at all, and
+ * re-checking there would turn a signature that verified on the doctor's
+ * phone into "unverifiable" on the clinic PC.
+ */
+export interface InstalledAddon {
+  id: string;
+  addon: Addon;
+  /** what the signature check said when it was installed */
+  verdict: Verdict;
+  /** warnings the install was allowed to proceed with, kept so the UI can show them */
+  warnings: string[];
+  installedAt: string;
 }
 
 /** A term the doctor has typed before, ranked by how often they type it. */
@@ -129,6 +149,16 @@ interface NabzDb extends DBSchema {
   content: { key: string; value: StoredContent };
   /** the pack library (Stage A) -- one InstalledPack per pack id */
   packs: { key: string; value: InstalledPack };
+  /**
+   * Installed addons, stored SEPARATELY from the pack they contribute to.
+   *
+   * That separation is the whole reason removal is safe: an addon is applied
+   * as a layer at resolve time (`data/provider.ts`), so the base pack is
+   * never rewritten and deleting the row restores exactly what was there
+   * before. Merging into the pack would have meant keeping a snapshot to undo
+   * with, and a snapshot is a thing that can be wrong.
+   */
+  addons: { key: string; value: InstalledAddon };
   meta: { key: string; value: unknown };
 }
 
@@ -170,6 +200,9 @@ export function db(): Promise<IDBPDatabase<NabzDb>> {
       }
       if (oldVersion < 5) {
         database.createObjectStore('packs', { keyPath: 'id' });
+      }
+      if (oldVersion < 6) {
+        database.createObjectStore('addons', { keyPath: 'id' });
       }
     },
   });
@@ -598,6 +631,20 @@ export async function getInstalledPack(id: string): Promise<InstalledPack | unde
 
 export async function putInstalledPack(entry: InstalledPack): Promise<void> {
   await (await db()).put('packs', entry);
+}
+
+export async function listInstalledAddons(): Promise<InstalledAddon[]> {
+  const all = await (await db()).getAll('addons');
+  // Install order, so `mergeAddons` applies them the way the doctor added them.
+  return all.sort((a, b) => a.installedAt.localeCompare(b.installedAt));
+}
+
+export async function putInstalledAddon(entry: InstalledAddon): Promise<void> {
+  await (await db()).put('addons', entry);
+}
+
+export async function deleteInstalledAddon(id: string): Promise<void> {
+  await (await db()).delete('addons', id);
 }
 
 export async function deleteInstalledPack(id: string): Promise<void> {

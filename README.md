@@ -74,7 +74,7 @@ npm run dev
 committed" below.
 
 ```bash
-npm test            # 292 tests
+npm test            # 599 tests
 npm run build       # typecheck + production build
 npm run preview     # serve the built PWA
 ```
@@ -172,6 +172,10 @@ npm run artifact:visual   # -> artifacts/visual/*.png rasterised pages, to look 
 ```
 src/
   domain/     pure clinical logic — no React, no DOM, no storage
+    documents/    what KIND of document this is: prescription, discharge summary
+    addon.ts      what a clinic may install: data and enablement, never code
+    addonSignature.ts  who really wrote it (ECDSA P-256 over canonical JSON)
+    appearance.ts theme and density, per DEVICE — never in the backup
     sig.ts        structured medication line -> a sentence, per locale
     phrases.ts    locale-pack shape, template grammar, cross-locale validation
     pluralize/    per-locale number grammar
@@ -181,16 +185,20 @@ src/
     advice.ts     the three advice tiers and what the app vouches for
     deviceRole.ts what a machine is for; a front desk cannot store a script
     secureContext.ts  a plain-http origin has no crypto.subtle -- say so loudly
-    growth/       LMS -> z-score -> percentile
+    growth/       LMS -> z-score -> percentile, incl. WHO's tail rule below -3 SD
+    modules/      clinical-tool modules: eGFR, BMI/BSA, acute malnutrition
     pack.ts       ContentPack + the "no dose without a citation" validator
   data/       content: locale packs, formulary seed, dosing seed, paeds pack,
-              growth tables (generated)
+              growth tables (generated), shipped addons
   config/     appDefaults (shipped) and doctorProfile (per-doctor) — kept apart
   storage/    IndexedDB + encrypted export/import
   render/
+    theme.ts  ONE source of colour: the frozen print palette, and the three
+              screen themes that generate screen/tokens.css
     text/     HarfBuzz shaping + bidi line layout
     pdf/      page model, document layout, PDF and SVG backends
     screen/   the React app
+      documents/  section id -> the component that edits it
       builder/  the pack builder — content authoring + its refusals
   app/        PWA entry
 server/       the clinic station: serves the app, shares the queue, issues its
@@ -222,9 +230,16 @@ selectable. The delivery format is paper handed to a parent.
 
 - **Growth tables** — WHO Child Growth Standards (0–5y) and WHO Growth Reference
   (5–19y) from WHO's own reference implementations, plus CDC 2000 from NCHS.
-  ~17,000 LMS rows, stored with the source URL for every range. A percentile bug
+  ~21,000 LMS rows, stored with the source URL for every range. A percentile bug
   is a clinical-safety bug, so nobody types these by hand and nobody edits the
   generated file.
+
+  Two of them are not age tables. **Weight-for-length** (45–110 cm, recumbent)
+  and **weight-for-height** (65–120 cm, standing) are keyed by centimetres, so
+  they are written to their own `wasting` key rather than into `charts` —
+  everything that reads `charts` compares `x` against an age in days, and a
+  cm-keyed table in that list would be matched on the wrong axis and answer
+  confidently. The generator asserts each table's axis before writing it.
 - **Fonts** — Noto Nastaliq Urdu, IBM Plex Sans, IBM Plex Mono (all SIL OFL 1.1),
   with a manifest of sizes and hashes.
 
@@ -244,6 +259,16 @@ with no registration number, a phrase written in one language and not the other,
 locales whose slot sets have drifted apart, an unsigned red flag, or one generic
 spelled two ways. Those are the failures that reach a patient without anything
 on the printed script looking wrong.
+
+Its second job is showing. Every sig template, advice line and red flag renders
+underneath its fields as the **sentence a patient will read**, in both locales,
+through the same `composeSig`/`composeAdvice` the printed script uses — because
+asking a clinician to vouch for wording they cannot read in context is asking
+for a signature on nothing. Saving opens a **diff** first, counting separately
+the changes that alter what a patient reads. And a DRAP claim now records *who*
+checked the row and *when*: DRAP publishes no bulk download and no API
+(re-checked September 2026), so reconciliation is one row at a time by a human,
+and the builder links to the registry and then records that it happened.
 
 Edited content lives in IndexedDB and overrides the shipped packs — but only if
 it validates. If it does not, the app runs on the shipped packs and says so
@@ -286,6 +311,104 @@ the evidence (generic → mg/kg, with a **mandatory citation**). They are separa
 tables so commercial catalogue data can never become prescribing evidence. A test
 fails the build if any dosing row has an empty `reference`.
 
+### 6. Colour has one source, and paper is not the screen
+
+`render/theme.ts` owns both palettes. `palette` is what the PDF draws with and
+is **frozen** — a clinician has looked at what comes out of the printer.
+`THEMES` is the screen, and it generates `screen/tokens.css`, so a hex cannot
+exist in two files and disagree with itself.
+
+They are *separate* palettes because paper and screen have different contrast
+physics: a 3:1 grey at 7.2pt on a 300dpi laser is comfortable, and the same
+grey at 10px on a phone under an OPD window is not. Splitting them is what let
+the screen half be held to WCAG floors without touching a printed document.
+
+`tests/theme.test.ts` asserts every pair the UI actually puts together, in all
+three modes, and fails if `tokens.css` drifts from the file that generates it.
+It caught two values that looked fine.
+
+Three modes because one working day spans them: **light** for OPD, **dark** for
+a ward round at 03:00, **high contrast** for sunlight and for a doctor who is
+sixty. The preview sheet stays on white paper in all three — a dark-mode
+preview is a preview of a document that does not exist.
+
+Appearance is stored per device, next to `deviceRole` and for the same reason:
+it is a fact about a machine, not about a doctor. The tablet in the room and
+the PC at the front desk want different answers, and the profile travels inside
+the backup.
+
+### 7. An addon carries data and settings, never code
+
+A clinic that wants a clinical tool should not have to wait for a release. But
+a module in this app is *code* — a formula with a green suite behind it
+(`ModuleId` is a closed union precisely so a data file cannot invent one), and
+that property is worth more than the flexibility of giving it up.
+
+So an addon is a single JSON file that **switches on** a module this build
+already has, configures it, and adds content. An addon naming a module this
+build does not have is **refused at install, by name** — never filtered out
+quietly, because a file that drops the capability it was installed for is worse
+than one that will not install.
+
+Two rules do most of the work:
+
+- **It may add, never overwrite.** Lists append; a map key that already exists
+  is a refusal. An addon that could silently replace the wording of a tier-2
+  red flag would be a way to change what a patient is told with nobody
+  reviewing it — which is exactly what `RedFlagReview` exists to prevent. The
+  one deliberate exception is a module's *settings*, which an addon may replace
+  because swapping protocols is the point — and the install says so out loud
+  rather than doing it quietly.
+- **It is a layer, never a rewrite.** Addons are applied over the installed
+  pack at resolve time (`data/provider.ts`), so removing one is complete by
+  construction: the base pack never carried the contributions, and there is no
+  snapshot to keep or to get wrong.
+
+Refuse at install, where a human is standing there and can read why; degrade
+rather than block at runtime. That is the same split the builder already uses,
+where `validateContentPack` warns about an unsigned red flag and `useDraft`
+escalates it to blocking at the moment somebody can actually sign it off.
+
+Addons can be signed (ECDSA P-256, via `crypto.subtle` — not the `node-forge`
+the *server* uses, which has no business in a phone bundle). A signature that
+does not match refuses; a missing one warns and is badged; a device with no
+`crypto.subtle` at all — a plain-http LAN address — records "not checked"
+rather than refusing, because refusing there would make an addon uninstallable
+on exactly the machines this app is built for. The installer shows the key's
+fingerprint rather than a green tick: the cryptography proves the file has not
+changed, not that the signer is who the manifest says.
+
+`npm run addon:export` writes `src/data/addons/who-wasting-2023.ts` out as the
+file a clinic would actually install — it swaps the shipped paediatric pack
+from Pakistan's MUAC-only criteria to WHO 2023, which changes who gets
+classified, and nothing executable crosses the boundary to do it.
+
+### 8. A document has a kind, and a discharge summary is not a second app
+
+`domain/documents` says what a kind *is* — its tabs, its printed blocks, what
+it refuses to print without. Everything else is reused: `MedicationLine`,
+`AdviceItem`, `LabOrder` and `ExamSystem` are unchanged, and the whole discharge
+summary adds exactly one new section and one new painter.
+
+The consequence worth stating: **it adds no new translation surface.** Every
+sentence a family takes home comes through the tier-1/2/3 advice machinery the
+pack already vouches for in both languages. The admission block is English
+clinical prose for the next clinician, and nothing in it is patient-facing.
+
+`kind` is optional on the record and absent means prescription. Records written
+before this existed are the only copy their practice has, and a migration that
+goes wrong there does not lose a row — it loses a history.
+
+Readiness is checked at **print**, not at save: finishing a summary the morning
+after is normal, and a form that refuses to save at 2am is a form people
+photograph instead. It refuses to print without a diagnosis, the admission
+date, and a follow-up — the last because the commonest failure of a discharge
+is not a wrong drug, it is nobody knowing whose clinic the patient belongs to
+now.
+
+Which kinds exist is pack data. Adult internal medicine offers the discharge
+summary; paediatrics does not; no component knows the difference.
+
 ---
 
 ## Status of the shipped content
@@ -315,7 +438,9 @@ content is not ours to write.
 
 No cloud sync, no accounts, no licence enforcement (all v2). No interaction
 checker. No auto-translation anywhere. No geo-locking. No national formulary. No
-chips on diagnosis. No bulk-parsing of copyrighted reference PDFs.
+chips on diagnosis. No bulk-parsing of copyrighted reference PDFs. No
+appointments, no billing, no analytics — a clinic-management product is a
+different product, and the queue is as far into one as this goes.
 
 And two rules the code structure enforces rather than documents: nothing loads a
 prior prescription by matching a patient, and the app never fills a clinical

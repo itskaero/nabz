@@ -25,6 +25,7 @@ const MEASURE_LABEL: Record<GrowthMeasureId, string> = {
   height: 'Height standing (cm)',
   hc: 'Head circumference (cm)',
   bmi: 'BMI (kg/m²)',
+  muac: 'Mid-upper arm circumference (cm)',
 };
 
 export function GrowthPanel() {

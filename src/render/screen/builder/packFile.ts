@@ -174,10 +174,18 @@ export function mergeSection(
 
     case 'advice':
       pack.advicePacks = structuredClone(incoming.pack.advicePacks);
+      // Both sign-off maps travel with the advice section, or a sectional
+      // import silently discards somebody's review and the pack looks
+      // reviewed-by-nobody for no reason a reader could see.
       if (incoming.pack.redFlagReview) {
         pack.redFlagReview = structuredClone(incoming.pack.redFlagReview);
       } else {
         delete pack.redFlagReview;
+      }
+      if (incoming.pack.adviceReview) {
+        pack.adviceReview = structuredClone(incoming.pack.adviceReview);
+      } else {
+        delete pack.adviceReview;
       }
       for (const locale of locales) {
         const from = incoming.phrases[locale];
@@ -242,6 +250,7 @@ export function sliceForExport(
   out.advicePacks = { tier1: [], tier2: [] };
   out.sigTemplates = [];
   delete out.redFlagReview;
+  delete out.adviceReview;
 
   for (const locale of locales) {
     outPhrases[locale] = {
@@ -272,6 +281,7 @@ export function sliceForExport(
     case 'advice':
       out.advicePacks = structuredClone(pack.advicePacks);
       if (pack.redFlagReview) out.redFlagReview = structuredClone(pack.redFlagReview);
+      if (pack.adviceReview) out.adviceReview = structuredClone(pack.adviceReview);
       for (const locale of locales) {
         outPhrases[locale].advice = structuredClone(phrases[locale].advice);
       }

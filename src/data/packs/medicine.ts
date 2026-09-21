@@ -436,6 +436,17 @@ export const medicine: ContentPack = {
    * nothing to configure.
    */
   modules: ['gfr', 'bmi'],
+  /**
+   * Adult internal medicine is where inpatient work happens, so this is the
+   * pack that offers a discharge summary. Paediatrics deliberately does not:
+   * it is an OPD pack, and a tab leading to a document that specialty never
+   * writes is a tab that costs a scroll on every patient.
+   *
+   * That difference is DATA, and no component knows about it -- which is the
+   * property `domain/documents` exists to buy, the same way `modules` buys it
+   * for the calculators.
+   */
+  documents: ['prescription', 'discharge'],
   moduleConfig: {},
 
   /**

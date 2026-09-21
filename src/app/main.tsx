@@ -11,7 +11,16 @@ import { registerSW } from 'virtual:pwa-register';
 import { App } from '@render/screen/App.tsx';
 import { ErrorBoundary } from '@render/screen/ErrorBoundary.tsx';
 import { StoreProvider } from '@render/screen/store.tsx';
+import { adoptPairingFromUrl } from '@storage/clinicSync.ts';
 import '@render/screen/styles.css';
+
+/*
+  Before React, not inside it. A device that arrived by scanning the station's
+  QR carries `#pair=<code>` in its address, and taking it now means no frame
+  in which the code is on screen and nothing renders a "type the pairing code"
+  prompt to a device that already has one.
+*/
+adoptPairingFromUrl();
 
 const updateSW = registerSW({
   onNeedRefresh() {

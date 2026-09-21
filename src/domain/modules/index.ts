@@ -26,6 +26,16 @@ export const MODULE_META: Record<ModuleId, ModuleMeta> = {
   growth: { id: 'growth', label: 'Growth', requires: ['sex', 'ageDays'] },
   gfr: { id: 'gfr', label: 'eGFR', requires: ['sex', 'ageDays'] },
   bmi: { id: 'bmi', label: 'BMI / BSA', requires: ['weightKg', 'heightCm'] },
+  /*
+    `heightCm` rather than `ageDays`: weight-for-height is keyed by the
+    measurement, not by age, and a protocol that admits on MUAC alone does not
+    need the age at all. The panel asks for what its protocol actually uses.
+  */
+  malnutrition: {
+    id: 'malnutrition',
+    label: 'Malnutrition',
+    requires: ['sex', 'weightKg', 'heightCm'],
+  },
 };
 
 /** The modules a pack enables, resolved to their metadata, in offer order. */

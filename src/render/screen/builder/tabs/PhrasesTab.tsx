@@ -22,6 +22,8 @@ import { LOCALES } from '@domain/locale.ts';
 import type { Locale } from '@domain/locale.ts';
 import { templateSlots } from '@domain/phrases.ts';
 import type { Draft } from '../useDraft.ts';
+import { SentencePreview } from '../SentencePreview.tsx';
+import { renderSigTemplate } from '../specimen.ts';
 
 type Group = 'templates' | 'vocab' | 'units' | 'strings';
 
@@ -217,6 +219,14 @@ function Templates({ draft, query }: { draft: Draft; query: string }) {
                 }
               />
             ))}
+            {/*
+              The whole point of this tab. An author asked to check Urdu was
+              being shown a template with holes in it; this is the sentence.
+            */}
+            <SentencePreview
+              renderings={renderSigTemplate(id, draft.phrases)}
+              note="A specimen medicine with round numbers. The words are your pack's; the numbers are scaffolding."
+            />
             <p className="hint">
               Slots:{' '}
               {present.map((s) => (

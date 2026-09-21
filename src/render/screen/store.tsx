@@ -28,7 +28,9 @@ import type {
   MedicationLine,
   Patient,
   Prescription,
+  StayRecord,
 } from '@domain/prescription.ts';
+import type { DocumentKindId } from '@domain/documents/index.ts';
 import { emptyPrescription } from '@domain/prescription.ts';
 import type { Patch } from '@domain/patch.ts';
 import { applyPatch } from '@domain/patch.ts';
@@ -95,6 +97,8 @@ interface Store {
   /** results from a clinical-tool module (eGFR, ...) -- see CalcResult */
   setCalculations: (items: CalcResult[]) => void;
   setFollowUp: (days: number | null) => void;
+  /** the admission block, on a discharge summary */
+  setStay: (patch: Patch<StayRecord>) => void;
 
   save: () => Promise<void>;
   /**
@@ -104,7 +108,13 @@ interface Store {
   openFromQueue: (entryId: string) => void;
   /** true while the open script belongs to a queue visit */
   fromQueue: boolean;
-  startNew: () => void;
+  /**
+   * Start a blank document. The kind is chosen HERE and never afterwards:
+   * switching an in-progress script from a prescription to a discharge summary
+   * would silently re-title sections a doctor has already filled in, and the
+   * safe version of that is a new document.
+   */
+  startNew: (kind?: DocumentKindId) => void;
   refillFrom: (prior: Prescription) => void;
   setProfile: (profile: DoctorProfile) => void;
 }
@@ -210,6 +220,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           followUp: days && days > 0 ? { in: { value: days, unit: 'day' } } : undefined,
         })),
 
+      /**
+       * The admission block. Merges rather than replaces, and creates the
+       * block on first write so a document that became a discharge summary
+       * after the fact still has somewhere to put the dates.
+       */
+      setStay: (p) =>
+        patch((prev) => ({
+          ...prev,
+          stay: applyPatch(prev.stay ?? { course: [], procedures: [] }, p),
+        })),
+
       openFromQueue: (entryId) => setQueueEntryId(entryId),
       fromQueue: queueEntryId !== null,
       save: async () => {
@@ -235,8 +256,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSavedAt(new Date().toISOString());
       },
 
-      startNew: () => {
-        setRx(emptyPrescription(profile.packId, newId()));
+      startNew: (kind) => {
+        setRx(emptyPrescription(profile.packId, newId(), new Date(), kind));
         setPatientRecord(null);
         // A new script is a new encounter: it must not close the previous
         // patient's visit when it is saved.

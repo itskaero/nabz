@@ -27,6 +27,11 @@ import { deviceRole, setDeviceRole } from '@domain/deviceRole.ts';
 import type { InstalledPack } from '@storage/db.ts';
 import { installPack, listPacks, removePack } from '@data/provider.ts';
 import { parsePackFile } from '../builder/packFile.ts';
+import type { AppearanceControl } from '../useAppearance.ts';
+import { AppearanceSection } from './AppearanceSection.tsx';
+import { AddonSection } from './AddonSection.tsx';
+import { RecoverySheet } from './RecoverySheet.tsx';
+import { MIN_LENGTH, passwordProblem, suggestPassword } from '@domain/backupPassword.ts';
 
 const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   {
@@ -46,7 +51,14 @@ const MODES: Array<{ id: LetterheadMode; title: string; note: string }> = [
   },
 ];
 
-export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) {
+export function SettingsPanel({
+  onOpenBuilder,
+  appearance,
+}: {
+  onOpenBuilder: () => void;
+  /** Owned by App, so one hook drives the whole document. */
+  appearance: AppearanceControl;
+}) {
   // Does the origin this app came from run a clinic station? A static host
   // (Railway, or a file the doctor installed) says no, and there is nothing to
   // pair with -- so the pairing box does not appear at all.
@@ -59,8 +71,18 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
     return () => ac.abort();
   }, []);
 
-  const { profile, setProfile, pack, contentRejected, contentVerified } = useStore();
-  const [passphrase, setPassphrase] = useState('');
+  const { profile, setProfile, pack, contentRejected, contentVerified, refreshContent } =
+    useStore();
+  /*
+    "Password", not "passphrase", everywhere a person can see it. The word
+    only ever meant "a long password", and to somebody who has never met it,
+    it reads as a different and more technical thing than the one they already
+    know how to choose.
+  */
+  const [password, setPassword] = useState('');
+  const [showSheet, setShowSheet] = useState(false);
+  /** When a backup was last WRITTEN on this device. Not what the profile says. */
+  const [backedUpAt, setBackedUpAt] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<string | null>(null);
   const [newPin, setNewPin] = useState('');
   const [counts, setCounts] = useState<{ rx: number; usage: number; quota: number } | null>(null);
@@ -78,8 +100,13 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
 
   useEffect(() => {
     void (async () => {
-      const [rx, estimate] = await Promise.all([db.prescriptionCount(), db.storageEstimate()]);
+      const [rx, estimate, last] = await Promise.all([
+        db.prescriptionCount(),
+        db.storageEstimate(),
+        db.lastBackupAt(),
+      ]);
       setCounts({ rx, usage: estimate?.usage ?? 0, quota: estimate?.quota ?? 0 });
+      setBackedUpAt(last);
     })();
     refreshPackList();
   }, []);
@@ -122,7 +149,7 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
 
   const exportNow = async () => {
     try {
-      const blob = await exportEncrypted(passphrase);
+      const blob = await exportEncrypted(password);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -130,7 +157,13 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
       a.click();
       URL.revokeObjectURL(url);
       setStatus('Backup saved. Keep it somewhere that is not this device.');
-      setProfile({ ...profile, lastBackupAt: new Date().toISOString() });
+      /*
+        `exportEncrypted` already stamped the meta store (`markBackedUp`), and
+        that is the record the setup checklist reads. It used to be written
+        into the PROFILE as well, which travels inside the backup file -- so
+        restoring onto a fresh phone made it claim a backup it had never taken.
+      */
+      setBackedUpAt(await db.lastBackupAt());
     } catch (err) {
       setStatus((err as Error).message);
     }
@@ -138,7 +171,7 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
 
   const importNow = async (file: File) => {
     try {
-      const payload = await decryptBackup(await file.text(), passphrase);
+      const payload = await decryptBackup(await file.text(), password);
       const summary = await importBackup(payload, 'merge');
       setStatus(
         `Restored ${summary.prescriptions} prescriptions, ${summary.growthSeries} growth records` +
@@ -152,6 +185,8 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
 
   return (
     <div className="body">
+      <AppearanceSection appearance={appearance} />
+
       <section className="card settings-section">
         <h3>Your details</h3>
         <div className="field">
@@ -283,9 +318,7 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
             {counts.quota
               ? ` · ${(counts.usage / 1e6).toFixed(1)} MB of ~${(counts.quota / 1e6).toFixed(0)} MB available`
               : ''}
-            {profile.lastBackupAt
-              ? ` · last backup ${profile.lastBackupAt.slice(0, 10)}`
-              : ' · never backed up'}
+            {backedUpAt ? ` · last backup ${backedUpAt.slice(0, 10)}` : ' · never backed up'}
           </p>
         )}
         {/*
@@ -300,23 +333,56 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
           </div>
         )}
         <div className="field" style={{ marginTop: 8 }}>
-          <label>Backup passphrase</label>
+          <label>The password for your backup file</label>
           <input
             type="password"
-            value={passphrase}
+            value={password}
             disabled={!!cryptoProblem}
-            placeholder="at least 8 characters"
-            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder={`at least ${MIN_LENGTH} characters`}
+            onChange={(e) => setPassword(e.target.value)}
           />
+          {/*
+            Said plainly, and said before the file exists rather than after.
+            This is the only sentence on the screen that a doctor cannot
+            recover from being wrong about.
+          */}
           <p className="hint">
-            The file is encrypted with this. There is no way to recover it if you
-            forget — that is what makes the backup safe to keep on a memory stick.
+            The file is encrypted with this. <strong>There is no way to recover
+            it and nobody can reset it</strong> — not the clinic, not us. That
+            is what makes the backup safe to keep on a memory stick, and it is
+            why there is a sheet to print.
           </p>
+          <div className="row-actions">
+            <button
+              className="btn quiet"
+              disabled={!!cryptoProblem}
+              onClick={() => setPassword(suggestPassword())}
+            >
+              Suggest one
+            </button>
+            <button
+              className="btn quiet"
+              disabled={!!passwordProblem(password)}
+              onClick={() => setShowSheet(true)}
+              title={passwordProblem(password) ?? undefined}
+            >
+              Print a recovery sheet
+            </button>
+          </div>
         </div>
+
+        {showSheet && (
+          <RecoverySheet
+            password={password}
+            doctorName={doctor.name}
+            clinicName={doctor.clinicName}
+            onClose={() => setShowSheet(false)}
+          />
+        )}
         <div className="actionbar" style={{ padding: '10px 0 0', borderTop: 'none' }}>
           <button
             className="btn"
-            disabled={!!cryptoProblem || passphrase.length < 8}
+            disabled={!!cryptoProblem || !!passwordProblem(password)}
             title={cryptoProblem ?? undefined}
             onClick={exportNow}
           >
@@ -324,7 +390,7 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
           </button>
           <button
             className="btn ghost"
-            disabled={!!cryptoProblem || passphrase.length < 8}
+            disabled={!!cryptoProblem || !!passwordProblem(password)}
             title={cryptoProblem ?? undefined}
             onClick={() => fileInput.current?.click()}
           >
@@ -662,6 +728,12 @@ export function SettingsPanel({ onOpenBuilder }: { onOpenBuilder: () => void }) 
           />
         </div>
       </section>
+
+      {/*
+        Directly under the pack library, because an addon is a layer over one
+        of those packs and reading them apart makes neither make sense.
+      */}
+      <AddonSection packId={profile.packId} onChanged={() => void refreshContent()} />
     </div>
   );
 }

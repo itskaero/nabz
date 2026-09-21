@@ -11,6 +11,7 @@
  * schema is open; the content is not ours to write. A pack authored by a
  * non-specialist is a liability with someone's name on it.
  */
+import type { DocumentKindId } from './documents/index.ts';
 import type { GrowthMeasureId } from './prescription.ts';
 
 // --- catalogue vs evidence, kept apart on purpose ---------------------------
@@ -32,6 +33,20 @@ export interface FormularyEntry {
   price?: { amount: number; currency: string };
   alternates?: string[];
   provenance: 'DRAP' | 'manual';
+  /**
+   * WHO checked this row against the registry, and WHEN.
+   *
+   * `provenance: 'DRAP'` plus a registration number says the claim was made.
+   * It does not say who made it, and a claim nobody's name is on is a claim
+   * nobody can be asked about -- which is the same reasoning that put a named
+   * person on a red flag and on a dosing row.
+   *
+   * DRAP publishes no bulk download and no API (re-checked September 2026;
+   * `eapp.dra.gov.pk/WebProductIndex.php` is a search form), so reconciliation
+   * is one row at a time by a human. This records that it happened rather than
+   * pretending an import could.
+   */
+  drapChecked?: { by: string; date: string };
 }
 
 /**
@@ -188,7 +203,10 @@ export interface ScoreDefinition {
  * code it names (`domain/modules/`); an id with no matching code is a build
  * error, and that is the property this union exists to buy (CLAUDE.md 6d).
  */
-export type ModuleId = 'growth' | 'gfr' | 'bmi';
+export type ModuleId = 'growth' | 'gfr' | 'bmi' | 'malnutrition';
+
+/** Re-exported so a pack author reads one file, not two. */
+export type { DocumentKindId };
 
 /**
  * Sign-off on one tier-2 red flag.
@@ -244,13 +262,50 @@ export interface ContentPack {
   /** clinical scores this specialty offers -- see ScoreDefinition above */
   scores?: ScoreDefinition[];
   modules: ModuleId[];
+  /**
+   * The document kinds this specialty offers (`domain/documents`). Absent or
+   * empty means prescriptions only, which is what every pack written before
+   * this existed meant -- a paediatric OPD pack has no business offering a
+   * discharge summary, and a ward pack has no business hiding one.
+   */
+  documents?: DocumentKindId[];
   /** redFlagId -> who signed the wording off, and when */
   redFlagReview?: Record<string, RedFlagReview>;
+  /**
+   * tier-1 advice id -> the same sign-off, for the same reason.
+   *
+   * A SEPARATE map rather than one keyed by any advice id, because the two
+   * carry different enforcement: an unreviewed red flag BLOCKS export, and an
+   * unreviewed tier-1 line only warns. Tier-1 prose reaches a patient too and
+   * deserves a human's name on it, but a pack that predates this field must
+   * not become un-exportable the day it is added. Merging the maps would make
+   * which rule applies a matter of reading the id prefix.
+   */
+  adviceReview?: Record<string, RedFlagReview>;
   /** module-specific configuration, e.g. which growth measures to offer */
   moduleConfig?: {
     growth?: {
       measures: GrowthMeasureId[];
       defaultReference: 'WHO' | 'CDC';
+    };
+    /**
+     * The acute-malnutrition protocol this specialty follows.
+     *
+     * Required rather than defaulted, because there is no safe default: WHO's
+     * 2023 guideline admits on weight-for-height OR MUAC OR oedema, while
+     * Pakistan's national programme admits on MUAC or oedema alone. Shipping
+     * one as "the" default would silently apply another country's case
+     * definition to a clinic's caseload.
+     */
+    malnutrition?: {
+      /** which criteria this protocol admits on */
+      criteria: Array<'oedema' | 'whz' | 'muac'>;
+      muacSevereMm: number;
+      muacModerateMm: number;
+      whzSevere: number;
+      whzModerate: number;
+      /** source + edition. REQUIRED and non-empty, exactly like DosingEntry. */
+      reference: string;
     };
   };
   /**
@@ -403,6 +458,20 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
         message: 'claims DRAP provenance but carries no registration number',
       });
     }
+    /*
+      A warning rather than an error: every row shipped today predates this
+      field, and a pack that became un-exportable on upgrade would push
+      authors away from the thing instead of toward it. The same reasoning as
+      tier-1 sign-off.
+    */
+    if (row.provenance === 'DRAP' && row.drapRegNo && !row.drapChecked?.by?.trim()) {
+      issues.push({
+        severity: 'warning',
+        where: `formularySeed[${i}] ${row.brand}`,
+        message:
+          'says it was checked against DRAP, but nobody\u2019s name is on it. A claim nobody signed is a claim nobody can be asked about.',
+      });
+    }
   });
 
   for (const id of pack.advicePacks.tier2) {
@@ -423,6 +492,55 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
       where: 'moduleConfig.growth',
       message: 'pack enables the growth module but does not configure it',
     });
+  }
+
+  /*
+    Malnutrition is configured or it is off. Unlike growth, there is no safe
+    default to fall back to: WHO 2023 and Pakistan's national programme use
+    different case definitions, and picking one silently would apply another
+    country's criteria to a clinic's caseload.
+  */
+  if (pack.modules.includes('malnutrition')) {
+    const cfg = pack.moduleConfig?.malnutrition;
+    if (!cfg) {
+      issues.push({
+        severity: 'error',
+        where: 'moduleConfig.malnutrition',
+        message:
+          'pack enables the malnutrition module but names no protocol. WHO 2023 and national programmes admit on different criteria; there is no default.',
+      });
+    } else {
+      if (!cfg.criteria?.length) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition.criteria',
+          message: 'a protocol that admits on no criteria can never classify a child',
+        });
+      }
+      // Same rule as DosingEntry and ScoreDefinition: a cut-off with no
+      // citation is a number with no provenance in front of a doctor.
+      if (!cfg.reference?.trim()) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition.reference',
+          message: 'no source for these cut-offs. A threshold with no citation is not a threshold.',
+        });
+      }
+      if (cfg.muacSevereMm >= cfg.muacModerateMm) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition',
+          message: `severe MUAC cut-off (${cfg.muacSevereMm}mm) must be below the moderate one (${cfg.muacModerateMm}mm)`,
+        });
+      }
+      if (cfg.whzSevere >= cfg.whzModerate) {
+        issues.push({
+          severity: 'error',
+          where: 'moduleConfig.malnutrition',
+          message: `severe WHZ cut-off (${cfg.whzSevere}) must be below the moderate one (${cfg.whzModerate})`,
+        });
+      }
+    }
   }
 
   // Same rule as dosing: a score with no citation is a number with no
@@ -485,9 +603,29 @@ export function unreviewedRedFlags(
   pack: ContentPack,
   wordingOf: (redFlagId: string) => string,
 ): Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> {
+  return unreviewed(pack.advicePacks.tier2, pack.redFlagReview, wordingOf);
+}
+
+/**
+ * The same, for tier-1 advice. Reported as a warning everywhere, including in
+ * the builder -- see `ContentPack.adviceReview` for why the enforcement
+ * differs from tier 2's.
+ */
+export function unreviewedAdvice(
+  pack: ContentPack,
+  wordingOf: (adviceId: string) => string,
+): Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> {
+  return unreviewed(pack.advicePacks.tier1, pack.adviceReview, wordingOf);
+}
+
+function unreviewed(
+  ids: string[],
+  reviews: Record<string, RedFlagReview> | undefined,
+  wordingOf: (id: string) => string,
+): Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> {
   const out: Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> = [];
-  for (const id of pack.advicePacks.tier2) {
-    const review = pack.redFlagReview?.[id];
+  for (const id of ids) {
+    const review = reviews?.[id];
     if (!review?.reviewedBy?.trim()) out.push({ id, reason: 'never-reviewed' });
     else if (review.wording !== wordingOf(id)) out.push({ id, reason: 'wording-changed' });
   }

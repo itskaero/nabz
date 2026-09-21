@@ -20,6 +20,7 @@ import type { LegacyGrowthLink, PatientRecord } from '@domain/patient.ts';
 import { patientLabel } from '@domain/patient.ts';
 import type { GrowthPoint } from '@domain/prescription.ts';
 import * as db from '@storage/db.ts';
+import { Dialog } from './Dialog.tsx';
 
 export function LegacyGrowthResolver() {
   const [legacy, setLegacy] = useState<LegacyGrowthLink[]>([]);
@@ -91,7 +92,7 @@ export function LegacyGrowthResolver() {
       </div>
 
       {open && (
-        <div className="scrim" role="dialog" aria-modal="true">
+        <Dialog>
           <div className="sheet-modal">
             <h3>{open.patientName}</h3>
             <p className="sub">
@@ -159,7 +160,7 @@ export function LegacyGrowthResolver() {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
     </section>
   );

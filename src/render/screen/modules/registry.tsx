@@ -27,9 +27,16 @@ const GfrPanel = lazy(() =>
 const BmiPanel = lazy(() =>
   import('../components/BmiPanel.tsx').then((m) => ({ default: m.BmiPanel })),
 );
+// Lazy matters most here: this panel pulls the WHO weight-for-height and
+// MUAC tables, which a pack that does not offer malnutrition should never
+// download.
+const MalnutritionPanel = lazy(() =>
+  import('../components/MalnutritionPanel.tsx').then((m) => ({ default: m.MalnutritionPanel })),
+);
 
 export const MODULE_PANEL: Record<ModuleId, LazyExoticComponent<ComponentType>> = {
   growth: GrowthPanel,
   gfr: GfrPanel,
   bmi: BmiPanel,
+  malnutrition: MalnutritionPanel,
 };

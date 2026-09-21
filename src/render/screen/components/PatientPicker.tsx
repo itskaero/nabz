@@ -17,6 +17,7 @@ import { patientLabel, rankCandidates } from '@domain/patient.ts';
 import type { Sex } from '@domain/prescription.ts';
 import * as db from '@storage/db.ts';
 import { newId, useStore } from '../store.tsx';
+import { Dialog } from './Dialog.tsx';
 
 export function PatientPicker({ onClose }: { onClose: () => void }) {
   const { rx, identifyPatient } = useStore();
@@ -79,7 +80,7 @@ export function PatientPicker({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="scrim" role="dialog" aria-modal="true" aria-label="Identify patient">
+    <Dialog label="Identify patient" onClose={onClose}>
       <div className="sheet-modal">
         <h3>Which patient is this?</h3>
         <p className="sub">
@@ -172,6 +173,6 @@ export function PatientPicker({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
