@@ -23,12 +23,13 @@ import type { PackRegistry } from '@domain/phrases.ts';
 import type { PatientRecord, LegacyGrowthLink } from '@domain/patient.ts';
 import type { PatientClinical } from '@domain/patientClinical.ts';
 import type { LabResult } from '@domain/labResult.ts';
+import type { Attachment, ImagingStudy } from '@domain/imaging.ts';
 import type { QueueEntry } from '@domain/clinic.ts';
 import type { Addon } from '@domain/addon.ts';
 import type { Verdict } from '@domain/addonSignature.ts';
 
 const DB_NAME = 'nabz';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 
 /**
  * Edited content: the specialty pack and the locale packs, as authored in the
@@ -169,6 +170,24 @@ interface NabzDb extends DBSchema {
     value: LabResult;
     indexes: { byPatient: string; byDate: string };
   };
+  /** The study and its report: clinical TEXT, and backed up as such. */
+  imagingStudies: {
+    key: string;
+    value: ImagingStudy;
+    indexes: { byPatient: string; byDate: string };
+  };
+  /**
+   * The photographs, and the only non-text thing this app stores.
+   *
+   * EXCLUDED FROM `collectBackup` on purpose -- see `domain/imaging.ts` for
+   * the arithmetic. They have their own export, written one image at a time
+   * rather than assembled in memory.
+   */
+  attachments: {
+    key: string;
+    value: Attachment;
+    indexes: { byPatient: string; byStudy: string };
+  };
   /**
    * The clinic layer. Identity, a token, a status and a fee -- deliberately no
    * clinical content, so a shared queue never carries a diagnosis. See
@@ -238,6 +257,14 @@ export function db(): Promise<IDBPDatabase<NabzDb>> {
       }
       if (oldVersion < 6) {
         database.createObjectStore('addons', { keyPath: 'id' });
+      }
+      if (oldVersion < 9) {
+        const studies = database.createObjectStore('imagingStudies', { keyPath: 'id' });
+        studies.createIndex('byPatient', 'patientId');
+        studies.createIndex('byDate', 'performedOn');
+        const files = database.createObjectStore('attachments', { keyPath: 'id' });
+        files.createIndex('byPatient', 'patientId');
+        files.createIndex('byStudy', 'studyId');
       }
       if (oldVersion < 8) {
         const labs = database.createObjectStore('labResults', { keyPath: 'id' });
@@ -444,6 +471,12 @@ export async function deletePatient(id: string): Promise<void> {
   for (const row of await database.getAllFromIndex('labResults', 'byPatient', id)) {
     await database.delete('labResults', row.id);
   }
+  for (const row of await database.getAllFromIndex('attachments', 'byPatient', id)) {
+    await database.delete('attachments', row.id);
+  }
+  for (const row of await database.getAllFromIndex('imagingStudies', 'byPatient', id)) {
+    await database.delete('imagingStudies', row.id);
+  }
 }
 
 /**
@@ -483,6 +516,12 @@ export async function mergePatients(sourceId: string, targetId: string): Promise
   */
   for (const row of await database.getAllFromIndex('labResults', 'byPatient', sourceId)) {
     await database.put('labResults', { ...row, patientId: targetId });
+  }
+  for (const row of await database.getAllFromIndex('imagingStudies', 'byPatient', sourceId)) {
+    await database.put('imagingStudies', { ...row, patientId: targetId });
+  }
+  for (const row of await database.getAllFromIndex('attachments', 'byPatient', sourceId)) {
+    await database.put('attachments', { ...row, patientId: targetId });
   }
 
   const fromClinical = await database.get('patientClinical', sourceId);
@@ -597,6 +636,67 @@ export async function deleteLabResult(id: string): Promise<void> {
 
 export async function allLabResults(): Promise<LabResult[]> {
   return (await db()).getAll('labResults');
+}
+
+// --- imaging ----------------------------------------------------------------
+
+export async function imagingFor(patientId: string): Promise<ImagingStudy[]> {
+  const rows = await (await db()).getAllFromIndex('imagingStudies', 'byPatient', patientId);
+  return rows.sort((a, b) => b.performedOn.localeCompare(a.performedOn));
+}
+
+export async function saveImagingStudy(study: ImagingStudy): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('imagingStudies', study);
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+/** Removes the study AND its images: an orphan blob is storage nobody can reach. */
+export async function deleteImagingStudy(id: string): Promise<void> {
+  const database = await db();
+  for (const file of await database.getAllFromIndex('attachments', 'byStudy', id)) {
+    await database.delete('attachments', file.id);
+  }
+  await database.delete('imagingStudies', id);
+}
+
+export async function attachmentsForStudy(studyId: string): Promise<Attachment[]> {
+  const rows = await (await db()).getAllFromIndex('attachments', 'byStudy', studyId);
+  return rows.sort((a, b) => a.addedOn.localeCompare(b.addedOn));
+}
+
+export async function attachmentsForPatient(patientId: string): Promise<Attachment[]> {
+  return (await db()).getAllFromIndex('attachments', 'byPatient', patientId);
+}
+
+export async function saveAttachment(file: Attachment): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('attachments', file);
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+export async function deleteAttachment(id: string): Promise<void> {
+  await (await db()).delete('attachments', id);
+}
+
+/**
+ * Every stored image, as ids and sizes only.
+ *
+ * Deliberately NOT the blobs: this backs the storage summary and the image
+ * export's progress count, and reading five hundred photographs into memory to
+ * add up their sizes would be the exact mistake this split exists to avoid.
+ */
+export async function attachmentIndex(): Promise<Array<{ id: string; bytes: number }>> {
+  const keys = await (await db()).getAllKeys('attachments');
+  const database = await db();
+  const out: Array<{ id: string; bytes: number }> = [];
+  for (const key of keys) {
+    const row = await database.get('attachments', key);
+    if (row) out.push({ id: row.id, bytes: row.bytes });
+  }
+  return out;
 }
 
 // --- growth (the named carve-out) ------------------------------------------
@@ -896,6 +996,26 @@ export async function deleteInstalledPack(id: string): Promise<void> {
 
 export async function lastBackupAt(): Promise<string | undefined> {
   return (await db()).get('meta', 'lastBackupAt') as Promise<string | undefined>;
+}
+
+/**
+ * A SEPARATE mark from `lastBackupAt`.
+ *
+ * The two files are written independently and either can be months out of date
+ * while the other is fresh, so one timestamp covering both would let a stale
+ * image export hide behind a recent records export -- which is exactly the
+ * state the checklist row exists to catch.
+ */
+export async function lastImageBackupAt(): Promise<string | undefined> {
+  return (await db()).get('meta', 'lastImageBackupAt') as Promise<string | undefined>;
+}
+
+export async function markImagesBackedUp(): Promise<void> {
+  await (await db()).put('meta', new Date().toISOString(), 'lastImageBackupAt');
+}
+
+export async function attachmentCount(): Promise<number> {
+  return (await db()).count('attachments');
 }
 
 export async function markBackedUp(): Promise<void> {

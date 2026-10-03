@@ -16,6 +16,8 @@ import {
   exportEncrypted,
   importBackup,
 } from '@storage/backup.ts';
+import { exportImages, importImages } from '@storage/imagingBackup.ts';
+import { humanBytes } from '@domain/imaging.ts';
 import { LegacyGrowthResolver } from './LegacyGrowthResolver.tsx';
 import { ClinicPairing } from '../clinic/ClinicPairing.tsx';
 import { detectSyncMode } from '@storage/clinicSync.ts';
@@ -83,6 +85,17 @@ export function SettingsPanel({
   const [showSheet, setShowSheet] = useState(false);
   /** When a backup was last WRITTEN on this device. Not what the profile says. */
   const [backedUpAt, setBackedUpAt] = useState<string | undefined>(undefined);
+  /*
+    Tracked separately from the records backup. The two files are written
+    independently and either can be months out of date while the other is
+    fresh, so one timestamp covering both would let a stale image export hide
+    behind a recent records one.
+  */
+  const [imageBackedUpAt, setImageBackedUpAt] = useState<string | undefined>(undefined);
+  const [imageCount, setImageCount] = useState(0);
+  const [imageBytes, setImageBytes] = useState(0);
+  const [imageStatus, setImageStatus] = useState<string | null>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [newPin, setNewPin] = useState('');
   const [counts, setCounts] = useState<{ rx: number; usage: number; quota: number } | null>(null);
@@ -100,13 +113,20 @@ export function SettingsPanel({
 
   useEffect(() => {
     void (async () => {
-      const [rx, estimate, last] = await Promise.all([
+      const [rx, estimate, last, images, lastImages] = await Promise.all([
         db.prescriptionCount(),
         db.storageEstimate(),
         db.lastBackupAt(),
+        // Ids and sizes, never the blobs: adding up five hundred photographs
+        // by reading them is the exact mistake the split exists to avoid.
+        db.attachmentIndex(),
+        db.lastImageBackupAt(),
       ]);
       setCounts({ rx, usage: estimate?.usage ?? 0, quota: estimate?.quota ?? 0 });
       setBackedUpAt(last);
+      setImageCount(images.length);
+      setImageBytes(images.reduce((n, a) => n + a.bytes, 0));
+      setImageBackedUpAt(lastImages);
     })();
     refreshPackList();
   }, []);
@@ -146,6 +166,42 @@ export function SettingsPanel({
   const doctor = profile.doctor;
   const setDoctor = (patch: Partial<typeof doctor>) =>
     setProfile({ ...profile, doctor: { ...doctor, ...patch } });
+
+  const exportImagesNow = async () => {
+    try {
+      setImageStatus('Encrypting images…');
+      const blob = await exportImages(password, (done, total) =>
+        setImageStatus(`Encrypting image ${done} of ${total}…`),
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nabz-images-${new Date().toISOString().slice(0, 10)}.ndjson`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setImageStatus('Images saved. Keep this file with your records backup — you need both.');
+      setImageBackedUpAt(await db.lastImageBackupAt());
+    } catch (err) {
+      setImageStatus((err as Error).message);
+    }
+  };
+
+  const importImagesNow = async (file: File) => {
+    try {
+      setImageStatus('Reading…');
+      const summary = await importImages(await file.text(), password, 'merge', (done, total) =>
+        setImageStatus(`Restoring image ${done} of ${total}…`),
+      );
+      setImageStatus(
+        `Restored ${summary.restored} image${summary.restored === 1 ? '' : 's'}` +
+          (summary.skipped ? ` (${summary.skipped} already here)` : '') +
+          '.',
+      );
+      setImageCount(await db.attachmentCount());
+    } catch (err) {
+      setImageStatus((err as Error).message);
+    }
+  };
 
   const exportNow = async () => {
     try {
@@ -409,6 +465,65 @@ export function SettingsPanel({
           />
         </div>
         {status && <p className="hint">{status}</p>}
+
+        {/*
+          A SECOND file, and the section says why in the first sentence.
+
+          The records export builds one JSON string and holds three copies of
+          it in memory on the way to a Blob. That is fine for kilobytes of
+          clinical text and fatal for megabytes of photographs, so the images
+          have their own export, written one picture at a time. Same password,
+          because a doctor has one password to lose, not two.
+
+          Shown only when there are images: a section about nothing is how a
+          settings page stops being read.
+        */}
+        {imageCount > 0 && (
+          <div className="image-backup">
+            <h3>Images</h3>
+            <p className="hint" style={{ marginTop: 0 }}>
+              <strong>Your images are not in the file above.</strong> They are
+              too large to go in one file, so they have their own — under the
+              same password. You need both to restore a whole chart.
+            </p>
+            <p className="stat-line">
+              {imageCount} image{imageCount === 1 ? '' : 's'} · {humanBytes(imageBytes)}
+              {imageBackedUpAt
+                ? ` · last exported ${imageBackedUpAt.slice(0, 10)}`
+                : ' · never exported'}
+            </p>
+            <div className="actionbar" style={{ padding: '8px 0 0', borderTop: 'none' }}>
+              <button
+                className="btn"
+                disabled={!!cryptoProblem || !!passwordProblem(password)}
+                title={cryptoProblem ?? undefined}
+                onClick={() => void exportImagesNow()}
+              >
+                Export my images
+              </button>
+              <button
+                className="btn ghost"
+                disabled={!!cryptoProblem || !!passwordProblem(password)}
+                title={cryptoProblem ?? undefined}
+                onClick={() => imageInput.current?.click()}
+              >
+                Restore images
+              </button>
+              <input
+                ref={imageInput}
+                type="file"
+                accept=".ndjson,application/x-ndjson,application/json"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void importImagesNow(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+            {imageStatus && <p className="hint">{imageStatus}</p>}
+          </div>
+        )}
       </section>
 
       <section className="card settings-section">

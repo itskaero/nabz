@@ -38,6 +38,8 @@ import { useStore } from '../store.tsx';
 import { HistoryEditor } from './HistoryEditor.tsx';
 import { ImmunisationPanel, MilestonePanel } from './ImmunisationPanel.tsx';
 import { LabResultsPanel } from './LabResultsPanel.tsx';
+import { ImagingPanel } from './ImagingPanel.tsx';
+import type { Attachment, ImagingStudy } from '@domain/imaging.ts';
 import type { LabResult } from '@domain/labResult.ts';
 import { newId } from '../store.tsx';
 
@@ -49,6 +51,7 @@ type SectionId =
   | 'milestones'
   | 'medications'
   | 'labs'
+  | 'imaging'
   | 'visits';
 
 /**
@@ -66,6 +69,7 @@ function sectionsFor(pack: ContentPack): Array<{ id: SectionId; label: string }>
     ...(pack.milestones ? [{ id: 'milestones' as const, label: 'Milestones' }] : []),
     { id: 'medications' as const, label: 'Medications' },
     { id: 'labs' as const, label: 'Results' },
+    { id: 'imaging' as const, label: 'Imaging' },
     { id: 'visits' as const, label: 'Visits' },
   ];
 }
@@ -88,23 +92,29 @@ export function PatientChart({
   const [clinical, setClinical] = useState<PatientClinical | null>(null);
   const [encounters, setEncounters] = useState<Prescription[] | null>(null);
   const [labs, setLabs] = useState<LabResult[]>([]);
+  const [studies, setStudies] = useState<ImagingStudy[]>([]);
+  const [images, setImages] = useState<Attachment[]>([]);
   const [section, setSection] = useState<SectionId>('allergies');
   const [refusal, setRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [p, c, rows, results] = await Promise.all([
+      const [p, c, rows, results, imaging, files] = await Promise.all([
         db.getPatient(patientId),
         db.getPatientClinical(patientId),
         db.patientHistory(patientId),
         db.labResultsFor(patientId),
+        db.imagingFor(patientId),
+        db.attachmentsForPatient(patientId),
       ]);
       if (cancelled) return;
       setRecord(p ?? null);
       setClinical(c ?? null);
       setEncounters(rows);
       setLabs(results);
+      setStudies(imaging);
+      setImages(files);
     })();
     return () => {
       cancelled = true;
@@ -178,7 +188,7 @@ export function PatientChart({
               onClick={() => setSection(s.id)}
             >
               <span>{s.label}</span>
-              <span className="chart-count">{countFor(s.id, base, chart, pack, ageDays, labs.length)}</span>
+              <span className="chart-count">{countFor(s.id, base, chart, pack, ageDays, labs.length, studies.length)}</span>
             </button>
           ))}
         </nav>
@@ -241,6 +251,58 @@ export function PatientChart({
               }}
             />
           )}
+          {section === 'imaging' && (
+            <ImagingPanel
+              patientId={patientId}
+              studies={studies}
+              attachments={images}
+              onAddStudy={(study) => {
+                const row: ImagingStudy = {
+                  ...study,
+                  id: newId(),
+                  attachmentIds: [],
+                  enteredOn: new Date().toISOString(),
+                };
+                setStudies((prev) => [row, ...prev]);
+                void db
+                  .saveImagingStudy(row)
+                  .then(() => setRefusal(null))
+                  .catch(async (err: unknown) => {
+                    setRefusal(err instanceof Error ? err.message : 'That could not be saved.');
+                    setStudies(await db.imagingFor(patientId));
+                  });
+              }}
+              onDeleteStudy={(id) => {
+                setStudies((prev) => prev.filter((x) => x.id !== id));
+                setImages((prev) => prev.filter((a) => a.studyId !== id));
+                void db.deleteImagingStudy(id);
+              }}
+              onAddImage={(studyId, blob, longEdge) => {
+                const file: Attachment = {
+                  id: newId(),
+                  patientId,
+                  studyId,
+                  mime: blob.type || 'image/jpeg',
+                  bytes: blob.size,
+                  blob,
+                  longEdge,
+                  addedOn: new Date().toISOString(),
+                };
+                setImages((prev) => [...prev, file]);
+                void db
+                  .saveAttachment(file)
+                  .then(() => setRefusal(null))
+                  .catch(async (err: unknown) => {
+                    setRefusal(err instanceof Error ? err.message : 'That could not be saved.');
+                    setImages(await db.attachmentsForPatient(patientId));
+                  });
+              }}
+              onDeleteImage={(id) => {
+                setImages((prev) => prev.filter((a) => a.id !== id));
+                void db.deleteAttachment(id);
+              }}
+            />
+          )}
           {section === 'medications' && <MedicationSection chart={chart} />}
           {section === 'visits' && (
             <VisitSection chart={chart} encounters={encounters} onOpen={onOpenEncounter} />
@@ -258,6 +320,7 @@ function countFor(
   pack?: ContentPack,
   ageDays?: number,
   labCount = 0,
+  imagingCount = 0,
 ): string {
   if (id === 'allergies') return c.allergies.length ? String(c.allergies.length) : '—';
   if (id === 'problems') {
@@ -282,6 +345,7 @@ function countFor(
   }
   if (id === 'medications') return chart?.medications.length ? String(chart.medications.length) : '—';
   if (id === 'labs') return labCount ? String(labCount) : '—';
+  if (id === 'imaging') return imagingCount ? String(imagingCount) : '—';
   return chart?.visits.length ? String(chart.visits.length) : '—';
 }
 

@@ -144,6 +144,8 @@ export function App() {
   const [facts, setFacts] = useState<{
     records: number;
     lastBackupAt: string | undefined;
+    images: number;
+    lastImageBackupAt: string | undefined;
     paired: string | null;
   } | null>(null);
   // Read once: whether the browser has given us real crypto does not change
@@ -195,7 +197,17 @@ export function App() {
         db.prescriptionCount(),
         db.lastBackupAt(),
       ]);
-      setFacts({ records: count, lastBackupAt: last, paired: pairedCode() });
+      const [images, lastImages] = await Promise.all([
+        db.attachmentCount(),
+        db.lastImageBackupAt(),
+      ]);
+      setFacts({
+        records: count,
+        lastBackupAt: last,
+        images,
+        lastImageBackupAt: lastImages,
+        paired: pairedCode(),
+      });
     })();
   }, [view]);
 
@@ -217,6 +229,8 @@ export function App() {
         registrationNumber: profile.doctor.registration.number,
         packId: profile.packId,
         lastBackupAt: facts?.lastBackupAt,
+        imageCount: facts?.images ?? 0,
+        lastImageBackupAt: facts?.lastImageBackupAt,
         clinicMode: profile.clinic.enabled,
         pairedCode: facts?.paired ?? null,
         canEncrypt: secure,

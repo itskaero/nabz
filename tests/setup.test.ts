@@ -19,6 +19,8 @@ const ready: SetupFacts = {
   registrationNumber: '12345-P',
   packId: 'paediatrics',
   lastBackupAt: '2026-09-01T10:00:00.000Z',
+  imageCount: 0,
+  lastImageBackupAt: undefined,
   clinicMode: false,
   pairedCode: null,
   canEncrypt: true,
@@ -150,5 +152,43 @@ describe('a device that cannot encrypt', () => {
     // doctor with neither the app nor a way to change how they opened it.
     expect(step(broken, 'encryption')?.severity).toBe('attention');
     expect(setupComplete(setupSteps(broken))).toBe(true);
+  });
+});
+
+describe('the second backup row', () => {
+  it('is absent on a device with no images', () => {
+    // A row about nothing is how a checklist stops being believed. A doctor
+    // who has never photographed a film does not need to be told their images
+    // are not backed up.
+    expect(ids(setupSteps(ready))).not.toContain('image-backup');
+  });
+
+  it('appears as soon as there is an image, and says how many', () => {
+    const row = step({ imageCount: 3 }, 'image-backup')!;
+    expect(row.done).toBe(false);
+    expect(row.why).toMatch(/3 images/);
+    expect(row.why).toMatch(/NOT in your records backup/);
+  });
+
+  it('is satisfied only by its own export, not by the records one', () => {
+    // One timestamp covering both files would let a stale image export hide
+    // behind a recent records export, which is the exact state this row is
+    // for.
+    expect(step({ imageCount: 2 }, 'image-backup')!.done).toBe(false);
+    expect(
+      step({ imageCount: 2, lastImageBackupAt: '2026-09-20T10:00:00.000Z' }, 'image-backup')!.done,
+    ).toBe(true);
+  });
+
+  it('never blocks, like the records backup row', () => {
+    const steps = setupSteps({ ...ready, imageCount: 2 });
+    expect(setupComplete(steps)).toBe(true);
+    expect(outstanding(steps).map((x) => x.id)).toContain('image-backup');
+  });
+
+  it('is not offered at the front desk, which stores no images', () => {
+    expect(ids(setupSteps({ ...ready, deviceRole: 'reception', imageCount: 9 }))).not.toContain(
+      'image-backup',
+    );
   });
 });

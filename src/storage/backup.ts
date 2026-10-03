@@ -17,11 +17,12 @@ import type { LearnedTerm } from './db.ts';
 import type { PatientRecord } from '@domain/patient.ts';
 import type { PatientClinical } from '@domain/patientClinical.ts';
 import type { LabResult } from '@domain/labResult.ts';
+import type { ImagingStudy } from '@domain/imaging.ts';
 import { db, markBackedUp } from './db.ts';
 import { requireWebCrypto } from '@domain/secureContext.ts';
 
 const MAGIC = 'NABZ-BACKUP';
-const FORMAT_VERSION = 3;
+const FORMAT_VERSION = 4;
 const PBKDF2_ITERATIONS = 310_000;
 
 export interface BackupPayload {
@@ -58,6 +59,19 @@ export interface BackupPayload {
   patientClinical?: PatientClinical[];
   /** format 3: results that arrived after the visit that ordered them */
   labResults?: LabResult[];
+  /**
+   * Format 4: imaging STUDIES -- the modality, the region, the report text.
+   *
+   * The images themselves are deliberately NOT here. They are megabytes each
+   * and this function holds three copies of its payload in memory; see
+   * `storage/imagingBackup.ts`, which exports them one at a time into their
+   * own encrypted file under the same password.
+   *
+   * A chart restored from this file alone shows every study with its report
+   * and says the image is not on this device, which is honest and useful. The
+   * reverse -- images with no studies -- is also survivable.
+   */
+  imagingStudies?: ImagingStudy[];
 }
 
 /** The on-disk envelope. Only `payload` is ciphertext; the rest is parameters. */
@@ -116,6 +130,7 @@ export async function collectBackup(includeProfile = true): Promise<BackupPayloa
     growthSeries,
     patientClinical,
     labResults,
+    imagingStudies,
   ] =
     await Promise.all([
       database.getAll('prescriptions'),
@@ -126,6 +141,7 @@ export async function collectBackup(includeProfile = true): Promise<BackupPayloa
       database.getAll('growthSeries'),
       database.getAll('patientClinical'),
       database.getAll('labResults'),
+      database.getAll('imagingStudies'),
     ]);
   const payload: BackupPayload = {
     magic: MAGIC,
@@ -138,6 +154,7 @@ export async function collectBackup(includeProfile = true): Promise<BackupPayloa
     growthSeries,
     patientClinical,
     labResults,
+    imagingStudies,
   };
   if (includeProfile && profile) payload.profile = profile;
   return payload;
@@ -222,6 +239,7 @@ export interface ImportSummary {
   patientSeries: number;
   patientClinical: number;
   labResults: number;
+  imagingStudies: number;
 }
 
 /**
@@ -246,6 +264,7 @@ export async function importBackup(
     patientSeries: 0,
     patientClinical: 0,
     labResults: 0,
+    imagingStudies: 0,
   };
 
   if (mode === 'replace') {
@@ -257,6 +276,10 @@ export async function importBackup(
       database.clear('growthSeries'),
       database.clear('patientClinical'),
       database.clear('labResults'),
+      database.clear('imagingStudies'),
+      // NOT `attachments`. A records restore must not be able to delete a
+      // doctor's only copy of an X-ray -- the images have their own file and
+      // their own replace.
     ]);
   }
 
@@ -288,6 +311,12 @@ export async function importBackup(
       await database.put('growthSeries', series);
     }
     summary.patientSeries += 1;
+  }
+
+  for (const study of payload.imagingStudies ?? []) {
+    if (mode === 'merge' && (await database.get('imagingStudies', study.id))) continue;
+    await database.put('imagingStudies', study);
+    summary.imagingStudies += 1;
   }
 
   for (const result of payload.labResults ?? []) {

@@ -37,7 +37,8 @@ export type StepId =
   | 'content-pack'
   | 'encryption'
   | 'clinic-pairing'
-  | 'first-backup';
+  | 'first-backup'
+  | 'image-backup';
 
 /**
  * How hard to push.
@@ -82,6 +83,17 @@ export interface SetupFacts {
   packId: string;
   /** When a backup was last WRITTEN. Not when a password was typed. */
   lastBackupAt: string | undefined;
+  /**
+   * How many images are stored, and when they were last exported.
+   *
+   * A SECOND backup, because the records file cannot carry them: it holds
+   * three copies of its payload in memory and photographs are megabytes each
+   * (see `storage/imagingBackup.ts`). "Your images are not in your records
+   * backup" is a fact a doctor has to know BEFORE they need it, so it gets a
+   * row of its own rather than a footnote in Settings.
+   */
+  imageCount: number;
+  lastImageBackupAt: string | undefined;
   /** `profile.clinic.enabled` */
   clinicMode: boolean;
   /** The stored pairing code, or null. */
@@ -218,6 +230,27 @@ export function setupSteps(facts: SetupFacts): SetupStep[] {
       severity: 'attention',
       action: { label: 'Back up now', go: 'settings' },
     });
+
+    /*
+      Only once there are images. A doctor who has never photographed a film
+      does not need to be told their images are not backed up -- that is a row
+      about nothing, and the checklist is only believed while every row on it
+      is about something.
+    */
+    if (facts.imageCount > 0) {
+      steps.push({
+        id: 'image-backup',
+        title: 'Images backed up separately',
+        why:
+          `This device holds ${facts.imageCount} image` +
+          `${facts.imageCount === 1 ? '' : 's'}. They are NOT in your records ` +
+          'backup — they are too large to go in one file, so they have their ' +
+          'own, under the same password. Both files, or you have half a chart.',
+        done: facts.lastImageBackupAt !== undefined,
+        severity: 'attention',
+        action: { label: 'Export images', go: 'settings' },
+      });
+    }
   }
 
   return steps;
