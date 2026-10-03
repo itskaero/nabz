@@ -43,6 +43,7 @@ import type { ModuleId } from '@domain/pack.ts';
 import { SettingsPanel } from './components/SettingsPanel.tsx';
 import { HistoryPanel } from './components/HistoryPanel.tsx';
 import { PatientPicker } from './components/PatientPicker.tsx';
+import { PatientChart } from './components/PatientChart.tsx';
 import { RoleGateLock } from './components/RoleGateLock.tsx';
 import { canAccess, hasPin } from '@domain/roles.ts';
 import { hasWebCrypto } from '@domain/secureContext.ts';
@@ -122,6 +123,12 @@ export function App() {
     deviceRole() === 'reception' ? 'clinic' : 'write',
   );
   const [tab, setTab] = useState<SectionId>('problems');
+  /*
+    Which patient's chart is open. Held here rather than in the store because
+    reading a chart is not part of composing a document -- the store carries
+    the thing being written, and a chart is a thing being looked at.
+  */
+  const [chartFor, setChartFor] = useState<string | null>(null);
   const [fontsLoaded, setFontsLoaded] = useState(fontsReady());
   const [fontError, setFontError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -290,6 +297,11 @@ export function App() {
    * put a clinical surface on a reception station.
    */
   const shown = (v: View) => deviceAllows(v) && !locked;
+
+  const openChart = (patientId: string) => {
+    setChartFor(patientId);
+    setView('chart');
+  };
 
   /*
     One nav, two shapes. `useWideLayout` decides which is BUILT rather than
@@ -496,7 +508,7 @@ export function App() {
       allowed the width -- the constraint was never about taste, it was about
       one-handed use that does not apply here.
     */
-    <div className="app" data-wide={view === 'clinic' || view === 'builder'}>
+    <div className="app" data-wide={view === 'clinic' || view === 'builder' || view === 'chart'}>
       {/*
         The sidebar is a sibling of everything else, not a child of the
         header: it has to span the full height of the shell, and the working
@@ -579,7 +591,7 @@ export function App() {
 
         {shown('write') && view === 'write' && (
           <>
-            <PatientBar />
+            <PatientBar onOpenChart={openChart} />
             {/*
               Said on the page, not only in the button's tooltip: a phone has no
               hover, so a tooltip on the one control a doctor is trying to press
@@ -660,6 +672,12 @@ export function App() {
         )}
 
         {shown('history') && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
+
+        {shown('chart') && view === 'chart' && chartFor && (
+          <div className="body">
+            <PatientChart patientId={chartFor} onClose={() => setView('write')} />
+          </div>
+        )}
         {view === 'settings' && (
           <SettingsPanel onOpenBuilder={() => setView('builder')} appearance={appearance} />
         )}
@@ -730,6 +748,7 @@ export function App() {
             queue, and from the queue there is nowhere further back.
           */}
           {(view === 'history' ||
+            view === 'chart' ||
             view === 'settings' ||
             pack.modules.includes(view as ModuleId) ||
             view === 'scores' ||
@@ -753,7 +772,7 @@ export function App() {
   );
 }
 
-function PatientBar() {
+function PatientBar({ onOpenChart }: { onOpenChart: (patientId: string) => void }) {
   const { rx, setPatient, patient: identified, clearPatient } = useStore();
   const [picking, setPicking] = useState(false);
   const p = rx.patient;
@@ -767,6 +786,11 @@ function PatientBar() {
         {identified ? (
           <>
             <span className="pill good">linked · {identified.name}</span>
+            {/* The way into the chart from the document being written. Reading
+                a chart never touches what is on screen -- see PatientChart. */}
+            <button className="linkish" onClick={() => onOpenChart(identified.id)}>
+              chart
+            </button>
             <button className="linkish" onClick={clearPatient}>
               unlink
             </button>

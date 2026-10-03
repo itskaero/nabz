@@ -42,6 +42,12 @@ export type View =
   | 'write'
   | 'preview'
   | 'history'
+  /**
+   * One patient over time. Deliberately NOT in `navGroups`: a chart is always
+   * a chart OF somebody, so it is reached by choosing a patient and would be
+   * a button leading nowhere if it sat in the nav on its own.
+   */
+  | 'chart'
   | 'settings'
   | 'builder'
   | 'clinic'

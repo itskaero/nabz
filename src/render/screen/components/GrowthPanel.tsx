@@ -18,6 +18,7 @@ import type { GrowthTables } from '@domain/growth/index.ts';
 import { loadGrowthTables } from '@data/growth/index.ts';
 import * as db from '@storage/db.ts';
 import { useStore, newId } from '../store.tsx';
+import { PatientPicker } from './PatientPicker.tsx';
 
 const MEASURE_LABEL: Record<GrowthMeasureId, string> = {
   weight: 'Weight (kg)',
@@ -39,6 +40,7 @@ export function GrowthPanel() {
   );
   const [value, setValue] = useState('');
   const [dob, setDob] = useState(rx.patient.dob ?? '');
+  const [picking, setPicking] = useState(false);
 
   const enabled = pack.modules.includes('growth');
   const patient = rx.patient;
@@ -121,12 +123,25 @@ export function GrowthPanel() {
         Two children called "Ali Khan" used to share one series -- their points
         interleaved into a chart that read as faltering. See domain/patient.ts.
       */}
+      {/*
+        Was a dead end: it said what was needed and offered no way to do it,
+        so a doctor who opened Growth on an unidentified child had to work out
+        for themselves that the answer lived on a different tab.
+      */}
       {!identified && (
-        <div className="warn-box">
-          <strong>Identify the patient first.</strong>
-          Growth is tracked per child across visits, so it needs to know which
-          child this is. Names are not enough — siblings share them.
-        </div>
+        <>
+          <div className="warn-box">
+            <strong>Identify the patient first.</strong>
+            Growth is tracked per child across visits, so it needs to know which
+            child this is. Names are not enough — siblings share them.
+          </div>
+          <div className="actionbar" style={{ padding: '10px 0 0', borderTop: 'none' }}>
+            <button className="btn ghost" onClick={() => setPicking(true)}>
+              Link a patient record
+            </button>
+          </div>
+          {picking && <PatientPicker onClose={() => setPicking(false)} />}
+        </>
       )}
 
       {identified && series === null && (
