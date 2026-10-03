@@ -37,6 +37,9 @@ import * as db from '@storage/db.ts';
 import { useStore } from '../store.tsx';
 import { HistoryEditor } from './HistoryEditor.tsx';
 import { ImmunisationPanel, MilestonePanel } from './ImmunisationPanel.tsx';
+import { LabResultsPanel } from './LabResultsPanel.tsx';
+import type { LabResult } from '@domain/labResult.ts';
+import { newId } from '../store.tsx';
 
 type SectionId =
   | 'allergies'
@@ -45,6 +48,7 @@ type SectionId =
   | 'immunisation'
   | 'milestones'
   | 'medications'
+  | 'labs'
   | 'visits';
 
 /**
@@ -61,6 +65,7 @@ function sectionsFor(pack: ContentPack): Array<{ id: SectionId; label: string }>
     ...(pack.immunisationSchedule ? [{ id: 'immunisation' as const, label: 'Vaccines' }] : []),
     ...(pack.milestones ? [{ id: 'milestones' as const, label: 'Milestones' }] : []),
     { id: 'medications' as const, label: 'Medications' },
+    { id: 'labs' as const, label: 'Results' },
     { id: 'visits' as const, label: 'Visits' },
   ];
 }
@@ -82,21 +87,24 @@ export function PatientChart({
   const [record, setRecord] = useState<PatientRecord | null>(null);
   const [clinical, setClinical] = useState<PatientClinical | null>(null);
   const [encounters, setEncounters] = useState<Prescription[] | null>(null);
+  const [labs, setLabs] = useState<LabResult[]>([]);
   const [section, setSection] = useState<SectionId>('allergies');
   const [refusal, setRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [p, c, rows] = await Promise.all([
+      const [p, c, rows, results] = await Promise.all([
         db.getPatient(patientId),
         db.getPatientClinical(patientId),
         db.patientHistory(patientId),
+        db.labResultsFor(patientId),
       ]);
       if (cancelled) return;
       setRecord(p ?? null);
       setClinical(c ?? null);
       setEncounters(rows);
+      setLabs(results);
     })();
     return () => {
       cancelled = true;
@@ -170,7 +178,7 @@ export function PatientChart({
               onClick={() => setSection(s.id)}
             >
               <span>{s.label}</span>
-              <span className="chart-count">{countFor(s.id, base, chart, pack, ageDays)}</span>
+              <span className="chart-count">{countFor(s.id, base, chart, pack, ageDays, labs.length)}</span>
             </button>
           ))}
         </nav>
@@ -204,6 +212,35 @@ export function PatientChart({
           {section === 'milestones' && (
             <MilestonePanel pack={pack} clinical={base} onChange={(next) => void write(next)} />
           )}
+          {section === 'labs' && (
+            <LabResultsPanel
+              pack={pack}
+              patientId={patientId}
+              results={labs}
+              onAdd={(result) => {
+                const row: LabResult = {
+                  ...result,
+                  id: newId(),
+                  enteredOn: new Date().toISOString(),
+                };
+                // Optimistic, then reconciled from disk: a reception station
+                // refuses the write, and the list must not keep showing a
+                // result that was never saved.
+                setLabs((prev) => [row, ...prev]);
+                void db
+                  .saveLabResult(row)
+                  .then(() => setRefusal(null))
+                  .catch(async (err: unknown) => {
+                    setRefusal(err instanceof Error ? err.message : 'That could not be saved.');
+                    setLabs(await db.labResultsFor(patientId));
+                  });
+              }}
+              onDelete={(id) => {
+                setLabs((prev) => prev.filter((r) => r.id !== id));
+                void db.deleteLabResult(id);
+              }}
+            />
+          )}
           {section === 'medications' && <MedicationSection chart={chart} />}
           {section === 'visits' && (
             <VisitSection chart={chart} encounters={encounters} onOpen={onOpenEncounter} />
@@ -220,6 +257,7 @@ function countFor(
   chart: Chart | null,
   pack?: ContentPack,
   ageDays?: number,
+  labCount = 0,
 ): string {
   if (id === 'allergies') return c.allergies.length ? String(c.allergies.length) : '—';
   if (id === 'problems') {
@@ -243,6 +281,7 @@ function countFor(
     return n ? String(n) : '—';
   }
   if (id === 'medications') return chart?.medications.length ? String(chart.medications.length) : '—';
+  if (id === 'labs') return labCount ? String(labCount) : '—';
   return chart?.visits.length ? String(chart.visits.length) : '—';
 }
 

@@ -16,11 +16,12 @@ import type { GrowthPoint } from '@domain/prescription.ts';
 import type { LearnedTerm } from './db.ts';
 import type { PatientRecord } from '@domain/patient.ts';
 import type { PatientClinical } from '@domain/patientClinical.ts';
+import type { LabResult } from '@domain/labResult.ts';
 import { db, markBackedUp } from './db.ts';
 import { requireWebCrypto } from '@domain/secureContext.ts';
 
 const MAGIC = 'NABZ-BACKUP';
-const FORMAT_VERSION = 2;
+const FORMAT_VERSION = 3;
 const PBKDF2_ITERATIONS = 310_000;
 
 export interface BackupPayload {
@@ -55,6 +56,8 @@ export interface BackupPayload {
    * boundary entirely (see domain/patientClinical.ts).
    */
   patientClinical?: PatientClinical[];
+  /** format 3: results that arrived after the visit that ordered them */
+  labResults?: LabResult[];
 }
 
 /** The on-disk envelope. Only `payload` is ciphertext; the rest is parameters. */
@@ -104,7 +107,16 @@ async function deriveKey(
 
 export async function collectBackup(includeProfile = true): Promise<BackupPayload> {
   const database = await db();
-  const [prescriptions, growth, learned, profile, patients, growthSeries, patientClinical] =
+  const [
+    prescriptions,
+    growth,
+    learned,
+    profile,
+    patients,
+    growthSeries,
+    patientClinical,
+    labResults,
+  ] =
     await Promise.all([
       database.getAll('prescriptions'),
       database.getAll('growth'),
@@ -113,6 +125,7 @@ export async function collectBackup(includeProfile = true): Promise<BackupPayloa
       database.getAll('patients'),
       database.getAll('growthSeries'),
       database.getAll('patientClinical'),
+      database.getAll('labResults'),
     ]);
   const payload: BackupPayload = {
     magic: MAGIC,
@@ -124,6 +137,7 @@ export async function collectBackup(includeProfile = true): Promise<BackupPayloa
     patients,
     growthSeries,
     patientClinical,
+    labResults,
   };
   if (includeProfile && profile) payload.profile = profile;
   return payload;
@@ -207,6 +221,7 @@ export interface ImportSummary {
   patients: number;
   patientSeries: number;
   patientClinical: number;
+  labResults: number;
 }
 
 /**
@@ -230,6 +245,7 @@ export async function importBackup(
     patients: 0,
     patientSeries: 0,
     patientClinical: 0,
+    labResults: 0,
   };
 
   if (mode === 'replace') {
@@ -240,6 +256,7 @@ export async function importBackup(
       database.clear('patients'),
       database.clear('growthSeries'),
       database.clear('patientClinical'),
+      database.clear('labResults'),
     ]);
   }
 
@@ -271,6 +288,12 @@ export async function importBackup(
       await database.put('growthSeries', series);
     }
     summary.patientSeries += 1;
+  }
+
+  for (const result of payload.labResults ?? []) {
+    if (mode === 'merge' && (await database.get('labResults', result.id))) continue;
+    await database.put('labResults', result);
+    summary.labResults += 1;
   }
 
   for (const record of payload.patientClinical ?? []) {

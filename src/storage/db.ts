@@ -22,12 +22,13 @@ import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import type { PatientRecord, LegacyGrowthLink } from '@domain/patient.ts';
 import type { PatientClinical } from '@domain/patientClinical.ts';
+import type { LabResult } from '@domain/labResult.ts';
 import type { QueueEntry } from '@domain/clinic.ts';
 import type { Addon } from '@domain/addon.ts';
 import type { Verdict } from '@domain/addonSignature.ts';
 
 const DB_NAME = 'nabz';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 /**
  * Edited content: the specialty pack and the locale packs, as authored in the
@@ -153,6 +154,22 @@ interface NabzDb extends DBSchema {
     value: PatientClinical;
   };
   /**
+   * Results that came back AFTER the visit that ordered them.
+   *
+   * Their own store for the reason growth points have their own: they are the
+   * other thing that legitimately spans encounters. A creatinine reported
+   * three days after a signed prescription cannot be written onto that
+   * document, and a store makes the carve-out visible rather than hiding it
+   * inside an edit to a signed record.
+   *
+   * Indexed by patient, because every read is "this patient's results".
+   */
+  labResults: {
+    key: string;
+    value: LabResult;
+    indexes: { byPatient: string; byDate: string };
+  };
+  /**
    * The clinic layer. Identity, a token, a status and a fee -- deliberately no
    * clinical content, so a shared queue never carries a diagnosis. See
    * domain/clinic.ts.
@@ -221,6 +238,11 @@ export function db(): Promise<IDBPDatabase<NabzDb>> {
       }
       if (oldVersion < 6) {
         database.createObjectStore('addons', { keyPath: 'id' });
+      }
+      if (oldVersion < 8) {
+        const labs = database.createObjectStore('labResults', { keyPath: 'id' });
+        labs.createIndex('byPatient', 'patientId');
+        labs.createIndex('byDate', 'takenOn');
       }
       if (oldVersion < 7) {
         // Additive. Nothing is migrated INTO it: the allergy strings sitting
@@ -419,6 +441,9 @@ export async function deletePatient(id: string): Promise<void> {
   // The clinical record is keyed by patient id and nothing else refers to it,
   // so leaving it behind would be an allergy list belonging to nobody.
   await database.delete('patientClinical', id);
+  for (const row of await database.getAllFromIndex('labResults', 'byPatient', id)) {
+    await database.delete('labResults', row.id);
+  }
 }
 
 /**
@@ -456,6 +481,10 @@ export async function mergePatients(sourceId: string, targetId: string): Promise
     against one of them, and a merge that picked a winner would be a merge
     that can delete an anaphylaxis.
   */
+  for (const row of await database.getAllFromIndex('labResults', 'byPatient', sourceId)) {
+    await database.put('labResults', { ...row, patientId: targetId });
+  }
+
   const fromClinical = await database.get('patientClinical', sourceId);
   if (fromClinical) {
     const intoClinical = await database.get('patientClinical', targetId);
@@ -536,6 +565,38 @@ export async function patientHistory(patientId: string): Promise<Prescription[]>
     .filter((rx) => rx.patientId === patientId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(normalisePrescription);
+}
+
+// --- lab results ------------------------------------------------------------
+
+/**
+ * Every result for one patient, newest first.
+ *
+ * Index-backed rather than a scan, because a patient followed for a chronic
+ * illness accumulates more results than encounters.
+ */
+export async function labResultsFor(patientId: string): Promise<LabResult[]> {
+  const rows = await (await db()).getAllFromIndex('labResults', 'byPatient', patientId);
+  return rows.sort((a, b) => b.takenOn.localeCompare(a.takenOn));
+}
+
+/**
+ * Guarded like `savePrescription`: a result value is clinical content, and
+ * clinical content does not exist on a reception machine.
+ */
+export async function saveLabResult(result: LabResult): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('labResults', result);
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+export async function deleteLabResult(id: string): Promise<void> {
+  await (await db()).delete('labResults', id);
+}
+
+export async function allLabResults(): Promise<LabResult[]> {
+  return (await db()).getAll('labResults');
 }
 
 // --- growth (the named carve-out) ------------------------------------------

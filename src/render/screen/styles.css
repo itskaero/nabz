@@ -2796,3 +2796,83 @@ li[data-kind='changed'] .diff-kind {
     gap: 6px;
   }
 }
+
+/* ---------- lab results ---------- */
+.lab-series-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.lab-series-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* The one place a line is drawn from clinical values. It carries no axis and
+   no numbers on purpose: it says "which way", and the table beside it says
+   what. A sparkline with a y-axis invites reading a value off it. */
+.sparkline {
+  margin-left: auto;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.lab-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.lab-rows li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 4px 2px;
+}
+
+.lab-rows time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  flex: 0 0 auto;
+  min-width: 86px;
+}
+
+.lab-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.lab-rows .mini {
+  margin-left: auto;
+}
+
+/* The laboratory's flag, never ours. Low and high are the same weight because
+   neither is worse than the other; critical is the only one that gets the
+   danger ink, and it gets it because the laboratory said so. */
+.tag.flag-low,
+.tag.flag-high {
+  background: var(--caution-wash);
+  color: var(--caution-ink);
+}
+
+.tag.flag-critical {
+  background: var(--alert-wash);
+  color: var(--alert);
+  font-weight: 600;
+}
+
+.lab-add {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: var(--r-sm);
+}
