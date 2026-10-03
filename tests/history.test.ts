@@ -277,3 +277,49 @@ describe('immunisation and milestones stay mute', () => {
     expect(paediatrics.milestones!.items.some((i) => 'notYet' in i)).toBe(false);
   });
 });
+
+describe('the same engine, a different specialty', () => {
+  it('ships an adult questionnaire that shares no code with the paediatric one', async () => {
+    const { medicine } = await import('@data/packs/index.ts');
+    const ids = (medicine.historySections ?? []).map((s) => s.id);
+    expect(ids).toEqual(['pmh', 'psh', 'drugs', 'social', 'family', 'obgyn']);
+    // No overlap with the paediatric sections at all, which is the point: the
+    // engine renders whatever the pack declares.
+    const paedIds = new Set((paediatrics.historySections ?? []).map((s) => s.id));
+    expect(ids.filter((id) => paedIds.has(id) && id !== 'family')).toEqual([]);
+  });
+
+  it('records naswar and paan separately from cigarettes', async () => {
+    const { medicine } = await import('@data/packs/index.ts');
+    const tobacco = medicine
+      .historySections!.find((s) => s.id === 'social')!
+      .fields.find((f) => f.id === 'tobacco')!;
+    // A single "smoking: yes/no" field makes a naswar user read as having no
+    // tobacco history, which is the wrong answer to the question being asked.
+    expect(tobacco.options).toEqual(
+      expect.arrayContaining(['Cigarettes', 'Huqqa', 'Naswar', 'Paan', 'Gutka']),
+    );
+    expect(tobacco.kind).toBe('chips');
+  });
+
+  it('offers no vaccine or milestone section on an adult pack', async () => {
+    const { medicine } = await import('@data/packs/index.ts');
+    expect(medicine.immunisationSchedule).toBeUndefined();
+    expect(medicine.milestones).toBeUndefined();
+  });
+
+  it('validates clean', async () => {
+    const { medicine } = await import('@data/packs/index.ts');
+    expect(validateContentPack(medicine).filter((i) => i.severity === 'error')).toEqual([]);
+  });
+
+  it('has no age bands, because adult history does not expire', () => {
+    // The paediatric pack bands birth and feeding; nothing in an adult history
+    // stops applying, so nothing here carries a band it would never use.
+    return import('@data/packs/index.ts').then(({ medicine }) => {
+      for (const section of medicine.historySections ?? []) {
+        expect(section.appliesTo).toBeUndefined();
+      }
+    });
+  });
+});
