@@ -2767,3 +2767,32 @@ li[data-kind='changed'] .diff-kind {
   color: var(--ink-faint);
   font-weight: 400;
 }
+
+/* ---------- immunisation and milestones ---------- */
+.immun-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.immun-detail {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  margin: 8px 0 2px;
+  padding: 10px;
+  background: var(--bg);
+  border-radius: var(--r-sm);
+}
+
+@media (max-width: 560px) {
+  .immun-detail {
+    grid-template-columns: 1fr;
+  }
+  .immun-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+}

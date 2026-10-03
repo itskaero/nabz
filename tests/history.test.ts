@@ -220,3 +220,60 @@ describe('a pack round-trip through the builder', () => {
     );
   });
 });
+
+describe('immunisation and milestones stay mute', () => {
+  it('ships the EPI schedule with a published reference', () => {
+    const s = paediatrics.immunisationSchedule!;
+    expect(s.reference).toMatch(/EPI/i);
+    expect(s.visits.map((v) => v.id)).toEqual(['birth', 'w6', 'w10', 'w14', 'm9', 'm15']);
+    expect(s.visits[1]?.atDays).toBe(42);
+    expect(s.visits[1]?.doses).toContain('Penta-1');
+  });
+
+  it('rejects a schedule with no source, the way a dose with no citation is rejected', () => {
+    const broken = { ...paediatrics, immunisationSchedule: { reference: '  ', visits: [] } };
+    expect(
+      validateContentPack(broken).some((i) => i.message === 'schedule has no reference'),
+    ).toBe(true);
+  });
+
+  it('counts what is recorded and never what is missing', async () => {
+    const { immunisationProgress } = await import('@domain/patientClinical.ts');
+    const clinical = {
+      patientId: 'p1',
+      allergies: [],
+      problems: [],
+      immunisations: [
+        { visitId: 'birth', notedOn: '2026-01-01' },
+        { visitId: 'w6', notedOn: '2026-02-12' },
+      ],
+      updatedAt: NOW,
+    };
+    const progress = immunisationProgress(clinical, 6);
+    // Two recorded out of six. NOT "four overdue" -- a visit absent from the
+    // list is a visit nobody wrote down here, and a child may well have had it
+    // at a government centre. "Overdue" would be a claim about the world made
+    // from the absence of data.
+    expect(progress).toEqual({ recorded: 2, total: 6 });
+    expect(Object.keys(progress)).toEqual(['recorded', 'total']);
+  });
+
+  it('gives milestones a reference age and no verdict', () => {
+    const m = paediatrics.milestones!;
+    expect(m.reference.length).toBeGreaterThan(0);
+    const walks = m.items.find((i) => i.id === 'walks_alone')!;
+    expect(walks.typicalByDays).toBe(457);
+    // The type carries an age and a domain. There is no "concern", "redFlag"
+    // or "delayed" field, and this is the test that keeps it that way.
+    expect(Object.keys(walks).sort()).toEqual(['domain', 'id', 'label', 'typicalByDays']);
+  });
+
+  it('distinguishes "not yet" from nobody having asked', () => {
+    // A blank milestone must never read as a negative finding. That is the
+    // difference between a record and an accusation, so "not yet" is a value
+    // somebody has to choose.
+    const recorded = { itemId: 'walks_alone', notYet: true, notedOn: '2026-09-20' };
+    expect(recorded.notYet).toBe(true);
+    expect(paediatrics.milestones!.items.some((i) => 'notYet' in i)).toBe(false);
+  });
+});

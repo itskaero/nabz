@@ -84,7 +84,44 @@ export interface PatientClinical {
    * `Prescription.kind` makes).
    */
   history?: HistoryAnswers;
+  /**
+   * Which immunisation visits have been given, against the schedule the pack
+   * declares.
+   *
+   * `source` earns its place: a mother's recollection is not a vaccination
+   * card, and recording which one it was is the difference between a record
+   * and a guess. A visit absent from this list is a visit NOT RECORDED -- not
+   * a visit missed, which is a conclusion nothing here draws.
+   */
+  immunisations?: ImmunisationRecord[];
+  milestones?: MilestoneRecord[];
   updatedAt: string;
+}
+
+export interface ImmunisationRecord {
+  /** matches a visit id in `pack.immunisationSchedule` */
+  visitId: string;
+  /** ISO date it was given, when it is known */
+  givenOn?: string;
+  /** where the information came from */
+  source?: 'card' | 'recall';
+  notedOn: string;
+}
+
+export interface MilestoneRecord {
+  /** matches an item id in `pack.milestones` */
+  itemId: string;
+  /** ISO date, or an age the parent gave -- free text, because they say "about 10 months" */
+  attainedOn?: string;
+  /**
+   * Explicitly recorded as not yet attained.
+   *
+   * Distinct from absent, which means nobody asked. A blank milestone must
+   * never read as a negative finding -- that is the difference between a
+   * record and an accusation.
+   */
+  notYet?: boolean;
+  notedOn: string;
 }
 
 export function emptyClinical(patientId: string, now = new Date().toISOString()): PatientClinical {
@@ -98,8 +135,25 @@ export function isBlank(c: PatientClinical | undefined): boolean {
     c.allergies.length === 0 &&
     c.problems.length === 0 &&
     !c.bloodGroup &&
-    Object.keys(c.history ?? {}).length === 0
+    Object.keys(c.history ?? {}).length === 0 &&
+    (c.immunisations?.length ?? 0) === 0 &&
+    (c.milestones?.length ?? 0) === 0
   );
+}
+
+/**
+ * How much of the schedule has been recorded.
+ *
+ * A COUNT, deliberately, and never "N overdue". The app does not know whether
+ * a child had their 14-week visit at a government centre and nobody wrote it
+ * here; "4 of 6 recorded" is true, and "2 overdue" would be a claim about the
+ * world made from the absence of data.
+ */
+export function immunisationProgress(
+  c: PatientClinical | undefined,
+  scheduleSize: number,
+): { recorded: number; total: number } {
+  return { recorded: c?.immunisations?.length ?? 0, total: scheduleSize };
 }
 
 export function activeProblems(c: PatientClinical | undefined): ProblemFact[] {

@@ -36,16 +36,34 @@ import { ageDaysBetween } from '@domain/growth/index.ts';
 import * as db from '@storage/db.ts';
 import { useStore } from '../store.tsx';
 import { HistoryEditor } from './HistoryEditor.tsx';
+import { ImmunisationPanel, MilestonePanel } from './ImmunisationPanel.tsx';
 
-type SectionId = 'allergies' | 'problems' | 'history' | 'medications' | 'visits';
+type SectionId =
+  | 'allergies'
+  | 'problems'
+  | 'history'
+  | 'immunisation'
+  | 'milestones'
+  | 'medications'
+  | 'visits';
 
-const SECTIONS: Array<{ id: SectionId; label: string }> = [
-  { id: 'allergies', label: 'Allergies' },
-  { id: 'problems', label: 'Problems' },
-  { id: 'history', label: 'History' },
-  { id: 'medications', label: 'Medications' },
-  { id: 'visits', label: 'Visits' },
-];
+/**
+ * Immunisation and Milestones appear only when the pack declares them, for the
+ * reason `navModel.ts` gives about generating the nav from `pack.modules`: a
+ * section with nothing behind it is a destination leading nowhere. A medicine
+ * pack has neither and shows neither, with no code change.
+ */
+function sectionsFor(pack: ContentPack): Array<{ id: SectionId; label: string }> {
+  return [
+    { id: 'allergies' as const, label: 'Allergies' },
+    { id: 'problems' as const, label: 'Problems' },
+    { id: 'history' as const, label: 'History' },
+    ...(pack.immunisationSchedule ? [{ id: 'immunisation' as const, label: 'Vaccines' }] : []),
+    ...(pack.milestones ? [{ id: 'milestones' as const, label: 'Milestones' }] : []),
+    { id: 'medications' as const, label: 'Medications' },
+    { id: 'visits' as const, label: 'Visits' },
+  ];
+}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -144,7 +162,7 @@ export function PatientChart({
 
       <div className="chart-body">
         <nav className="chart-rail" aria-label="Chart sections">
-          {SECTIONS.map((s) => (
+          {sectionsFor(pack).map((s) => (
             <button
               key={s.id}
               className="chart-rail-item"
@@ -176,6 +194,16 @@ export function PatientChart({
               onChange={(history) => void write({ ...base, history })}
             />
           )}
+          {section === 'immunisation' && (
+            <ImmunisationPanel
+              pack={pack}
+              clinical={base}
+              onChange={(next) => void write(next)}
+            />
+          )}
+          {section === 'milestones' && (
+            <MilestonePanel pack={pack} clinical={base} onChange={(next) => void write(next)} />
+          )}
           {section === 'medications' && <MedicationSection chart={chart} />}
           {section === 'visits' && (
             <VisitSection chart={chart} encounters={encounters} onOpen={onOpenEncounter} />
@@ -190,7 +218,7 @@ function countFor(
   id: SectionId,
   c: PatientClinical,
   chart: Chart | null,
-  pack?: { historySections?: ContentPack['historySections'] },
+  pack?: ContentPack,
   ageDays?: number,
 ): string {
   if (id === 'allergies') return c.allergies.length ? String(c.allergies.length) : '—';
@@ -203,6 +231,16 @@ function countFor(
       resolveSections(pack?.historySections, c.history ?? {}, ageDays),
     );
     return total === 0 ? '—' : `${filled}/${total}`;
+  }
+  if (id === 'immunisation') {
+    const total = pack?.immunisationSchedule?.visits.length ?? 0;
+    // "4/6 recorded", never "2 overdue": a blank row means nobody wrote it
+    // down here, which is not the same as a vaccine not given.
+    return total === 0 ? '—' : `${c.immunisations?.length ?? 0}/${total}`;
+  }
+  if (id === 'milestones') {
+    const n = c.milestones?.length ?? 0;
+    return n ? String(n) : '—';
   }
   if (id === 'medications') return chart?.medications.length ? String(chart.medications.length) : '—';
   return chart?.visits.length ? String(chart.visits.length) : '—';

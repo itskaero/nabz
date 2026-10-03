@@ -381,6 +381,58 @@ export const paediatrics: ContentPack = {
     },
   ],
 
+  /*
+    THE EPI SCHEDULE, AS DATA.
+
+    Here rather than in code so a different country's schedule is a different
+    pack, and with a reference for the same reason a dosing row needs one: a
+    schedule with no published source is a list of opinions.
+
+    `atDays` is when the visit is DUE per the schedule. Nothing in the app
+    compares it to today and concludes anything -- see `ImmunisationPanel`.
+    Recording what was given is a record; deciding what to give now is a
+    clinical judgement and this app does not make those (PRODUCT.md 3.3).
+  */
+  immunisationSchedule: {
+    reference:
+      'Expanded Programme on Immunization (EPI) Pakistan, routine childhood schedule',
+    visits: [
+      { id: 'birth', label: 'At birth', atDays: 0, doses: ['BCG', 'OPV-0', 'Hep B-0'] },
+      { id: 'w6', label: '6 weeks', atDays: 42, doses: ['Penta-1', 'OPV-1', 'PCV-1', 'Rota-1'] },
+      { id: 'w10', label: '10 weeks', atDays: 70, doses: ['Penta-2', 'OPV-2', 'PCV-2', 'Rota-2'] },
+      { id: 'w14', label: '14 weeks', atDays: 98, doses: ['Penta-3', 'OPV-3', 'PCV-3', 'IPV'] },
+      { id: 'm9', label: '9 months', atDays: 274, doses: ['Measles-1', 'Typhoid conjugate'] },
+      { id: 'm15', label: '15 months', atDays: 457, doses: ['Measles-2'] },
+    ],
+  },
+
+  /*
+    DEVELOPMENTAL MILESTONES.
+
+    `typicalByDays` is a REFERENCE AGE and is displayed the way a growth chart
+    displays a centile band: the published norm beside what was recorded.
+    Nothing turns a blank into "delayed". domain/patient.ts already names that
+    failure in this codebase's own words -- a merged weight series "reads as
+    growth faltering, which is a diagnosis the data invented".
+  */
+  milestones: {
+    reference: 'WHO Multicentre Growth Reference Study motor milestones; standard paediatric texts',
+    items: [
+      { id: 'social_smile', label: 'Social smile', domain: 'social', typicalByDays: 56 },
+      { id: 'head_control', label: 'Head control', domain: 'gross', typicalByDays: 91 },
+      { id: 'rolls_over', label: 'Rolls over', domain: 'gross', typicalByDays: 152 },
+      { id: 'reaches', label: 'Reaches for objects', domain: 'fine', typicalByDays: 152 },
+      { id: 'sits_unsupported', label: 'Sits without support', domain: 'gross', typicalByDays: 274 },
+      { id: 'babbles', label: 'Babbles', domain: 'speech', typicalByDays: 274 },
+      { id: 'pincer', label: 'Pincer grip', domain: 'fine', typicalByDays: 305 },
+      { id: 'stands_alone', label: 'Stands alone', domain: 'gross', typicalByDays: 365 },
+      { id: 'first_words', label: 'First words', domain: 'speech', typicalByDays: 365 },
+      { id: 'walks_alone', label: 'Walks alone', domain: 'gross', typicalByDays: 457 },
+      { id: 'two_words', label: 'Two-word phrases', domain: 'speech', typicalByDays: 730 },
+      { id: 'stranger_anxiety', label: 'Stranger anxiety', domain: 'social', typicalByDays: 274 },
+    ],
+  },
+
   modules: ['growth', 'malnutrition'],
   moduleConfig: {
     growth: {
