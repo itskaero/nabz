@@ -2,11 +2,22 @@
  * Colour, in one place, for the printed document AND the screen.
  *
  * Colour discipline (DESIGN.md 3): exactly three roles get colour.
- *   accent (teal) = interactive actions AND "vetted / approved / safe"
+ *   accent (forest green) = interactive actions AND "vetted / approved / safe"
  *   caution (amber) = "the doctor's own words, not vetted" (advice tier 3)
  *   danger (red)  = danger only -- allergy, red-flag advice
  * Everything else is neutral ink. Because red is never decorative, the eye
  * learns that red means danger.
+ *
+ * THE SCREEN PALETTE IS THE EASE HEALTH BOTANICAL SYSTEM.
+ *
+ * Its five surfaces are taken literally -- Cream Paper #fffefc, Keylime Wash
+ * #e1f4df, Mint #cfe7d3, Sage #b1dbb8, Slate #b6ced5 -- with Forest Ink
+ * #0f3e17 as the ONE action colour and Charcoal #222222 as body ink. That
+ * system has no danger colour and no caution colour, and says not to introduce
+ * new accent hues; red and amber are therefore kept as ALARMS rather than
+ * accents, which is why they are allowed to be foreign to it. Slate is the one
+ * surface the app does not use: it is a cool note, and every tinted zone in
+ * here sits inside the same green family on purpose (DESIGN.md 7).
  *
  * On paper, colour is a REINFORCEMENT and never the signal: a cheap mono laser
  * renders all of this as grey. Every safety state also carries a border and a
@@ -215,56 +226,84 @@ export interface ThemeTokens {
 
 const LIGHT: ThemeTokens = {
   /*
-    The ground is warm, not cool.
+    The ground is Keylime Wash, the design system's own hero-panel tint, used
+    full-bleed as the page. Cards are Cream Paper on top of it.
 
-    It was #eef1f2 -- a grey-green that photographs as "hospital corridor".
-    This is the same family moved toward a faint warm green, at roughly a third
-    of the saturation the reference dashboards use: enough that a long OPD
-    session reads as calm rather than clinical-cold, not so much that the app
-    turns into a cream-paper skin. The print palette does NOT follow; paper
-    already has its own warmth and its own reviewed values.
+    That ordering is deliberate and is the opposite of a marketing site, which
+    puts cream behind and tints the panels: a marketing page has four panels
+    and this screen has twenty cards, so tinting each one would leave no
+    quiet ground anywhere. Tinting the GROUND instead gives the same botanical
+    character with the cards still reading as the thing you work in.
   */
-  bg: '#eff5f1',
-  surface: '#ffffff',
+  bg: '#e1f4df',
+  surface: '#fffefc',
   surfaceRaised: '#ffffff',
-  ink: '#14201f',
-  inkSoft: '#55635f',
-  // was #8a9691 -- 3.06:1 on white and 2.70:1 on the app background, i.e.
-  // below the text floor everywhere it was used, which was every field label.
-  inkFaint: '#616e6a',
-  line: '#dde7e2',
-  lineSoft: '#e9efeb',
-  lineStrong: '#808d89',
+  ink: '#222222',
+  // Desaturated green-greys rather than neutrals, so the secondary text stays
+  // in the family while body ink is the system's own Charcoal.
+  inkSoft: '#41503f',
+  // 6.04:1 at its worst (on the keylime ground), against a 4.5 floor. This is
+  // every field label in the app; it was #8a9691 and below the floor
+  // everywhere before tokens existed.
+  inkFaint: '#4f5d50',
+  line: '#d4e6d6',
+  // Border Mist, exactly as the system specifies -- 1.15:1 on cream, which is
+  // a hairline and must never be the only thing marking a boundary.
+  lineSoft: '#efeeeb',
+  lineStrong: '#6f8273',
 
-  accent: '#0f766e',
-  accentInk: '#0b5a54',
-  accentWash: '#e3f1ee',
+  // Forest Ink, and nothing else, is the action colour. `accentInk` is the
+  // same value rather than a darker step: the system has one green, and at
+  // 9.31:1 on Mint it does not need a second.
+  accent: '#0f3e17',
+  accentInk: '#0f3e17',
+  accentWash: '#cfe7d3',
   onAccent: '#ffffff',
 
-  danger: '#b4232a',
-  dangerInk: '#8f1b21',
-  dangerWash: '#fbeceb',
+  /*
+    The alarms. Derived to sit in the same desaturated ink register as Forest
+    Ink so they read as part of the palette rather than as web red and web
+    amber, and measured against all five of the system's surfaces: the danger
+    ink clears 6.32:1 at its worst (on Sage), the caution ink 4.83:1.
+
+    The washes are ~1.2:1 against cream, so a wash is never the signal -- the
+    left rail and the word carry it (DESIGN.md 8), which is also the system's
+    own "depth comes from fill contrast" rule.
+  */
+  danger: '#7a1d1d',
+  dangerInk: '#5c1515',
+  dangerWash: '#f6e7e4',
   onDanger: '#ffffff',
 
   caution: '#a8722a',
   cautionInk: '#6d4a1b',
-  cautionWash: '#f7efe2',
+  cautionWash: '#f3ecdd',
 
-  patientTint: '#f1f8f5',
-  sheet: '#f4f7f5',
+  /**
+   * DESIGN.md 7: NOT the cream-paper cliche, and not the cool Slate either.
+   * The patient block is paper lying on the desk -- lighter and warmer than
+   * the keylime ground, a faint step off the card it sits in, so the jump from
+   * workspace to document is a gradient within one family rather than a change
+   * of app. Sage is the desk underneath (`sheet`).
+   */
+  patientTint: '#eef8ec',
+  sheet: '#b1dbb8',
 
-  focus: '#0f766e',
-  scrim: 'rgba(20, 32, 31, 0.35)',
+  focus: '#0f3e17',
+  scrim: 'rgba(18, 38, 24, 0.35)',
   /*
-    Softer, and warmer to match the ground. The old shadows were grey-cast and
-    tight, which on a warm background reads as a smudge under the card rather
-    than light falling across it. Wider radius, lower alpha, same two-layer
-    shape (a contact shadow plus an ambient one).
+    Kept, against the design system's "never add box-shadow". On a desk monitor
+    layered tints read as depth; on a 390px phone in direct sunlight they do
+    not, and this app is used in both places. Warm-cast and wide rather than
+    grey and tight, so it reads as light falling across the card.
   */
-  shadow1: '0 1px 2px rgba(23, 43, 36, 0.05), 0 4px 12px rgba(23, 43, 36, 0.05)',
-  shadow2: '0 1px 3px rgba(23, 43, 36, 0.1), 0 10px 28px rgba(23, 43, 36, 0.09)',
+  shadow1: '0 1px 2px rgba(18, 38, 24, 0.05), 0 4px 12px rgba(18, 38, 24, 0.05)',
+  shadow2: '0 1px 3px rgba(18, 38, 24, 0.1), 0 10px 28px rgba(18, 38, 24, 0.09)',
 
   paper: '#ffffff',
+  // NOT Charcoal. This is a picture of what the printer produces, and the
+  // print palette is frozen -- `palette.ink` is the value a clinician signed
+  // off on. The preview matches the page or it is not a preview.
   paperInk: '#14201f',
   colorScheme: 'light',
 };
@@ -285,12 +324,19 @@ const DARK: ThemeTokens = {
   lineSoft: '#212d2c',
   lineStrong: '#657672',
 
-  // Light accent carrying dark ink -- a #0f766e button on a #141e1d card is a
-  // 2.2:1 shape you cannot find, and no amount of white text fixes that.
-  accent: '#4fd1c5',
-  accentInk: '#7fdcd1',
-  accentWash: '#11302d',
-  onAccent: '#04211e',
+  /*
+    Light accent carrying dark ink -- a #0f3e17 button on a #141e1d card is a
+    1.6:1 shape you cannot find, and no amount of white text fixes that. So
+    Forest Ink inverts here rather than being used literally.
+
+    It is still GREEN. The design system does not describe a dark mode, but a
+    product whose brand hue changes when the lights go out is a product with
+    two brands, and the doctor switching to dark at 03:00 is the same doctor.
+  */
+  accent: '#86d196',
+  accentInk: '#a6e2b0',
+  accentWash: '#102b16',
+  onAccent: '#06240f',
 
   danger: '#ff8b84',
   dangerInk: '#ffa8a2',
@@ -301,10 +347,10 @@ const DARK: ThemeTokens = {
   cautionInk: '#f0c68f',
   cautionWash: '#2e2415',
 
-  patientTint: '#0f1f1d',
-  sheet: '#080f0e',
+  patientTint: '#0e1f12',
+  sheet: '#070f08',
 
-  focus: '#7fdcd1',
+  focus: '#a6e2b0',
   scrim: 'rgba(0, 0, 0, 0.6)',
   shadow1: '0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.35)',
   shadow2: '0 1px 3px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.45)',
@@ -330,9 +376,12 @@ const CONTRAST: ThemeTokens = {
   lineStrong: '#31403c',
   lineSoft: '#8d9b97',
 
-  accent: '#0a534d',
-  accentInk: '#073d39',
-  accentWash: '#e2f0ee',
+  // Forest Ink unchanged from the design system: at 12.20:1 on white it is
+  // already a high-contrast ink, so this mode needs no darker step invented
+  // for it -- only a deeper one for text sitting on the wash.
+  accent: '#0f3e17',
+  accentInk: '#0a2b10',
+  accentWash: '#e1f4df',
   onAccent: '#ffffff',
 
   danger: '#8e0f17',
@@ -344,10 +393,10 @@ const CONTRAST: ThemeTokens = {
   cautionInk: '#4a3011',
   cautionWash: '#f6eddf',
 
-  patientTint: '#eef5f4',
-  sheet: '#e7ecea',
+  patientTint: '#eef8ec',
+  sheet: '#dfeadd',
 
-  focus: '#0a534d',
+  focus: '#0f3e17',
   scrim: 'rgba(0, 0, 0, 0.5)',
   shadow1: '0 0 0 1px #31403c',
   shadow2: '0 0 0 1px #31403c',
@@ -398,9 +447,16 @@ export const DENSITIES: Record<Density, DensityTokens> = {
     tap: '44px',
     ctlPadY: '10px',
     ctlPadX: '14px',
-    // 12px against a 12px radius left the corner eating the first character
-    // of the first row. The extra 4px is what the larger radius costs.
-    cardPad: '16px',
+    /*
+      The design system asks for 28-42px. Not taken literally, and the density
+      axis is exactly why: 28px is lovely behind four panels on a desk monitor
+      and ruinous behind twenty cards on a 390px phone, where it would eat 56px
+      of vertical per card and push the third card off the screen. 20px is the
+      move toward it that a one-handed OPD screen can actually afford -- and
+      4px of it is what the 14px radius costs, since a tighter pad leaves the
+      corner eating the first character of the first row.
+    */
+    cardPad: '20px',
     stack: '10px',
     fontBase: '15px',
   },
@@ -413,7 +469,7 @@ export const DENSITIES: Record<Density, DensityTokens> = {
     tap: '32px',
     ctlPadY: '6px',
     ctlPadX: '10px',
-    cardPad: '9px',
+    cardPad: '12px',
     stack: '7px',
     fontBase: '14px',
   },
@@ -442,11 +498,11 @@ export const MOTION = {
  *
  * 8px was a compromise from when every surface was a bordered box. Cards and
  * sheets now carry their edge with a shadow and a tint, and at that weight 8px
- * reads as a rounded rectangle rather than a rounded card. 12px is the
- * reference dashboards' one genuinely transferable habit; `rSm` follows it up
- * so a chip inside a card still nests visually instead of matching it.
+ * reads as a rounded rectangle rather than a rounded card. 14px is the Ease
+ * Health card radius, taken as given; `rSm` follows it up so a chip inside a
+ * card still nests visually instead of matching it.
  */
-export const RADII = { r: '12px', rSm: '9px', rPill: '999px' } as const;
+export const RADII = { r: '14px', rSm: '10px', rPill: '999px' } as const;
 
 // --- generated CSS ---------------------------------------------------------
 

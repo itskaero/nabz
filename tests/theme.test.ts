@@ -117,6 +117,59 @@ describe('the screen palette', () => {
   });
 });
 
+/**
+ * The alarms, against the whole surface ladder.
+ *
+ * The Ease Health system has no danger colour and no caution colour, and tells
+ * you not to introduce new accent hues -- so red and amber are in here as
+ * ALARMS rather than accents. That makes them the two values most likely to be
+ * "tidied" into the green family by a future palette pass, and the two whose
+ * job depends entirely on staying legible: the allergy banner and the
+ * not-vetted stripe are the loudest things this app says.
+ *
+ * So they are checked against all five of the system's surfaces rather than
+ * only the two the light-mode tokens currently pair them with. A tinted panel
+ * added later must not be able to swallow them silently.
+ */
+describe('the alarm inks, on every Ease Health surface', () => {
+  const SURFACES: Array<[string, string]> = [
+    ['Cream Paper', '#fffefc'],
+    ['Keylime Wash', '#e1f4df'],
+    ['Mint', '#cfe7d3'],
+    ['Sage', '#b1dbb8'],
+    ['Slate', '#b6ced5'],
+  ];
+
+  const ALARMS: Array<[string, string]> = [
+    ['the danger ink', THEMES.light.danger],
+    ['the caution ink', THEMES.light.cautionInk],
+  ];
+
+  for (const [role, value] of ALARMS) {
+    for (const [name, surface] of SURFACES) {
+      it(`${role} stays readable on ${name}`, () => {
+        expect(contrast(value, surface)).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+  }
+
+  it('keeps Forest Ink as the only action colour', () => {
+    // One green, used for the accent, its text step and the focus ring. A
+    // second interactive hue is how "the green means you can press it" stops
+    // being true.
+    expect(THEMES.light.accent).toBe('#0f3e17');
+    expect(THEMES.light.accentInk).toBe('#0f3e17');
+    expect(THEMES.light.focus).toBe('#0f3e17');
+  });
+
+  it('keeps the alarms out of the green family', () => {
+    // A red that has drifted green-ward is a red that no longer says danger.
+    for (const [, value] of ALARMS) {
+      expect(contrast(value, THEMES.light.accent)).toBeLessThan(4.5);
+    }
+  });
+});
+
 describe('tokens.css', () => {
   it('is exactly what theme.ts generates', () => {
     const onDisk = readFileSync(

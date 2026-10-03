@@ -318,9 +318,9 @@ select {
 
 .side-group-label {
   margin: 0 0 4px 10px;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
@@ -611,9 +611,9 @@ select {
 
 .recovery-label {
   margin: 0;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
@@ -778,7 +778,7 @@ select {
 
 .setup-state {
   flex: 0 0 auto;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -841,9 +841,9 @@ select {
 .patient .f-allergies { grid-column: span 12; }
 
 .field label {
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
 }
 
@@ -951,8 +951,8 @@ select {
 
 /* The language tag makes the audience model visible (DESIGN.md 11). */
 .tab span {
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
 }
 
@@ -1008,9 +1008,9 @@ select {
 
 .card > h2 {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -1330,8 +1330,8 @@ select {
 }
 
 .track .track-label {
-  font-size: 9.5px;
-  letter-spacing: 0.07em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
   margin-bottom: 3px;
@@ -1478,8 +1478,8 @@ select {
 
 .advice-item .vouch-label {
   display: block;
-  font-size: 10px;
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 3px;
 }
@@ -1593,9 +1593,9 @@ select {
 }
 
 .opt-group > label {
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
   display: block;
   margin-bottom: 5px;
@@ -1692,9 +1692,9 @@ select {
 }
 
 .stat .k {
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
 }
 
@@ -1769,9 +1769,9 @@ select {
 }
 
 .settings-section h3 {
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--ink-soft);
   margin: 0 0 8px;
 }
@@ -2240,8 +2240,8 @@ select {
 
 .specimen-label {
   display: block;
-  font-size: 9.5px;
-  letter-spacing: 0.07em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
   margin-bottom: 4px;
@@ -2290,7 +2290,7 @@ select {
 .diff-section h4 {
   margin: 0 0 6px;
   font-size: 11px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft);
   font-weight: 600;
@@ -2322,8 +2322,8 @@ select {
 
 /* A word beside the mark, never colour alone (DESIGN.md 8). */
 .diff-kind {
-  font-size: 10px;
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
   flex: 0 0 auto;
