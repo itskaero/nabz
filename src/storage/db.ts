@@ -21,12 +21,13 @@ import type { DoctorProfile } from '@config/doctorProfile.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import type { PatientRecord, LegacyGrowthLink } from '@domain/patient.ts';
+import type { PatientClinical } from '@domain/patientClinical.ts';
 import type { QueueEntry } from '@domain/clinic.ts';
 import type { Addon } from '@domain/addon.ts';
 import type { Verdict } from '@domain/addonSignature.ts';
 
 const DB_NAME = 'nabz';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 /**
  * Edited content: the specialty pack and the locale packs, as authored in the
@@ -135,6 +136,23 @@ interface NabzDb extends DBSchema {
     indexes: { byName: string };
   };
   /**
+   * Everything clinical about a patient that outlives one visit: allergies,
+   * the problem list, blood group.
+   *
+   * A SEPARATE STORE from `patients`, and the separation is load-bearing.
+   * `clinicSync.ts` sends the whole `patients` store to the reception station
+   * and writes back whatever comes home, so a clinical field living on a
+   * patient row would both leak to the front desk and be erased by the first
+   * sync from a station that did not know about it. Keeping it here makes the
+   * boundary a thing you can see, the way `growthSeries` already does -- and
+   * `savePatientClinical` throws on a reception device, which a filter in the
+   * sync layer could never guarantee.
+   */
+  patientClinical: {
+    key: string;
+    value: PatientClinical;
+  };
+  /**
    * The clinic layer. Identity, a token, a status and a fee -- deliberately no
    * clinical content, so a shared queue never carries a diagnosis. See
    * domain/clinic.ts.
@@ -203,6 +221,14 @@ export function db(): Promise<IDBPDatabase<NabzDb>> {
       }
       if (oldVersion < 6) {
         database.createObjectStore('addons', { keyPath: 'id' });
+      }
+      if (oldVersion < 7) {
+        // Additive. Nothing is migrated INTO it: the allergy strings sitting
+        // on existing prescriptions are snapshots of what was true on those
+        // days, and promoting one to a durable fact about the patient is a
+        // decision a human makes, not a schema bump (see
+        // `adoptTypedAllergies` in domain/patientClinical.ts).
+        database.createObjectStore('patientClinical', { keyPath: 'patientId' });
       }
     },
   });
@@ -314,7 +340,11 @@ export async function allPatients(): Promise<PatientRecord[]> {
 }
 
 export async function deletePatient(id: string): Promise<void> {
-  await (await db()).delete('patients', id);
+  const database = await db();
+  await database.delete('patients', id);
+  // The clinical record is keyed by patient id and nothing else refers to it,
+  // so leaving it behind would be an allergy list belonging to nobody.
+  await database.delete('patientClinical', id);
 }
 
 /**
@@ -346,7 +376,83 @@ export async function mergePatients(sourceId: string, targetId: string): Promise
     await database.delete('growthSeries', sourceId);
   }
 
+  /*
+    Fold the clinical record the same way growth is folded: union, never
+    overwrite. Two records for one child mean someone recorded an allergy
+    against one of them, and a merge that picked a winner would be a merge
+    that can delete an anaphylaxis.
+  */
+  const fromClinical = await database.get('patientClinical', sourceId);
+  if (fromClinical) {
+    const intoClinical = await database.get('patientClinical', targetId);
+    const fold = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
+    const allergies = [...(intoClinical?.allergies ?? [])];
+    const seenAllergy = new Set(allergies.map((a) => fold(a.substance)));
+    for (const a of fromClinical.allergies) {
+      if (!seenAllergy.has(fold(a.substance))) {
+        seenAllergy.add(fold(a.substance));
+        allergies.push(a);
+      }
+    }
+    const problems = [...(intoClinical?.problems ?? [])];
+    const seenProblem = new Set(problems.map((p) => fold(p.label)));
+    for (const p of fromClinical.problems) {
+      if (!seenProblem.has(fold(p.label))) {
+        seenProblem.add(fold(p.label));
+        problems.push(p);
+      }
+    }
+    await database.put('patientClinical', {
+      patientId: targetId,
+      allergies,
+      problems,
+      ...(intoClinical?.bloodGroup ?? fromClinical.bloodGroup
+        ? { bloodGroup: intoClinical?.bloodGroup ?? fromClinical.bloodGroup }
+        : {}),
+      updatedAt: new Date().toISOString(),
+    });
+    await database.delete('patientClinical', sourceId);
+  }
+
   await database.delete('patients', sourceId);
+}
+
+// --- the patient's own clinical record -------------------------------------
+
+/**
+ * Read one patient's durable clinical facts.
+ *
+ * Returns `undefined` rather than an empty record when nothing has been
+ * written, so a caller can tell "nobody has asked about allergies" from
+ * "asked, and there are none". The banner depends on that difference.
+ */
+export async function getPatientClinical(patientId: string): Promise<PatientClinical | undefined> {
+  return (await db()).get('patientClinical', patientId);
+}
+
+/**
+ * The line that makes the carve-out real rather than documented.
+ *
+ * `savePatient` is deliberately NOT guarded -- the front desk registers
+ * patients, that is its job. This is, for the same reason `savePrescription`
+ * is: an allergy list is clinical content, and clinical content does not
+ * exist on a reception machine. A sync filter would have been the easy
+ * version and the wrong one; a filter can be dropped by a refactor without
+ * anything failing.
+ */
+export async function savePatientClinical(record: PatientClinical): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('patientClinical', { ...record, updatedAt: new Date().toISOString() });
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+export async function allPatientClinical(): Promise<PatientClinical[]> {
+  return (await db()).getAll('patientClinical');
+}
+
+export async function deletePatientClinical(patientId: string): Promise<void> {
+  await (await db()).delete('patientClinical', patientId);
 }
 
 /** Every prescription belonging to one identified patient, newest first. */

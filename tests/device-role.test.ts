@@ -27,6 +27,8 @@ import {
   setDeviceRole,
 } from '@domain/deviceRole.ts';
 import { emptyPrescription } from '@domain/prescription.ts';
+import { emptyClinical } from '@domain/patientClinical.ts';
+import { localClinicState } from '@storage/clinicSync.ts';
 import * as db from '@storage/db.ts';
 
 beforeEach(() => clearDeviceRole());
@@ -139,5 +141,91 @@ describe('switching a device that already holds records', () => {
     // change would be a far worse failure than hiding it.
     setDeviceRole('consulting');
     expect(await db.getPrescription('kept')).toBeDefined();
+  });
+});
+
+/**
+ * The allergy list, and the two ways it could have ended up at the front desk.
+ *
+ * Both of these would have been invisible in review. The obvious home for an
+ * allergy is `PatientRecord`, and `clinicSync` sends the whole patients store
+ * to the station and writes back whatever comes home -- so the field would
+ * have leaked on the way out and been erased on the way in, and the existing
+ * server test would not have noticed because it posts prescriptions.
+ */
+describe('a patient’s allergies are clinical content, not identity', () => {
+  const PID = 'p-allergy';
+
+  beforeEach(async () => {
+    clearDeviceRole();
+    await db.savePatient({
+      id: PID,
+      name: 'Ayesha Khan',
+      phone: '03001234567',
+      createdAt: '2026-09-01T09:00:00.000Z',
+      updatedAt: '2026-09-01T09:00:00.000Z',
+    });
+    await db.savePatientClinical({
+      ...emptyClinical(PID, '2026-09-01T09:00:00.000Z'),
+      allergies: [{ substance: 'penicillin', severity: 'severe', notedOn: '2026-09-01' }],
+      problems: [{ label: 'asthma', status: 'active' }],
+    });
+  });
+
+  it('never leaves the device in the station sync payload', async () => {
+    const state = await localClinicState();
+    const wire = JSON.stringify(state);
+
+    // The identity IS meant to travel -- that is what the front desk books.
+    expect(wire).toContain('Ayesha Khan');
+    // Nothing clinical may ride along with it.
+    expect(wire).not.toContain('penicillin');
+    expect(wire).not.toContain('asthma');
+    expect(wire).not.toContain('patientClinical');
+  });
+
+  it('survives a patient row coming back from a station that never knew about it', async () => {
+    // Exactly what `syncClinicLayer` does with the merged result: it writes
+    // every returned patient row straight back with `savePatient`. A station
+    // running older code returns the row it understands, which is identity
+    // only. That must not be able to erase an anaphylaxis.
+    const fromStation = {
+      id: PID,
+      name: 'Ayesha Khan',
+      phone: '03001234567',
+      createdAt: '2026-09-01T09:00:00.000Z',
+      updatedAt: '2026-09-02T11:00:00.000Z',
+    };
+    await db.savePatient(fromStation);
+
+    const after = await db.getPatientClinical(PID);
+    expect(after?.allergies.map((a) => a.substance)).toEqual(['penicillin']);
+    expect(after?.problems.map((pr) => pr.label)).toEqual(['asthma']);
+  });
+
+  it('refuses to be written on a reception station', async () => {
+    setDeviceRole('reception');
+    await expect(
+      db.savePatientClinical(emptyClinical('p-other', '2026-09-03T09:00:00.000Z')),
+    ).rejects.toThrow(ReceptionDeviceError);
+    expect(await db.getPatientClinical('p-other')).toBeUndefined();
+  });
+
+  it('still lets the front desk register the patient', async () => {
+    // The carve-out is clinical content, not the patient. Blocking this would
+    // stop the receptionist doing the one job the station exists for.
+    setDeviceRole('reception');
+    await db.savePatient({
+      id: 'p-walkin',
+      name: 'Bilal Ahmed',
+      createdAt: '2026-09-03T09:00:00.000Z',
+      updatedAt: '2026-09-03T09:00:00.000Z',
+    });
+    expect(await db.getPatient('p-walkin')).toBeDefined();
+  });
+
+  it('goes when the patient goes, rather than belonging to nobody', async () => {
+    await db.deletePatient(PID);
+    expect(await db.getPatientClinical(PID)).toBeUndefined();
   });
 });

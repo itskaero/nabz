@@ -492,6 +492,27 @@ select {
   font-weight: 600;
 }
 
+/*
+  A severe allergy gets a thicker rail and the word, never a louder wash.
+
+  The wash is ~1.2:1 against the page, so it was never the signal -- the rail
+  and the text carry it, which is both DESIGN.md 8 and the design system's own
+  "depth comes from fill contrast". Widening the rail from 4px to 7px is a
+  difference you can see across a room; a redder background is one you cannot
+  see at all on a cheap panel in daylight.
+
+  The word matters more than either. "SEVERE" is read by someone who is not
+  looking at colour because they are looking at a child.
+*/
+.banner-allergy[data-severity='severe'] {
+  border-left-width: 7px;
+}
+
+.banner-allergy[data-severity='severe'] span::before {
+  content: 'SEVERE · ';
+  letter-spacing: 0.08em;
+}
+
 .banner-backup {
   background: var(--warn-wash);
   color: var(--caution-ink);

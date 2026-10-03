@@ -390,3 +390,75 @@ describe('module nav follows the active pack', () => {
     expect(await screen.findByRole('button', { name: /CURB-65/ })).toBeTruthy();
   });
 });
+
+/**
+ * The allergy banner, on a child nobody has typed anything about yet.
+ *
+ * This is the whole reason to record an allergy as a fact rather than as a
+ * string on one prescription. The doctor links a patient they have not seen
+ * since March; the banner fires before a single field has been filled in.
+ */
+describe('a recorded allergy reaches the next visit', () => {
+  const PID = 'p-banner';
+
+  beforeEach(async () => {
+    await db.savePatient({
+      id: PID,
+      name: 'Zainab Iqbal',
+      fileNo: 'Z-9',
+      createdAt: '2026-03-02T09:00:00.000Z',
+      updatedAt: '2026-03-02T09:00:00.000Z',
+    });
+    await db.savePatientClinical({
+      patientId: PID,
+      allergies: [
+        { substance: 'penicillin', reaction: 'anaphylaxis', severity: 'severe', notedOn: '2026-03-02' },
+      ],
+      problems: [],
+      updatedAt: '2026-03-02T09:00:00.000Z',
+    });
+  });
+
+  it('shows the banner as soon as the patient is linked, with nothing typed', async () => {
+    const user = userEvent.setup();
+    render(
+      <StoreProvider>
+        <App />
+      </StoreProvider>,
+    );
+    await screen.findByText(/link to a patient record/i);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await user.click(screen.getByText(/link to a patient record/i));
+    await user.type(screen.getByLabelText('Search by name'), 'Zainab');
+    await user.click(await screen.findByText(/Zainab Iqbal/));
+
+    const banner = await screen.findByRole('alert');
+    expect(banner.textContent).toMatch(/penicillin/i);
+    // Severity is carried on the element, not invented in the text: the stripe
+    // widens and the word is added by CSS, so the banner reads the same in a
+    // screen reader whatever the palette is doing.
+    expect(banner.getAttribute('data-severity')).toBe('severe');
+  });
+
+  it('does not overwrite what the doctor had already typed', async () => {
+    const user = userEvent.setup();
+    render(
+      <StoreProvider>
+        <App />
+      </StoreProvider>,
+    );
+    const typed = await screen.findByLabelText('Patient name');
+    await user.type(typed, 'Zainab');
+    const allergyBox = screen.getByPlaceholderText('none known');
+    await user.type(allergyBox, 'egg');
+
+    await user.click(screen.getByText(/link to a patient record/i));
+    // The picker pre-fills its search from the name already on the script, so
+    // the candidate is on screen before anything else is typed.
+    await user.click(await screen.findByText(/Zainab Iqbal/));
+
+    // What is on today's paper is what the doctor wrote on it.
+    await waitFor(() => expect((allergyBox as HTMLInputElement).value).toBe('egg'));
+  });
+});

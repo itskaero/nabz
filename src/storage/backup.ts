@@ -14,11 +14,13 @@ import type { Prescription } from '@domain/prescription.ts';
 import type { DoctorProfile } from '@config/doctorProfile.ts';
 import type { GrowthPoint } from '@domain/prescription.ts';
 import type { LearnedTerm } from './db.ts';
+import type { PatientRecord } from '@domain/patient.ts';
+import type { PatientClinical } from '@domain/patientClinical.ts';
 import { db, markBackedUp } from './db.ts';
 import { requireWebCrypto } from '@domain/secureContext.ts';
 
 const MAGIC = 'NABZ-BACKUP';
-const FORMAT_VERSION = 1;
+const FORMAT_VERSION = 2;
 const PBKDF2_ITERATIONS = 310_000;
 
 export interface BackupPayload {
@@ -26,9 +28,33 @@ export interface BackupPayload {
   version: number;
   exportedAt: string;
   prescriptions: Prescription[];
+  /** the LEGACY name-keyed growth store, still read-only since v3 */
   growth: Array<{ patientKey: string; patientName: string; points: GrowthPoint[]; updatedAt: string }>;
   learned: LearnedTerm[];
   profile?: DoctorProfile;
+
+  /*
+    Format 2 adds three stores that format 1 silently left out.
+
+    This was a real hole, not a new feature: `patients` and `growthSeries` have
+    existed since schema v3 and were never collected, so restoring a backup
+    gave a doctor their prescriptions back with every patient identity and
+    every modern growth series gone -- and the prescriptions' `patientId`
+    fields pointing at records that no longer existed. The symptom would only
+    show up on the day someone actually needed the restore.
+
+    Optional on read, because a format-1 file is still a valid backup and a
+    restore is not the moment to start refusing files.
+  */
+  patients?: PatientRecord[];
+  growthSeries?: Array<{ patientId: string; points: GrowthPoint[]; updatedAt: string }>;
+  /**
+   * Allergies and the problem list. In the backup, because this is the
+   * doctor's own encrypted file and it is the whole clinical record -- the
+   * thing it is excluded from is the STATION SYNC, which is a different
+   * boundary entirely (see domain/patientClinical.ts).
+   */
+  patientClinical?: PatientClinical[];
 }
 
 /** The on-disk envelope. Only `payload` is ciphertext; the rest is parameters. */
@@ -78,12 +104,16 @@ async function deriveKey(
 
 export async function collectBackup(includeProfile = true): Promise<BackupPayload> {
   const database = await db();
-  const [prescriptions, growth, learned, profile] = await Promise.all([
-    database.getAll('prescriptions'),
-    database.getAll('growth'),
-    database.getAll('learned'),
-    database.get('profile', 'current'),
-  ]);
+  const [prescriptions, growth, learned, profile, patients, growthSeries, patientClinical] =
+    await Promise.all([
+      database.getAll('prescriptions'),
+      database.getAll('growth'),
+      database.getAll('learned'),
+      database.get('profile', 'current'),
+      database.getAll('patients'),
+      database.getAll('growthSeries'),
+      database.getAll('patientClinical'),
+    ]);
   const payload: BackupPayload = {
     magic: MAGIC,
     version: FORMAT_VERSION,
@@ -91,6 +121,9 @@ export async function collectBackup(includeProfile = true): Promise<BackupPayloa
     prescriptions,
     growth,
     learned,
+    patients,
+    growthSeries,
+    patientClinical,
   };
   if (includeProfile && profile) payload.profile = profile;
   return payload;
@@ -166,10 +199,14 @@ export type ImportMode = 'merge' | 'replace';
 
 export interface ImportSummary {
   prescriptions: number;
+  /** the LEGACY name-keyed series. `patientSeries` counts the modern ones. */
   growthSeries: number;
   learnedTerms: number;
   profileRestored: boolean;
   skipped: number;
+  patients: number;
+  patientSeries: number;
+  patientClinical: number;
 }
 
 /**
@@ -190,6 +227,9 @@ export async function importBackup(
     learnedTerms: 0,
     profileRestored: false,
     skipped: 0,
+    patients: 0,
+    patientSeries: 0,
+    patientClinical: 0,
   };
 
   if (mode === 'replace') {
@@ -197,7 +237,70 @@ export async function importBackup(
       database.clear('prescriptions'),
       database.clear('growth'),
       database.clear('learned'),
+      database.clear('patients'),
+      database.clear('growthSeries'),
+      database.clear('patientClinical'),
     ]);
+  }
+
+  /*
+    Patients first, so that by the time a prescription or an allergy list lands
+    the record its `patientId` names already exists. On a merge an existing
+    local record wins: it is the one the doctor has been editing today, and the
+    file is by definition older than the device it is being restored onto.
+  */
+  for (const patient of payload.patients ?? []) {
+    if (mode === 'merge' && (await database.get('patients', patient.id))) continue;
+    await database.put('patients', patient);
+    summary.patients += 1;
+  }
+
+  for (const series of payload.growthSeries ?? []) {
+    const existing =
+      mode === 'merge' ? await database.get('growthSeries', series.patientId) : undefined;
+    if (existing) {
+      // Union by point id, exactly as the legacy store below: restoring an
+      // older file must not be able to delete a visit recorded since.
+      const byId = new Map(existing.points.map((pt) => [pt.id, pt]));
+      for (const pt of series.points) if (!byId.has(pt.id)) byId.set(pt.id, pt);
+      await database.put('growthSeries', {
+        ...existing,
+        points: [...byId.values()].sort((a, b) => a.ageDays - b.ageDays),
+      });
+    } else {
+      await database.put('growthSeries', series);
+    }
+    summary.patientSeries += 1;
+  }
+
+  for (const record of payload.patientClinical ?? []) {
+    const existing =
+      mode === 'merge' ? await database.get('patientClinical', record.patientId) : undefined;
+    if (existing) {
+      // Union, never overwrite. An allergy recorded on this device since the
+      // backup was taken is the one that must survive the restore.
+      const fold = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
+      const allergies = [...existing.allergies];
+      const seenAllergy = new Set(allergies.map((a) => fold(a.substance)));
+      for (const a of record.allergies) {
+        if (!seenAllergy.has(fold(a.substance))) {
+          seenAllergy.add(fold(a.substance));
+          allergies.push(a);
+        }
+      }
+      const problems = [...existing.problems];
+      const seenProblem = new Set(problems.map((pr) => fold(pr.label)));
+      for (const pr of record.problems) {
+        if (!seenProblem.has(fold(pr.label))) {
+          seenProblem.add(fold(pr.label));
+          problems.push(pr);
+        }
+      }
+      await database.put('patientClinical', { ...existing, allergies, problems });
+    } else {
+      await database.put('patientClinical', record);
+    }
+    summary.patientClinical += 1;
   }
 
   for (const rx of payload.prescriptions) {

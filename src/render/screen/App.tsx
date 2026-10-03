@@ -48,6 +48,7 @@ import { canAccess, hasPin } from '@domain/roles.ts';
 import { hasWebCrypto } from '@domain/secureContext.ts';
 import type { DeviceRole } from '@domain/deviceRole.ts';
 import { deviceRole, deviceAllows } from '@domain/deviceRole.ts';
+import { hasSevereAllergy } from '@domain/patientClinical.ts';
 import { DeviceRolePicker } from './components/DeviceRolePicker.tsx';
 import { useBackgroundSync } from './clinic/useBackgroundSync.ts';
 import { useAppearance } from './useAppearance.ts';
@@ -115,7 +116,8 @@ export function App() {
   // onto <html>, so every surface below — including the lazy ones — is themed
   // without any of them knowing a theme exists.
   const appearance = useAppearance();
-  const { rx, profile, pack, phrases, contentRejected, dirty, save, startNew } = store;
+  const { rx, profile, pack, phrases, contentRejected, dirty, save, startNew, patientClinical } =
+    store;
   const [view, setView] = useState<View>(() =>
     deviceRole() === 'reception' ? 'clinic' : 'write',
   );
@@ -517,9 +519,23 @@ export function App() {
           </div>
         </header>
 
-        {/* Persistent, above the working area, on every view (DESIGN.md 11). */}
+        {/*
+          Persistent, above the working area, on every view (DESIGN.md 11).
+
+          `rx.patient.allergies` is the snapshot on today's paper. When a
+          patient is identified it has already been filled from their recorded
+          list (see `identifyPatient`), so this fires on a child the doctor has
+          not seen in a year without anyone retyping anything -- which is the
+          point of recording it. `severe` is the one thing the banner says
+          beyond the words themselves, because a banner that shouts equally
+          about a rash and an anaphylaxis is a banner that gets ignored.
+        */}
         {rx.patient.allergies?.trim() && (
-          <div className="banner banner-allergy" role="alert">
+          <div
+            className="banner banner-allergy"
+            role="alert"
+            data-severity={hasSevereAllergy(patientClinical ?? undefined) ? 'severe' : undefined}
+          >
             <span>ALLERGY — {rx.patient.allergies}</span>
           </div>
         )}

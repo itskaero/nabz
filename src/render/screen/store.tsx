@@ -42,6 +42,8 @@ import type { PackRegistry } from '@domain/phrases.ts';
 import type { ResolvedContent } from '@data/provider.ts';
 import { defaultResolvedContent, resolveContent } from '@data/provider.ts';
 import type { PatientRecord } from '@domain/patient.ts';
+import type { PatientClinical } from '@domain/patientClinical.ts';
+import { allergyLine } from '@domain/patientClinical.ts';
 import * as db from '@storage/db.ts';
 
 export function newId(): string {
@@ -75,8 +77,24 @@ interface Store {
    * its own.
    */
   patient: PatientRecord | null;
-  /** Attach an identified patient and copy their details into the script. */
-  identifyPatient: (record: PatientRecord) => void;
+  /**
+   * The identified patient's durable clinical facts: allergies, the problem
+   * list. `null` when no patient is attached, `undefined` while it is being
+   * read, and a record with empty arrays when a patient has one and it is
+   * genuinely empty -- the difference between "nobody has asked" and "asked,
+   * and there are none" is the whole point of the allergy banner.
+   */
+  patientClinical: PatientClinical | null | undefined;
+  /**
+   * Attach an identified patient and copy their details into the script.
+   *
+   * Takes the clinical record as a second argument rather than fetching it,
+   * so the read happens at the call site where a human made the choice. See
+   * the allergy note on the implementation.
+   */
+  identifyPatient: (record: PatientRecord, clinical?: PatientClinical) => void;
+  /** Re-read the attached patient's clinical record after it has been edited. */
+  refreshPatientClinical: () => Promise<void>;
   /** Detach without clearing what has been typed. */
   clearPatient: () => void;
 
@@ -130,6 +148,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [content, setContent] = useState<ResolvedContent>(defaultResolvedContent);
   const [patient, setPatientRecord] = useState<PatientRecord | null>(null);
+  const [patientClinical, setPatientClinical] = useState<PatientClinical | null | undefined>(null);
   const [queueEntryId, setQueueEntryId] = useState<string | null>(null);
   const loadedProfile = useRef(false);
   // A ref alongside the state so `refreshContent` can read the CURRENT
@@ -179,11 +198,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       savedAt,
       patient,
 
-      identifyPatient: (record) => {
+      patientClinical,
+
+      identifyPatient: (record, clinical) => {
         setPatientRecord(record);
-        // Identity flows into the script; CLINICAL content does not. This is
-        // the whole of the concession in PRODUCT.md rule 3.4 -- the last
-        // prescription is still an explicit manual search-and-select.
+        setPatientClinical(clinical ?? null);
+        /*
+          Identity flows into the script, and so does ONE piece of clinical
+          content: the recorded allergy list.
+
+          That is a deliberate narrowing of the old rule here, which was
+          "clinical content does not". PRODUCT.md 3.4 forbids carrying a
+          clinical DECISION across encounters -- loading last month's drugs and
+          doses because the same child came back, which is the wrong-patient
+          medication-error vector. An allergy is not a decision. It is a
+          standing fact about the person, recorded deliberately on a previous
+          day, and it is a safety INPUT to the decision being made now. A
+          product that knows a child is allergic to penicillin and declines to
+          say so while the doctor writes amoxicillin has mistaken a rule for
+          its purpose.
+
+          The refill path is untouched: medicines, problems and examination
+          still come only through an explicit search-and-select.
+
+          Never overwrites. If the doctor has already typed in the allergies
+          box, what they typed is what is on today's paper.
+        */
+        const recorded = allergyLine(clinical ?? undefined);
         patch((prev) => ({
           ...prev,
           patientId: record.id,
@@ -194,12 +235,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ...(record.sex ? { sex: record.sex } : {}),
             ...(record.phone ? { contact: record.phone } : {}),
             ...(record.fileNo ? { reference: record.fileNo } : {}),
+            ...(recorded && !prev.patient.allergies?.trim() ? { allergies: recorded } : {}),
           },
         }));
       },
 
+      refreshPatientClinical: async () => {
+        const id = patient?.id;
+        if (!id) {
+          setPatientClinical(null);
+          return;
+        }
+        setPatientClinical((await db.getPatientClinical(id)) ?? null);
+      },
+
       clearPatient: () => {
         setPatientRecord(null);
+        setPatientClinical(null);
         patch((prev) => {
           const next = { ...prev };
           delete next.patientId;
@@ -259,6 +311,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       startNew: (kind) => {
         setRx(emptyPrescription(profile.packId, newId(), new Date(), kind));
         setPatientRecord(null);
+        setPatientClinical(null);
         // A new script is a new encounter: it must not close the previous
         // patient's visit when it is saved.
         setQueueEntryId(null);
@@ -269,6 +322,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       refillFrom: (prior) => {
         // Clinical content only. The patient block stays blank on purpose.
         setPatientRecord(null);
+        setPatientClinical(null);
         setQueueEntryId(null);
         setRx({
           ...emptyPrescription(profile.packId, newId()),
@@ -294,7 +348,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (next.packId !== profile.packId) void refreshContent(next.packId);
       },
     };
-  }, [rx, profile, content, refreshContent, dirty, savedAt, patient, patch, queueEntryId]);
+  }, [rx, profile, content, refreshContent, dirty, savedAt, patient, patientClinical, patch, queueEntryId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

@@ -137,8 +137,15 @@ export function PatientPicker({ onClose }: { onClose: () => void }) {
                   className="row-item"
                   key={patient.id}
                   onClick={() => {
-                    identifyPatient(patient);
-                    onClose();
+                    void (async () => {
+                      // Read at the moment of the human choice, rather than
+                      // for all the candidates on screen: the allergy list of
+                      // a child the doctor did NOT pick is nobody's business
+                      // and should not be sitting in memory.
+                      const clinical = await db.getPatientClinical(patient.id);
+                      identifyPatient(patient, clinical);
+                      onClose();
+                    })();
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
