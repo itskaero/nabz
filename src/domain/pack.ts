@@ -141,6 +141,104 @@ export interface LabDefinition {
 }
 
 /** Haematology, Biochemistry, Microbiology, Imaging -- editable per specialty. */
+/**
+ * One question in the background history.
+ *
+ * Mirrors `FindingDefinition` on purpose. A pack already declares examination
+ * systems and a palette of findings, and `ExamSection.tsx` renders any pack's
+ * systems without knowing what they are -- so the history is the same idea
+ * pointed at a different part of the record, and it needs no new machinery.
+ *
+ * EVERY FIELD IS OPTIONAL TO FILL. Nothing in the history can block a save or
+ * a print; `requiresForPrint` is untouched by any of this. The history is
+ * something a doctor adds to over a child's life, not a form standing between
+ * them and a prescription (PRODUCT.md 16: identification is an accelerator,
+ * never a gate, and the same applies here).
+ */
+export interface HistoryFieldDefinition {
+  id: string;
+  label: string;
+  /**
+   * How it is filled. Defaults to 'text'.
+   *
+   * 'text' is the default precisely so a pack author who cannot enumerate the
+   * answers still gets a usable field; 'choice' and 'chips' are the taps that
+   * save typing where the answers ARE enumerable ("SVD / LSCS / instrumental"
+   * is three taps, not a sentence).
+   */
+  kind?: 'text' | 'choice' | 'chips' | 'date' | 'number';
+  /** the taps, for 'choice' and 'chips' */
+  options?: string[];
+  /** placeholder, and only ever a placeholder -- never a required format */
+  hint?: string;
+  /** unit shown beside a 'number', e.g. 'kg' for birth weight */
+  unit?: string;
+}
+
+/**
+ * A section of the background history: antenatal, birth, feeding, social.
+ *
+ * Pack DATA rather than code, because a paediatric history and an adult one
+ * are different questionnaires and a third specialty will be a fourth.
+ * Hardcoding either would make every new specialty a code change, which is
+ * exactly what the pack seam exists to prevent.
+ */
+export interface HistorySectionDefinition {
+  id: string;
+  label: string;
+  order?: number;
+  /** one line under the heading, when the section needs explaining */
+  note?: string;
+  /**
+   * The age band this section is OFFERED in.
+   *
+   * Birth history is noise on a fourteen-year-old, and a questionnaire that
+   * asks everything of everyone is one nobody fills in. A section outside the
+   * band is not offered -- but it is still SHOWN when it already holds
+   * content, so a teenager never loses the birth history somebody recorded at
+   * six months. See `domain/history.ts`, which is where that rule lives.
+   */
+  appliesTo?: { fromDays?: number; toDays?: number };
+  fields: HistoryFieldDefinition[];
+}
+
+/**
+ * A published immunisation schedule, as data.
+ *
+ * Here rather than in code so a different country's schedule is a different
+ * pack. `reference` is not decoration: a schedule with no published source is
+ * a list of opinions.
+ */
+export interface ImmunisationSchedule {
+  reference: string;
+  visits: Array<{
+    id: string;
+    label: string;
+    /** age in days at which this visit is due, per the published schedule */
+    atDays: number;
+    /** what is given at this visit, e.g. ['BCG', 'OPV-0', 'Hep B-1'] */
+    doses: string[];
+  }>;
+}
+
+/**
+ * A published milestone list.
+ *
+ * `typicalByDays` is a REFERENCE AGE, the same thing a growth chart's centile
+ * band is, and it is displayed the same way: as the published norm beside what
+ * was recorded. Nothing anywhere turns a blank into "delayed". That judgement
+ * is the doctor's and it goes in `diagnosis`.
+ */
+export interface MilestoneCatalogue {
+  reference: string;
+  items: Array<{
+    id: string;
+    label: string;
+    domain: 'gross' | 'fine' | 'speech' | 'social';
+    typicalByDays: number;
+  }>;
+}
+
 export interface LabCategoryDefinition {
   id: string;
   label: string;
@@ -261,6 +359,13 @@ export interface ContentPack {
   dosing: DosingEntry[];
   /** clinical scores this specialty offers -- see ScoreDefinition above */
   scores?: ScoreDefinition[];
+  /**
+   * The background history this specialty asks about. Optional: a pack that
+   * declares none simply has no history screen, rather than an empty one.
+   */
+  historySections?: HistorySectionDefinition[];
+  immunisationSchedule?: ImmunisationSchedule;
+  milestones?: MilestoneCatalogue;
   modules: ModuleId[];
   /**
    * The document kinds this specialty offers (`domain/documents`). Absent or
@@ -397,6 +502,95 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
         issues.push({ severity: 'error', where: key, message: 'lab has no label' });
       }
     }
+  }
+
+  const seenSection = new Set<string>();
+  for (const section of pack.historySections ?? []) {
+    if (seenSection.has(section.id)) {
+      issues.push({
+        severity: 'error',
+        where: `historySections.${section.id}`,
+        message: 'duplicate history section id',
+      });
+    }
+    seenSection.add(section.id);
+    if (!section.label.trim()) {
+      issues.push({
+        severity: 'error',
+        where: `historySections.${section.id}`,
+        message: 'history section has no label',
+      });
+    }
+    const band = section.appliesTo;
+    if (band?.fromDays !== undefined && band.toDays !== undefined && band.fromDays > band.toDays) {
+      issues.push({
+        severity: 'error',
+        where: `historySections.${section.id}`,
+        message: 'appliesTo band is inside out: fromDays is after toDays, so it matches nobody',
+      });
+    }
+    const seenField = new Set<string>();
+    for (const field of section.fields) {
+      const key = `historySections.${section.id}/${field.id}`;
+      if (seenField.has(field.id)) {
+        issues.push({ severity: 'error', where: key, message: 'duplicate history field id' });
+      }
+      seenField.add(field.id);
+      if (!field.label.trim()) {
+        issues.push({ severity: 'error', where: key, message: 'history field has no label' });
+      }
+      // A choice with nothing to choose renders as an empty row: the whole
+      // point of the kind is that the common answer is one tap.
+      if ((field.kind === 'choice' || field.kind === 'chips') && !field.options?.length) {
+        issues.push({
+          severity: 'error',
+          where: key,
+          message: `history field is a '${field.kind}' with no options`,
+        });
+      }
+    }
+  }
+
+  const seenVisit = new Set<string>();
+  for (const visit of pack.immunisationSchedule?.visits ?? []) {
+    if (seenVisit.has(visit.id)) {
+      issues.push({
+        severity: 'error',
+        where: `immunisationSchedule.${visit.id}`,
+        message: 'duplicate immunisation visit id',
+      });
+    }
+    seenVisit.add(visit.id);
+    if (!visit.doses.length) {
+      issues.push({
+        severity: 'error',
+        where: `immunisationSchedule.${visit.id}`,
+        message: 'immunisation visit gives nothing',
+      });
+    }
+  }
+  if (pack.immunisationSchedule && !pack.immunisationSchedule.reference.trim()) {
+    // Same rule as a dose: a schedule with no published source is a list of
+    // opinions, and this app does not ship those.
+    issues.push({
+      severity: 'error',
+      where: 'immunisationSchedule',
+      message: 'schedule has no reference',
+    });
+  }
+  if (pack.milestones && !pack.milestones.reference.trim()) {
+    issues.push({ severity: 'error', where: 'milestones', message: 'milestones have no reference' });
+  }
+  const seenMilestone = new Set<string>();
+  for (const item of pack.milestones?.items ?? []) {
+    if (seenMilestone.has(item.id)) {
+      issues.push({
+        severity: 'error',
+        where: `milestones.${item.id}`,
+        message: 'duplicate milestone id',
+      });
+    }
+    seenMilestone.add(item.id);
   }
 
   // The rule with teeth: no dose without a citation.

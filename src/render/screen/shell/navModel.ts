@@ -105,7 +105,19 @@ export function navGroups(input: NavInput): NavGroup[] {
     ]);
     push('records', 'Records', [
       { id: 'patients', label: 'Patients', hint: 'Who you have seen, by month' },
-      { id: 'history', label: 'History', hint: 'Scripts saved on this device' },
+      /*
+        "Past scripts", not "History".
+
+        The word was free until the patient chart grew a History section, and
+        now it means two different things a tap apart: this is a search across
+        every script on the device, and that is one child's antenatal and birth
+        history. A doctor looking for the second will find the first, which is
+        the kind of collision that only shows up once both exist.
+
+        The destination id stays `history` -- renaming a View would be churn
+        for no gain, and nothing but this label is user-visible.
+      */
+      { id: 'history', label: 'Past scripts', hint: 'Every script saved on this device' },
     ]);
     push('tools', 'Tools', [
       ...input.modules.map((id) => ({ id, label: MODULE_META[id].label })),

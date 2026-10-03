@@ -27,16 +27,22 @@ import type { Prescription } from '@domain/prescription.ts';
 import type { PatientRecord } from '@domain/patient.ts';
 import type { AllergyFact, PatientClinical, ProblemFact } from '@domain/patientClinical.ts';
 import { emptyClinical } from '@domain/patientClinical.ts';
+import type { ContentPack } from '@domain/pack.ts';
 import type { ChartMedication, PatientChart as Chart } from '@domain/chart.ts';
 import { allergyDisagreements, buildChart } from '@domain/chart.ts';
 import { patientLabel } from '@domain/patient.ts';
+import { historyProgress, resolveSections } from '@domain/history.ts';
+import { ageDaysBetween } from '@domain/growth/index.ts';
 import * as db from '@storage/db.ts';
+import { useStore } from '../store.tsx';
+import { HistoryEditor } from './HistoryEditor.tsx';
 
-type SectionId = 'allergies' | 'problems' | 'medications' | 'visits';
+type SectionId = 'allergies' | 'problems' | 'history' | 'medications' | 'visits';
 
 const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'allergies', label: 'Allergies' },
   { id: 'problems', label: 'Problems' },
+  { id: 'history', label: 'History' },
   { id: 'medications', label: 'Medications' },
   { id: 'visits', label: 'Visits' },
 ];
@@ -54,6 +60,7 @@ export function PatientChart({
   onOpenEncounter?: (rx: Prescription) => void;
   onClose?: () => void;
 }) {
+  const { pack } = useStore();
   const [record, setRecord] = useState<PatientRecord | null>(null);
   const [clinical, setClinical] = useState<PatientClinical | null>(null);
   const [encounters, setEncounters] = useState<Prescription[] | null>(null);
@@ -100,6 +107,13 @@ export function PatientChart({
   );
 
   const base = clinical ?? emptyClinical(patientId);
+  /*
+    Age drives which history sections are offered. Unknown when the record has
+    no date of birth, which is common for a walk-in -- and `inBand` treats an
+    unknown age as "ask anyway", because not knowing a birthday is not a reason
+    to stop asking about the birth.
+  */
+  const ageDays = record?.dob ? ageDaysBetween(record.dob, new Date().toISOString().slice(0, 10)) : undefined;
 
   if (!encounters) return <p className="empty">Opening the chart…</p>;
 
@@ -138,7 +152,7 @@ export function PatientChart({
               onClick={() => setSection(s.id)}
             >
               <span>{s.label}</span>
-              <span className="chart-count">{countFor(s.id, base, chart)}</span>
+              <span className="chart-count">{countFor(s.id, base, chart, pack, ageDays)}</span>
             </button>
           ))}
         </nav>
@@ -154,6 +168,14 @@ export function PatientChart({
           {section === 'problems' && (
             <ProblemSection clinical={base} onChange={(next) => void write(next)} />
           )}
+          {section === 'history' && (
+            <HistoryEditor
+              pack={pack}
+              answers={base.history ?? {}}
+              ageDays={ageDays}
+              onChange={(history) => void write({ ...base, history })}
+            />
+          )}
           {section === 'medications' && <MedicationSection chart={chart} />}
           {section === 'visits' && (
             <VisitSection chart={chart} encounters={encounters} onOpen={onOpenEncounter} />
@@ -164,11 +186,23 @@ export function PatientChart({
   );
 }
 
-function countFor(id: SectionId, c: PatientClinical, chart: Chart | null): string {
+function countFor(
+  id: SectionId,
+  c: PatientClinical,
+  chart: Chart | null,
+  pack?: { historySections?: ContentPack['historySections'] },
+  ageDays?: number,
+): string {
   if (id === 'allergies') return c.allergies.length ? String(c.allergies.length) : '—';
   if (id === 'problems') {
     const active = c.problems.filter((p) => p.status === 'active').length;
     return active ? String(active) : '—';
+  }
+  if (id === 'history') {
+    const { filled, total } = historyProgress(
+      resolveSections(pack?.historySections, c.history ?? {}, ageDays),
+    );
+    return total === 0 ? '—' : `${filled}/${total}`;
   }
   if (id === 'medications') return chart?.medications.length ? String(chart.medications.length) : '—';
   return chart?.visits.length ? String(chart.visits.length) : '—';

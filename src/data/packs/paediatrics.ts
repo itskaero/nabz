@@ -259,6 +259,128 @@ export const paediatrics: ContentPack = {
   formularySeed,
   dosing: dosingSeed,
 
+  /*
+    THE BACKGROUND HISTORY.
+
+    Pure data: the engine that renders it (`domain/history.ts` and
+    `HistoryEditor.tsx`) has never heard of antenatal care or weaning, exactly
+    as `ExamSection.tsx` has never heard of chest indrawing. A different
+    specialty is a different list in a different pack, not a code change.
+
+    Every field is optional, and the common answers are taps where the answers
+    can be enumerated. The age bands matter: asking about weaning at twelve
+    years is noise, and a questionnaire that asks everything of everyone is one
+    nobody fills in. A section the child has aged out of still appears if it
+    already holds content -- see `resolveSections`.
+
+    NOTHING HERE IS A SCORE. There is no "risk" field, no total, nothing that
+    adds up. It is what the mother said, written down.
+  */
+  historySections: [
+    {
+      id: 'antenatal',
+      label: 'Antenatal',
+      order: 1,
+      note: 'The pregnancy, as the mother remembers it.',
+      // Offered up to about five. Beyond that it is a question nobody can
+      // answer any better than it was answered the first time.
+      appliesTo: { toDays: 1826 },
+      fields: [
+        {
+          id: 'booking',
+          label: 'Antenatal care',
+          kind: 'choice',
+          options: ['Booked', 'Unbooked', 'Partial'],
+        },
+        { id: 'maternal_illness', label: 'Illness in pregnancy', hint: 'diabetes, hypertension, fever…' },
+        { id: 'medications', label: 'Medicines taken', hint: 'including herbal and over-the-counter' },
+        { id: 'scans', label: 'Scans', hint: 'anomalies, growth concerns' },
+      ],
+    },
+    {
+      id: 'birth',
+      label: 'Birth',
+      order: 2,
+      fields: [
+        { id: 'place', label: 'Place', kind: 'choice', options: ['Hospital', 'Home', 'Clinic'] },
+        {
+          id: 'delivery',
+          label: 'Delivery',
+          kind: 'choice',
+          options: ['SVD', 'LSCS', 'Instrumental'],
+        },
+        { id: 'term', label: 'Term', kind: 'choice', options: ['Term', 'Preterm', 'Post-term'] },
+        { id: 'gestation', label: 'Gestation', kind: 'number', unit: 'weeks' },
+        { id: 'birth_weight', label: 'Birth weight', kind: 'number', unit: 'kg' },
+        { id: 'cried', label: 'Cried at birth', kind: 'choice', options: ['Yes', 'Delayed', 'No'] },
+        {
+          id: 'nicu',
+          label: 'Nursery or NICU stay',
+          kind: 'chips',
+          options: ['Jaundice', 'Sepsis', 'Respiratory distress', 'Feeding', 'Phototherapy', 'Ventilated'],
+        },
+        { id: 'birth_note', label: 'Anything else about the birth' },
+      ],
+    },
+    {
+      id: 'feeding',
+      label: 'Feeding',
+      order: 3,
+      // Under five. A teenager's diet belongs under Nutrition, not under the
+      // weaning history.
+      appliesTo: { toDays: 1826 },
+      fields: [
+        {
+          id: 'infant_feeding',
+          label: 'First six months',
+          kind: 'choice',
+          options: ['Exclusive breast', 'Mixed', 'Formula only'],
+        },
+        { id: 'breastfed_until', label: 'Breastfed until', hint: 'age, or “still”' },
+        { id: 'weaning_age', label: 'Weaning started', kind: 'number', unit: 'months' },
+        { id: 'current_diet', label: 'Diet now', hint: 'family food, milk, fussy eating…' },
+      ],
+    },
+    {
+      id: 'development',
+      label: 'Development & schooling',
+      order: 5,
+      fields: [
+        { id: 'concerns', label: 'Any concerns', hint: 'raised by the family or by school' },
+        { id: 'school', label: 'School', hint: 'class, how they are doing' },
+        { id: 'vision_hearing', label: 'Vision and hearing', hint: 'tested? any worry?' },
+      ],
+    },
+    {
+      id: 'past',
+      label: 'Past illnesses & admissions',
+      order: 6,
+      fields: [
+        { id: 'admissions', label: 'Admissions', hint: 'when, where, what for' },
+        { id: 'surgery', label: 'Operations' },
+        { id: 'illnesses', label: 'Significant illnesses' },
+        { id: 'tb_contact', label: 'TB contact', kind: 'choice', options: ['None known', 'Household', 'Other'] },
+      ],
+    },
+    {
+      id: 'family',
+      label: 'Family & home',
+      order: 7,
+      fields: [
+        {
+          id: 'consanguinity',
+          label: 'Parents related',
+          kind: 'choice',
+          options: ['No', 'First cousins', 'Second cousins', 'Other'],
+        },
+        { id: 'siblings', label: 'Siblings', hint: 'how many, any unwell' },
+        { id: 'deaths', label: 'Deaths in childhood in the family' },
+        { id: 'family_illness', label: 'Illness that runs in the family' },
+        { id: 'home', label: 'Home', hint: 'water, crowding, smoke exposure' },
+      ],
+    },
+  ],
+
   modules: ['growth', 'malnutrition'],
   moduleConfig: {
     growth: {

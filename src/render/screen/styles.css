@@ -2699,3 +2699,71 @@ li[data-kind='changed'] .diff-kind {
   color: var(--ink-soft);
   font-family: var(--font-mono);
 }
+
+/* ---------- the background history ---------- */
+.history-sections {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.history-section {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.history-section:last-child {
+  border-bottom: 0;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-title {
+  font-weight: 600;
+}
+
+/* The count is the point of collapsing: it says where there is content
+   without opening seven sections. Quiet until there IS content. */
+.history-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  flex: 0 0 auto;
+}
+
+.history-count[data-filled='true'] {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.history-fields {
+  display: grid;
+  gap: 10px;
+  padding: 4px 4px 14px;
+}
+
+.field-noted {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+.field .unit {
+  color: var(--ink-faint);
+  font-weight: 400;
+}

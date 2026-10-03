@@ -134,6 +134,39 @@ export function diffPack(
     diffKeyed(before.pack.examSystems, after.pack.examSystems, (e) => e.id, (e) => e.label, eq),
   );
 
+  add(
+    'History sections',
+    diffKeyed(
+      before.pack.historySections ?? [],
+      after.pack.historySections ?? [],
+      (sec) => sec.id,
+      (sec) => sec.label,
+      eq,
+    ),
+  );
+
+  add(
+    'Immunisation schedule',
+    diffKeyed(
+      before.pack.immunisationSchedule?.visits ?? [],
+      after.pack.immunisationSchedule?.visits ?? [],
+      (v) => v.id,
+      (v) => `${v.label} — ${v.doses.join(', ')}`,
+      eq,
+    ),
+  );
+
+  add(
+    'Milestones',
+    diffKeyed(
+      before.pack.milestones?.items ?? [],
+      after.pack.milestones?.items ?? [],
+      (m) => m.id,
+      (m) => m.label,
+      eq,
+    ),
+  );
+
   const chipChanges: Change[] = [];
   for (const systemId of new Set([
     ...Object.keys(before.pack.findingsPalette),

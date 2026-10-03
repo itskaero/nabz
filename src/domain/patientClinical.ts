@@ -38,6 +38,8 @@
  * Framework-free on purpose: the reconciliation rules are the interesting part
  * and they are testable without a database.
  */
+import type { HistoryAnswers } from './history.ts';
+
 
 export interface AllergyFact {
   /** what the patient reacts to, as the doctor says it: a drug, a food, a dye */
@@ -72,6 +74,16 @@ export interface PatientClinical {
   allergies: AllergyFact[];
   problems: ProblemFact[];
   bloodGroup?: string;
+  /**
+   * The background history -- antenatal, birth, feeding, social -- keyed
+   * `"<sectionId>.<fieldId>"`. The QUESTIONS are pack data
+   * (`HistorySectionDefinition`); these are the answers.
+   *
+   * Optional, because a record written before the history existed has none and
+   * absence is given a meaning rather than a migration (the same choice
+   * `Prescription.kind` makes).
+   */
+  history?: HistoryAnswers;
   updatedAt: string;
 }
 
@@ -82,7 +94,12 @@ export function emptyClinical(patientId: string, now = new Date().toISOString())
 /** Nothing recorded at all -- so the UI can say "not recorded" rather than "none". */
 export function isBlank(c: PatientClinical | undefined): boolean {
   if (!c) return true;
-  return c.allergies.length === 0 && c.problems.length === 0 && !c.bloodGroup;
+  return (
+    c.allergies.length === 0 &&
+    c.problems.length === 0 &&
+    !c.bloodGroup &&
+    Object.keys(c.history ?? {}).length === 0
+  );
 }
 
 export function activeProblems(c: PatientClinical | undefined): ProblemFact[] {
