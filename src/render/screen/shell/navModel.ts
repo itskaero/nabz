@@ -42,6 +42,8 @@ export type View =
   | 'write'
   | 'preview'
   | 'history'
+  /** who was seen, by month -- the way into a chart without knowing a name */
+  | 'patients'
   /**
    * One patient over time. Deliberately NOT in `navGroups`: a chart is always
    * a chart OF somebody, so it is reached by choosing a patient and would be
@@ -102,6 +104,7 @@ export function navGroups(input: NavInput): NavGroup[] {
       { id: 'preview', label: 'Preview', hint: 'The page exactly as it will print' },
     ]);
     push('records', 'Records', [
+      { id: 'patients', label: 'Patients', hint: 'Who you have seen, by month' },
       { id: 'history', label: 'History', hint: 'Scripts saved on this device' },
     ]);
     push('tools', 'Tools', [

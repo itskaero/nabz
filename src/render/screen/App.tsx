@@ -44,6 +44,7 @@ import { SettingsPanel } from './components/SettingsPanel.tsx';
 import { HistoryPanel } from './components/HistoryPanel.tsx';
 import { PatientPicker } from './components/PatientPicker.tsx';
 import { PatientChart } from './components/PatientChart.tsx';
+import { CaseloadPanel } from './components/CaseloadPanel.tsx';
 import { RoleGateLock } from './components/RoleGateLock.tsx';
 import { canAccess, hasPin } from '@domain/roles.ts';
 import { hasWebCrypto } from '@domain/secureContext.ts';
@@ -673,6 +674,10 @@ export function App() {
 
         {shown('history') && view === 'history' && <HistoryPanel onDone={() => setView('write')} />}
 
+        {shown('patients') && view === 'patients' && (
+          <CaseloadPanel onOpenChart={openChart} />
+        )}
+
         {shown('chart') && view === 'chart' && chartFor && (
           <div className="body">
             <PatientChart patientId={chartFor} onClose={() => setView('write')} />
@@ -748,6 +753,7 @@ export function App() {
             queue, and from the queue there is nowhere further back.
           */}
           {(view === 'history' ||
+            view === 'patients' ||
             view === 'chart' ||
             view === 'settings' ||
             pack.modules.includes(view as ModuleId) ||

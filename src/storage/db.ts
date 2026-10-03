@@ -314,6 +314,80 @@ export async function searchHistory(query: string, limit = 25): Promise<Prescrip
     .map(normalisePrescription);
 }
 
+/**
+ * Every encounter in a half-open date range, newest first.
+ *
+ * Uses the `byDate` index that has existed since schema v1, so the Patients
+ * view needed no migration and no new store. The upper bound is EXCLUSIVE and
+ * the caller passes the next month's first day (`domain/caseload.ts`), which
+ * is why there is no month-length arithmetic anywhere in this feature.
+ *
+ * Ranged on `rx.date` -- the day the patient was in the room -- rather than
+ * `createdAt`. A script the doctor backdated belongs in the month it says it
+ * does; `createdAt` stays the audit field.
+ */
+export async function encountersBetween(
+  from: string,
+  toExclusive: string,
+): Promise<Prescription[]> {
+  const rows = await (await db()).getAllFromIndex(
+    'prescriptions',
+    'byDate',
+    IDBKeyRange.bound(from, toExclusive, false, true),
+  );
+  return rows.sort((a, b) => b.date.localeCompare(a.date)).map(normalisePrescription);
+}
+
+/**
+ * Which months hold encounters, and how many each holds.
+ *
+ * A skip-scan: open a cursor on `byDate`, read one key, then jump straight to
+ * the first day of the next month. That is one record read per month rather
+ * than one per encounter, so the month strip costs the same at five thousand
+ * scripts as at fifty. The per-month counts need the full set, so they come
+ * from `count()` on each range -- still an index operation, never a scan of
+ * the records themselves.
+ */
+export async function monthsWithEncounters(): Promise<Array<{ key: string; encounters: number }>> {
+  const database = await db();
+  const index = database.transaction('prescriptions').store.index('byDate');
+  const months: string[] = [];
+  let cursor = await index.openKeyCursor();
+  while (cursor) {
+    const date = String(cursor.key);
+    const key = date.slice(0, 7);
+    months.push(key);
+    // The first day of the month after this one. Jumping to it skips every
+    // remaining encounter in the current month without reading any of them.
+    const year = Number(key.slice(0, 4));
+    const month = Number(key.slice(5, 7));
+    const nextKey =
+      month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    cursor = await cursor.continue(nextKey);
+  }
+
+  const out: Array<{ key: string; encounters: number }> = [];
+  for (const key of months) {
+    const year = Number(key.slice(0, 4));
+    const month = Number(key.slice(5, 7));
+    const next =
+      month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    out.push({
+      key,
+      encounters: await database.countFromIndex(
+        'prescriptions',
+        'byDate',
+        IDBKeyRange.bound(`${key}-01`, next, false, true),
+      ),
+    });
+  }
+  return out.sort((a, b) => b.key.localeCompare(a.key));
+}
+
 export async function prescriptionCount(): Promise<number> {
   return (await db()).count('prescriptions');
 }

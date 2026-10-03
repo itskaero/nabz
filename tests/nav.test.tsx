@@ -65,6 +65,12 @@ describe('what the nav offers', () => {
     ]);
   });
 
+  it('puts Patients beside History, which is where the past lives', () => {
+    // Added to a group rather than given a button of its own: four flat
+    // destinations is what the grouping exists to avoid.
+    expect(ids(navGroups(doctor), 'records')).toEqual(['patients', 'history']);
+  });
+
   it('gives a reception station the queue and settings, and nothing clinical', () => {
     // Not disabled and not PIN-hidden: there is nothing behind the clinical
     // destinations on that machine, and a greyed-out button implies there is.
@@ -84,6 +90,27 @@ describe('folding the nav onto a phone', () => {
 
   it('is Script, Queue, Tools, More — four, as designed', () => {
     expect(shape(doctor)).toEqual(['Script', 'Queue', 'Tools', 'More']);
+  });
+
+  it('stays at four when a destination is added', () => {
+    // Patients joined the Records group, so it folds into the existing More
+    // sheet rather than competing for one of the four buttons. This is the
+    // property that makes the nav safe to extend, so it is asserted rather
+    // than assumed.
+    expect(shape(doctor)).toHaveLength(4);
+    const sheet = bottomSlots(navGroups(doctor)).find((s) => s.kind === 'sheet' && s.id === 'more');
+    expect(
+      sheet?.kind === 'sheet' ? sheet.groups.flatMap((g) => g.items.map((i) => i.id)) : [],
+    ).toContain('patients');
+  });
+
+  it('never offers Patients on a reception station', () => {
+    // Every patient seen last month, by name, with a diagnosis beside it --
+    // the single most sensitive screen in the app. It is not hidden there, it
+    // is not built.
+    const reception = navGroups({ ...doctor, reception: true });
+    expect(reception.flatMap((g) => g.items.map((i) => i.id))).not.toContain('patients');
+    expect(shape({ ...doctor, reception: true })).toEqual(['Queue', 'More']);
   });
 
   it('drops the Queue button rather than leaving a dead slot', () => {
