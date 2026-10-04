@@ -62,6 +62,30 @@ const TEXT_PAIRS: Pair[] = [
   ['inkFaint', 'bg', '.empty, .tabs area'],
   ['inkFaint', 'surface', '.field label, .track-label, .stat .k'],
   ['inkFaint', 'patientTint', '.track.ur .track-label'],
+  /*
+    The sunken shell, added when the surfaces opened up to three tones.
+
+    The rail and the bottom bar are a DESTINATION LIST -- every one of those
+    labels is text a doctor reads to decide where to go -- so the new surface
+    is held to the body floor like any other, not to the 3:1 one. The
+    segmented track sits on the same colour, and its unselected segments are
+    `inkSoft`.
+  */
+  ['ink', 'surfaceSunken', '.side-item, .bottom-item label'],
+  ['inkSoft', 'surfaceSunken', '.segmented button, an unselected segment'],
+  ['inkFaint', 'surfaceSunken', '.side-group-label, .month-count'],
+  /*
+    The gradient's two stops, each treated as a background in its own right.
+
+    A gradient is not one colour, and testing the average of two would pass a
+    band whose dark end swallowed the text sitting on it. Both ends are
+    checked, so the sweep can be re-aimed later without anyone having to
+    remember that the text on it is the reason it was chosen.
+  */
+  ['ink', 'heroFrom', '.hero-band heading, at the saturated end'],
+  ['ink', 'heroTo', '.hero-band heading, at the pale end'],
+  ['inkSoft', 'heroFrom', '.hero-band sub-copy, at the saturated end'],
+  ['inkSoft', 'heroTo', '.hero-band sub-copy, at the pale end'],
   ['accent', 'surface', '.btn.ghost, .linkish'],
   ['accentInk', 'accentWash', '.pill.good, .builder-status'],
   ['onAccent', 'accent', '.btn, .chip[present], .tab[selected]'],
@@ -81,7 +105,32 @@ const NON_TEXT_PAIRS: Pair[] = [
   ['focus', 'surface', 'the focus ring over a card'],
   ['caution', 'cautionWash', 'the 4px advice-tier stripe'],
   ['accent', 'bg', 'a filled accent control against the page'],
+  /*
+    The SELECTED segment's edge, not its fill.
+
+    A lifted segment is about 1.3:1 against its own track, and no tonal ladder
+    can do better -- three surfaces that differ by 3:1 are not a ladder, they
+    are three different colours. So the state does not rest on the fill: the
+    selected segment carries `--line-strong`, which is held to 3:1 on every
+    surface it can sit on, plus bold weight, a shadow and `aria-pressed`.
+  */
+  ['lineStrong', 'surfaceSunken', 'the selected segment edge against its track'],
 ];
+
+/**
+ * The three tones have to BE three tones.
+ *
+ * The reason this is a test and not a comment: the old dark mode ran
+ * #0c1413 / #141e1d / #1c2827, which is a 1.10 contrast step -- layering that
+ * existed in the hex codes and nowhere an eye could find it, and the whole
+ * reason the app read as flat. A future palette pass that quietly collapses
+ * them again should fail rather than merely look duller.
+ *
+ * `contrast` is exempt and that exemption is the point of the mode: it is
+ * built for direct sunlight, where a subtle tonal step is no step at all, so
+ * its shell, page and card are all white and every boundary is a hard line.
+ */
+const LAYERED_MODES = MODES.filter((m) => m !== 'contrast');
 
 describe('the screen palette', () => {
   for (const mode of MODES) {
@@ -114,6 +163,41 @@ describe('the screen palette', () => {
 
   it('offers exactly the three modes the UI can switch between', () => {
     expect(MODES.sort()).toEqual(['contrast', 'dark', 'light']);
+  });
+
+  for (const mode of LAYERED_MODES) {
+    it(`${mode} keeps the shell, the page and the card visibly apart`, () => {
+      const t = THEMES[mode];
+      // Measured off a dark app UI that does read as layered: ~1.28 between
+      // adjacent surfaces. 1.15 is the floor this holds, which is well clear
+      // of the 1.10 the old dark mode managed and still leaves room for a
+      // palette that wants to be quieter than the reference.
+      /*
+        Two floors, because the two modes have different physics.
+
+        A dark ground has room: the reference runs ~1.28 between adjacent
+        surfaces and this mode gets 1.17 / 1.22 / 1.25. A light ground does
+        not -- the page is already a tint and the card is already near-white,
+        so Keylime to Cream is 1.14 and no amount of taste will make it 1.28.
+
+        So each adjacent step must be visible at all (1.12, comfortably above
+        the 1.10 the old dark mode managed), and the SHELL-TO-CARD total, which
+        is what the eye actually reads as depth, must clear 1.35.
+      */
+      expect(contrast(t.surfaceSunken, t.bg)).toBeGreaterThanOrEqual(1.12);
+      expect(contrast(t.bg, t.surface)).toBeGreaterThanOrEqual(1.12);
+      expect(contrast(t.surfaceSunken, t.surface)).toBeGreaterThanOrEqual(1.35);
+    });
+  }
+
+  it('leaves contrast mode flat, because a tonal step is no help in sunlight', () => {
+    const t = THEMES.contrast;
+    expect(t.surfaceSunken).toBe(t.surface);
+    expect(t.bg).toBe(t.surface);
+    // And the two decorative imports resolve to nothing, rather than being
+    // skipped by a rule somebody could delete.
+    expect(t.heroFrom).toBe(t.heroTo);
+    expect(t.glass).toBe('#ffffff');
   });
 });
 

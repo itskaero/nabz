@@ -88,7 +88,14 @@ export function CaseloadPanel({
           Who you have seen, by month. Opening a row opens that patient’s chart
           — nothing here is copied onto the script you are writing.
         </p>
-        <div className="month-strip" role="tablist" aria-label="Month">
+        {/*
+          The month strip stays a tablist rather than becoming a segmented
+          control: a segmented control is for a handful of fixed choices that
+          all fit, and this list grows by one every month and scrolls. It takes
+          the segmented LOOK — a sunken track with the selected month lifted
+          out of it — without claiming a shape it cannot keep.
+        */}
+        <div className="month-strip segmented-track" role="tablist" aria-label="Month">
           {months.map((m) => (
             <button
               key={m.key}
@@ -116,7 +123,17 @@ export function CaseloadPanel({
                 key={row.patientId}
                 onClick={() => row.patientId && onOpenChart(row.patientId)}
               >
-                <div style={{ minWidth: 0 }}>
+                {/*
+                  The initial, as the chip the reference rows lead with. It
+                  identifies nothing by itself — two Muhammads share an M, and
+                  this app exists partly because a previous version treated a
+                  name as an identity. It is a place for the eye to land while
+                  scanning a column, and the name beside it is what is read.
+                */}
+                <span className="metric-chip" aria-hidden="true">
+                  {(row.name || '?').trim().charAt(0).toUpperCase()}
+                </span>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="who">{row.name || 'Unnamed'}</div>
                   <DiagnosisTags row={row} />
                 </div>

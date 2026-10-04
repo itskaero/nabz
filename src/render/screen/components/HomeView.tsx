@@ -51,8 +51,20 @@ export function HomeView({
   return (
     <div className="body">
       <div className="card setup-card">
-        <h2 className="setup-title">Set up this device</h2>
-        <p className="setup-summary">{summary(steps)}</p>
+        {/*
+          The one gradient, and this is where it earns its place.
+
+          Setup is the screen a doctor sees before the product has done
+          anything for them, and the only one with room to look like something
+          rather than like a form. Every other screen is a working surface with
+          twenty cards on it, where a luminous field behind each one would read
+          as noise. `contrast` mode resolves both stops to white, so the mode
+          that exists for sunlight does not get a gradient it cannot afford.
+        */}
+        <div className="hero-band setup-hero">
+          <h2 className="setup-title">Set up this device</h2>
+          <p className="setup-summary">{summary(steps)}</p>
+        </div>
         <SetupChecklist steps={steps} onGo={onGo} />
         <button className="btn" onClick={onStart} disabled={!canStart}>
           {canStart ? 'Write a script' : 'Finish the steps above first'}

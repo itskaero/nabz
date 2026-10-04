@@ -258,12 +258,20 @@ export function DosingReview({ draft }: { draft: Draft }) {
             </div>
             </div>
             <div className="review-state">
+              {/*
+                Filled, not outlined, and each one carries its word.
+
+                A queue of 115 rows is scanned rather than read, and an
+                outlined pill at 11px is invisible in a scan. The word stays
+                because a filled green pill and a filled amber one are the same
+                pill to eight per cent of men.
+              */}
               {entry.reason === 'wording-changed' ? (
-                <span className="tag flag-high">dose changed since sign-off</span>
+                <span className="pill-solid bad">dose changed since sign-off</span>
               ) : entry.reason ? (
-                <span className="tag is-empty">not signed</span>
+                <span className="pill-solid warn">not signed</span>
               ) : (
-                <span className="pill good">
+                <span className="pill-solid good">
                   {pack.dosingReview?.[entry.key]?.reviewedBy} ·{' '}
                   {pack.dosingReview?.[entry.key]?.date}
                 </span>

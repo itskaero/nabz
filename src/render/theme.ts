@@ -148,6 +148,16 @@ export type Density = 'comfortable' | 'compact';
 export interface ThemeTokens {
   /** page behind everything */
   bg: string;
+  /**
+   * The shell BEHIND the page: the nav rail, the bottom bar, the window chrome.
+   *
+   * The third tonal step, and the one that was missing. Every reference app
+   * worth looking at gets its depth from three surfaces -- shell, page, card --
+   * rather than from borders, and nabz had two. On a dark ground the shell is
+   * the darkest of the three; on a light one it is the most tinted, because
+   * the card has nowhere brighter to go than white.
+   */
+  surfaceSunken: string;
   /** cards, bars, inputs */
   surface: string;
   /** modals and popovers, which must read as ABOVE a card */
@@ -211,6 +221,33 @@ export interface ThemeTokens {
   shadow2: string;
 
   /**
+   * The fill of a bar that floats OVER scrolling content.
+   *
+   * Translucent, with `backdrop-filter` behind it, so the content scrolling
+   * under the sticky action bar is visible as movement rather than being cut
+   * off at a hard edge. Deliberately NOT used for anything carrying text that
+   * must be read against unknown content -- a dose, a warning, a name -- since
+   * translucency makes the contrast of that text a function of whatever
+   * happens to be underneath, which is not a thing that can be tested.
+   *
+   * In `contrast` mode this is opaque, which is how the mode stays a
+   * guarantee rather than a preference.
+   */
+  glass: string;
+  glassLine: string;
+
+  /**
+   * The one gradient, as two stops.
+   *
+   * One per screen and no more: the references each use a single luminous
+   * field to carry the eye to the thing that matters, and a product that put a
+   * gradient behind every card would have none. Stays inside the botanical
+   * family -- the references' cyan and lilac are their brands, not ours.
+   */
+  heroFrom: string;
+  heroTo: string;
+
+  /**
    * PAPER IS PAPER.
    *
    * The preview sheet is white with near-black ink in every mode, including
@@ -236,6 +273,15 @@ const LIGHT: ThemeTokens = {
     character with the cards still reading as the thing you work in.
   */
   bg: '#e1f4df',
+  /*
+    Mint, a step DEEPER than the keylime ground.
+
+    On a light ground the card is already as bright as a card can be, so the
+    third tone has to come from below: the rail and the bottom bar sink into
+    Mint while the page stays Keylime and the cards stay Cream. Same three-step
+    structure as a dark shell, built the only way round that works in light.
+  */
+  surfaceSunken: '#c7e2cb',
   surface: '#fffefc',
   surfaceRaised: '#ffffff',
   ink: '#222222',
@@ -250,7 +296,16 @@ const LIGHT: ThemeTokens = {
   // Border Mist, exactly as the system specifies -- 1.15:1 on cream, which is
   // a hairline and must never be the only thing marking a boundary.
   lineSoft: '#efeeeb',
-  lineStrong: '#6f8273',
+  /*
+    Darkened a step with the shell.
+
+    This is the border of a control whose boundary is its only affordance, and
+    WCAG 1.4.11 wants 3:1 against whatever it sits on. #6f8273 cleared that on
+    the page and the card but measured 2.96 on the new sunken shell -- which is
+    exactly where the segmented control's selected segment lives. 3.27 there,
+    and still only a hairline's weight.
+  */
+  lineStrong: '#687b6c',
 
   // Forest Ink, and nothing else, is the action colour. `accentInk` is the
   // same value rather than a darker step: the system has one green, and at
@@ -300,6 +355,15 @@ const LIGHT: ThemeTokens = {
   shadow1: '0 1px 2px rgba(18, 38, 24, 0.05), 0 4px 12px rgba(18, 38, 24, 0.05)',
   shadow2: '0 1px 3px rgba(18, 38, 24, 0.1), 0 10px 28px rgba(18, 38, 24, 0.09)',
 
+  glass: 'rgba(255, 254, 252, 0.82)',
+  glassLine: 'rgba(15, 62, 23, 0.1)',
+
+  // Sage through Mint: the desk the paper lies on, lifting into the panel
+  // tint. A sweep with real luminosity in it, and no hue the palette does not
+  // already own.
+  heroFrom: '#b1dbb8',
+  heroTo: '#e1f4df',
+
   paper: '#ffffff',
   // NOT Charcoal. This is a picture of what the printer produces, and the
   // print palette is frozen -- `palette.ink` is the value a clinician signed
@@ -314,15 +378,35 @@ const LIGHT: ThemeTokens = {
  * whole thing stays recognisably the same product with the lights off.
  */
 const DARK: ThemeTokens = {
-  bg: '#0c1413',
-  surface: '#141e1d',
-  surfaceRaised: '#1c2827',
-  ink: '#e8efed',
-  inkSoft: '#a8b7b3',
-  inkFaint: '#8b9a96',
-  line: '#2b3937',
-  lineSoft: '#212d2c',
-  lineStrong: '#657672',
+  /*
+    OPENED UP, against measurements rather than taste.
+
+    The four surfaces used to run #0c1413 / #141e1d / #1c2827, which is a 1.10
+    contrast step between each -- near enough to flat that the layering was a
+    fact about the hex codes rather than something an eye could see, and the
+    whole mode read as one dark field with hairlines drawn on it.
+
+    Sampling a dark app UI that does read as layered gives steps of 1.27-1.29,
+    which is a luminance roughly doubling each time. These four are built to
+    that separation (1.17 / 1.22 / 1.25, at luminances 2.3x, 1.8x and 1.6x
+    apart) and are correspondingly lighter overall -- still a dark room's
+    screen, no longer a black one.
+
+    The green-grey cast is unchanged. A product whose hue family changes when
+    the lights go out is a product with two brands.
+  */
+  surfaceSunken: '#131615',
+  bg: '#212524',
+  surface: '#2e3432',
+  surfaceRaised: '#3b4341',
+  ink: '#eef3f1',
+  inkSoft: '#b8c6c1',
+  // Raised with the surfaces. #8b9a96 measured 3.86:1 on the new raised
+  // surface -- under the 4.5 body floor, and this token is every field label.
+  inkFaint: '#a3b2ad',
+  line: '#444d4a',
+  lineSoft: '#39413f',
+  lineStrong: '#7d8c87',
 
   /*
     Light accent carrying dark ink -- a #0f3e17 button on a #141e1d card is a
@@ -333,27 +417,43 @@ const DARK: ThemeTokens = {
     product whose brand hue changes when the lights go out is a product with
     two brands, and the doctor switching to dark at 03:00 is the same doctor.
   */
-  accent: '#86d196',
-  accentInk: '#a6e2b0',
-  accentWash: '#102b16',
-  onAccent: '#06240f',
+  /*
+    More chroma, for the same reason the surfaces opened up.
 
-  danger: '#ff8b84',
-  dangerInk: '#ffa8a2',
-  dangerWash: '#341917',
+    #86d196 is a sage that goes grey against a lifted surface. The reference
+    accent carries real saturation and is what makes a dark shell read as
+    designed rather than as absent -- so this one does too, without leaving
+    green.
+  */
+  accent: '#6edc8c',
+  accentInk: '#8ee9a5',
+  accentWash: '#1d3a26',
+  onAccent: '#07280f',
+
+  danger: '#ff938c',
+  dangerInk: '#ffb0aa',
+  dangerWash: '#452220',
   onDanger: '#2b0b09',
 
-  caution: '#e3ab63',
-  cautionInk: '#f0c68f',
-  cautionWash: '#2e2415',
+  caution: '#eab470',
+  cautionInk: '#f5cf9c',
+  cautionWash: '#3d3019',
 
-  patientTint: '#0e1f12',
-  sheet: '#070f08',
+  patientTint: '#263230',
+  sheet: '#161a19',
 
-  focus: '#a6e2b0',
+  focus: '#8ee9a5',
   scrim: 'rgba(0, 0, 0, 0.6)',
-  shadow1: '0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.35)',
-  shadow2: '0 1px 3px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.45)',
+  // Deeper, now that the surfaces they separate are lighter: a shadow that was
+  // readable under a near-black card is invisible under a lifted one.
+  shadow1: '0 1px 2px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4)',
+  shadow2: '0 1px 3px rgba(0, 0, 0, 0.65), 0 12px 32px rgba(0, 0, 0, 0.5)',
+
+  glass: 'rgba(46, 52, 50, 0.78)',
+  glassLine: 'rgba(238, 243, 241, 0.1)',
+
+  heroFrom: '#1d3a26',
+  heroTo: '#212524',
 
   paper: '#ffffff',
   paperInk: '#14201f',
@@ -367,6 +467,16 @@ const DARK: ThemeTokens = {
  */
 const CONTRAST: ThemeTokens = {
   bg: '#ffffff',
+  /*
+    FLAT, on purpose, and the one mode that takes none of this.
+
+    Layering, translucency and gradients all work by making surfaces differ by
+    a little. This mode exists for a phone in direct sunlight and for a doctor
+    who is sixty, where "a little" is nothing at all -- so the shell is the
+    page is the card, every boundary is a hard 3:1 line, and the glass and the
+    gradient below resolve to flat white.
+  */
+  surfaceSunken: '#ffffff',
   surface: '#ffffff',
   surfaceRaised: '#ffffff',
   ink: '#000000',
@@ -400,6 +510,12 @@ const CONTRAST: ThemeTokens = {
   scrim: 'rgba(0, 0, 0, 0.5)',
   shadow1: '0 0 0 1px #31403c',
   shadow2: '0 0 0 1px #31403c',
+
+  glass: '#ffffff',
+  glassLine: '#31403c',
+
+  heroFrom: '#ffffff',
+  heroTo: '#ffffff',
 
   paper: '#ffffff',
   paperInk: '#000000',
@@ -524,6 +640,7 @@ const LEGACY_ALIASES: Record<string, keyof ThemeTokens> = {
 
 const KEBAB: Array<[keyof ThemeTokens, string]> = [
   ['bg', '--bg'],
+  ['surfaceSunken', '--surface-sunken'],
   ['surface', '--surface'],
   ['surfaceRaised', '--surface-raised'],
   ['ink', '--ink'],
@@ -549,6 +666,10 @@ const KEBAB: Array<[keyof ThemeTokens, string]> = [
   ['scrim', '--scrim'],
   ['shadow1', '--shadow'],
   ['shadow2', '--shadow-lifted'],
+  ['glass', '--glass'],
+  ['glassLine', '--glass-line'],
+  ['heroFrom', '--hero-from'],
+  ['heroTo', '--hero-to'],
   ['paper', '--paper'],
   ['paperInk', '--paper-ink'],
 ];
