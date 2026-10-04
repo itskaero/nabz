@@ -95,7 +95,16 @@ export interface DoctorProfile {
    */
   roleGate: RoleGate;
   uiLocale: Locale;
-  /** ISO date of the last successful export; drives the backup nag */
+  /**
+   * @deprecated Kept so existing stored profiles still parse, and read by
+   * nothing. The real record is `db.lastBackupAt()` in the `meta` store,
+   * stamped by `exportEncrypted` itself.
+   *
+   * This travelled INSIDE the backup file, so restoring onto a fresh phone
+   * made that phone claim a backup it had never taken -- while the setup
+   * checklist, reading the meta store, correctly said it had not. Two records
+   * of one fact, disagreeing on the one device where it matters most.
+   */
   lastBackupAt?: string;
 }
 

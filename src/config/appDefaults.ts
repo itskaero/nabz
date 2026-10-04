@@ -32,6 +32,13 @@ export interface Margins {
 
 export type SectionId =
   | 'problems'
+  /**
+   * The admission itself: when, which ward, what happened while they were
+   * there. The ONE section a discharge summary needs that a prescription does
+   * not -- everything else it prints is a block this app already had, which is
+   * the argument for `domain/documents` being a registry rather than a fork.
+   */
+  | 'stay'
   | 'examination'
   | 'diagnosis'
   | 'labs'
@@ -75,6 +82,10 @@ export const appDefaults: AppDefaults = {
   margins: { topMm: 16, rightMm: 14, bottomMm: 16, leftMm: 14 },
   sectionLanguage: {
     problems: { primary: 'en' },
+    // The record of an admission, read by the next clinician. English, like
+    // every other clinical-register section -- what the FAMILY takes home from
+    // a discharge goes through the advice tiers, which are already bilingual.
+    stay: { primary: 'en' },
     examination: { primary: 'en' },
     diagnosis: { primary: 'en' },
     // English only: a lab technician reads "CBC", and a transliteration would

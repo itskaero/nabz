@@ -27,14 +27,40 @@ describe('paediatrics pack', () => {
     }
   });
 
-  it('cites only openly licensed sources in the shipped seed', () => {
-    // Consult-and-cite applies to BNFC/Nelson/Harriet Lane/Lexicomp/Micromedex:
-    // a clinician authors those entries. Nothing transcribed in bulk from them
-    // may ship in the repo.
+  /*
+    This test used to ban the NAME of a licensed source anywhere in a reference,
+    as a proxy for the thing it actually cared about: nothing transcribed in
+    bulk from BNFC, Nelson, Harriet Lane, Lexicomp or Micromedex may ship here.
+
+    The proxy stopped working the moment the pack grew rows that were WRITTEN
+    rather than transcribed. "BNF for Children, cefaclor monograph — check the
+    current edition before signing" names BNFC in order to say nobody has
+    copied anything out of it, which is the opposite of the banned act, and
+    naming no source at all would leave the reviewer with nowhere to look.
+
+    So the rule is now the real one. A row may name a licensed source when it
+    is `drafted` (written to be checked, and saying so) or `verified` (a
+    clinician opened that source and signed it). What it may never be is
+    neither: a row wearing a licensed citation with nothing behind it is
+    claiming to be a transcription, and that claim is the whole problem.
+  */
+  it('never wears a licensed citation it has not earned', () => {
     const licensed = /BNFC|BNF for Children|Nelson|Harriet Lane|Lexicomp|Micromedex/i;
     for (const row of paediatrics.dosing) {
-      expect(licensed.test(row.reference), `${row.generic} cites a licensed source`).toBe(false);
+      if (!licensed.test(row.reference)) continue;
+      expect(
+        row.drafted === true || row.verified === true,
+        `${row.generic} cites a licensed source while neither drafted nor signed off`,
+      ).toBe(true);
     }
+  });
+
+  it('keeps the transcribed WHO rows and the drafted ones apart', () => {
+    // The ten rows that came out of open WHO guidance must not quietly acquire
+    // the drafted mark, and nothing drafted may pose as one of them.
+    const fromWho = paediatrics.dosing.filter((r) => /^WHO/.test(r.reference) && !/check/i.test(r.reference));
+    expect(fromWho.length).toBeGreaterThanOrEqual(10);
+    for (const row of fromWho) expect(row.drafted).toBeUndefined();
   });
 
   it('ships every dosing row as unverified until a clinician signs it off', () => {
@@ -94,6 +120,26 @@ describe('paediatrics pack', () => {
     expect(paediatrics.moduleConfig?.growth?.defaultReference).toBe('WHO');
   });
 
+  it('enables the malnutrition module and names the protocol it follows', () => {
+    expect(paediatrics.modules).toContain('malnutrition');
+    const cfg = paediatrics.moduleConfig?.malnutrition;
+    expect(cfg?.reference).toMatch(/Pakistan/);
+    // Pakistan's national programme admits on MUAC or oedema alone. This is a
+    // deliberate divergence from WHO 2023, which also admits on
+    // weight-for-height, and it changes who gets treated -- so it is asserted
+    // rather than left to whoever next edits the pack.
+    expect(cfg?.criteria).toEqual(['oedema', 'muac']);
+    expect(cfg?.muacSevereMm).toBe(115);
+    expect(cfg?.muacModerateMm).toBe(125);
+  });
+
+  it('offers MUAC as a plottable growth measure too', () => {
+    // Classifying once and following a child through a feeding programme are
+    // different jobs; MUAC-for-age is an ordinary age-keyed chart and serves
+    // the second.
+    expect(paediatrics.moduleConfig?.growth?.measures).toContain('muac');
+  });
+
   it('does not chip-ify diagnosis', () => {
     // Diagnosis is judgement; chips push click-convenience over it (PRODUCT.md 8).
     expect(Object.keys(paediatrics.findingsPalette)).not.toContain('diagnosis');
@@ -105,8 +151,17 @@ describe('pack registry', () => {
     expect(Object.keys(contentPacks).sort()).toEqual(['medicine', 'paediatrics']);
   });
 
-  it('badges paediatrics as clinician-verified and medicine as a draft', () => {
-    expect(paediatrics.verified).toBe(true);
+  it('badges BOTH shipped packs as drafts, because neither is signed off', () => {
+    /*
+      This test used to assert `paediatrics.verified === true`, which is how
+      the false claim survived: the pack said it was clinician-verified, the
+      website repeated it, and a test locked it in -- while the author was the
+      string 'Pack author' and not one dosing row was signed by anybody.
+
+      `validateContentPack` now refuses `verified: true` while any dosing row
+      is unreviewed, so this flips back only by being earned.
+    */
+    expect(paediatrics.verified).toBe(false);
     expect(medicine.verified).toBe(false);
   });
 });
@@ -252,6 +307,60 @@ describe('medicine pack', () => {
     expect(medicine.sigDefaults?.slots?.administer).toBe('take');
     const medicinePhrases = phrasesForShippedPack(medicine.id);
     expect(medicinePhrases['ur-PK'].vocab.administer?.take).toBe('لیں');
+  });
+});
+
+describe('the malnutrition protocol is configured or the module is off', () => {
+  const enable = (cfg: unknown) =>
+    packErrors({
+      ...paediatrics,
+      modules: ['malnutrition'],
+      moduleConfig: cfg === undefined ? {} : { malnutrition: cfg },
+    } as typeof paediatrics).filter((e) => e.where.includes('malnutrition'));
+
+  it('refuses the module with no protocol at all', () => {
+    // There is no safe default: WHO 2023 and national programmes use
+    // different case definitions, and picking one silently would apply
+    // another country's criteria to a clinic's caseload.
+    const errors = enable(undefined);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]?.severity).toBe('error');
+  });
+
+  it('refuses cut-offs with no citation', () => {
+    const errors = enable({
+      criteria: ['muac'], muacSevereMm: 115, muacModerateMm: 125,
+      whzSevere: -3, whzModerate: -2, reference: '   ',
+    });
+    expect(errors.some((e) => e.where.endsWith('reference'))).toBe(true);
+  });
+
+  it('refuses a protocol that admits on nothing', () => {
+    const errors = enable({
+      criteria: [], muacSevereMm: 115, muacModerateMm: 125,
+      whzSevere: -3, whzModerate: -2, reference: 'somewhere',
+    });
+    expect(errors.some((e) => e.where.endsWith('criteria'))).toBe(true);
+  });
+
+  it('refuses cut-offs that are the wrong way round', () => {
+    // A severe threshold above the moderate one would classify every
+    // moderately wasted child as severe and never fire the moderate band.
+    const muac = enable({
+      criteria: ['muac'], muacSevereMm: 125, muacModerateMm: 115,
+      whzSevere: -3, whzModerate: -2, reference: 'somewhere',
+    });
+    expect(muac.some((e) => e.message.includes('MUAC'))).toBe(true);
+
+    const whz = enable({
+      criteria: ['whz'], muacSevereMm: 115, muacModerateMm: 125,
+      whzSevere: -2, whzModerate: -3, reference: 'somewhere',
+    });
+    expect(whz.some((e) => e.message.includes('WHZ'))).toBe(true);
+  });
+
+  it('accepts the shipped paediatric protocol', () => {
+    expect(packErrors(paediatrics).filter((e) => e.where.includes('malnutrition'))).toEqual([]);
   });
 });
 

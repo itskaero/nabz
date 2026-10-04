@@ -27,6 +27,27 @@ export interface GrowthChart {
   data: Record<Sex, LmsRow[]>;
 }
 
+/**
+ * A weight-for-length or weight-for-height table.
+ *
+ * Kept OUT of `charts` on purpose. Every consumer of `GrowthChart` -- and
+ * `selectChart`/`inRange` in particular -- compares `x` against an age in
+ * days. These are keyed by centimetres, so a cm table in that list would be
+ * matched on the wrong axis and answer confidently rather than refusing.
+ *
+ * `axis` is not decoration: `lengthCm` is recumbent (how an infant is
+ * measured) and `heightCm` is standing, the two overlap between 65 and 110cm,
+ * and they are not interchangeable there. Whoever reads this must pick by how
+ * the child was actually measured -- see `domain/modules/malnutrition.ts`.
+ */
+export interface WastingTable {
+  axis: 'lengthCm' | 'heightCm';
+  /** 'weight-for-length' | 'weight-for-height' */
+  chart: string;
+  unit: string;
+  data: Record<Sex, LmsRow[]>;
+}
+
 export interface GrowthTables {
   generatedAt: string;
   editions: Record<GrowthReference, string>;
@@ -38,6 +59,12 @@ export interface GrowthTables {
     rows: number;
   }>;
   charts: GrowthChart[];
+  /**
+   * Optional so a bundle generated before these tables existed still loads.
+   * A module that needs them refuses rather than computing when they are
+   * absent, the same way `compute` refuses when no chart covers a child.
+   */
+  wasting?: WastingTable[];
 }
 
 export interface GrowthInput {

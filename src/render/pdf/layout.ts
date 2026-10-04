@@ -26,8 +26,10 @@ import { composeSig, drugLabel } from '@domain/sig.ts';
 import { composeAdvice, orderAdvice } from '@domain/advice.ts';
 import { composeExamination } from '@domain/exam.ts';
 import { composeLabs } from '@domain/labs.ts';
+import type { DocumentKindMeta, PrintBlockId } from '@domain/documents/index.ts';
+import { kindOf, printOrder } from '@domain/documents/index.ts';
 import type { TextRun } from '@domain/text.ts';
-import type { AppDefaults } from '@config/appDefaults.ts';
+import type { AppDefaults, SectionId } from '@config/appDefaults.ts';
 import { PAPER } from '@config/appDefaults.ts';
 import type { DoctorProfile } from '@config/doctorProfile.ts';
 import { languageFor } from '@config/doctorProfile.ts';
@@ -459,6 +461,21 @@ function sectionHeading(b: DocBuilder, label: string, tag?: string): void {
   b.y += 5;
 }
 
+/**
+ * A heading INSIDE a section -- "Procedures", within the hospital stay.
+ *
+ * No rule beneath it and no language tag, so the section rule above stays the
+ * only horizontal line in the block: two rules that close to each other read
+ * as a table the document does not have.
+ */
+function subHeading(b: DocBuilder, label: string): void {
+  const line = layoutLine(en(label), 'ltr', { sizePt: T.body, strong: true });
+  b.ensure(line.heightPt + 3);
+  b.y += 2;
+  b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.inkSoft });
+  b.y += line.heightPt + 1;
+}
+
 function bulletList(b: DocBuilder, items: string[], strong = false): void {
   for (const item of items) {
     const text = item.trim();
@@ -758,8 +775,214 @@ function drawAdvice(b: DocBuilder, items: AdviceItem[], ctx: RenderContext): voi
 
 // --- the document ----------------------------------------------------------
 
+type Painter = (b: DocBuilder, ctx: RenderContext) => void;
+
+/**
+ * Printed block -> how to draw it.
+ *
+ * `Record<PrintBlockId, Painter>` over the closed union is the same guarantee
+ * `MODULE_PANEL` relies on: adding a block id anywhere makes this file fail to
+ * compile until it says how the block is drawn. A document kind cannot order a
+ * block the renderer has never heard of.
+ */
+const PAINT: Record<PrintBlockId, Painter> = {
+  problems: (b, ctx) => {
+    if (!ctx.rx.problems.length) return;
+    sectionHeading(b, sectionTitle(ctx, 'problems'), 'EN');
+    bulletList(b, ctx.rx.problems);
+    b.y += SECTION_GAP - 6;
+  },
+
+  /**
+   * The admission itself. English clinical register throughout -- what the
+   * family takes home is in `advice`, which is already vetted in both
+   * languages, so this block adds no translation surface (domain/documents).
+   */
+  stay: (b, ctx) => {
+    const stay = ctx.rx.stay;
+    if (!stay) return;
+    const dates = [
+      ['label.admitted', stay.admittedOn],
+      ['label.discharged', stay.dischargedOn],
+      ['label.ward', stay.ward],
+    ] as const;
+    const header = dates
+      .filter(([, v]) => v?.trim())
+      .map(([k, v]) => `${packStringFrom(ctx.packs, 'en', k)}: ${v}`)
+      .join('    ');
+    const hasBody = stay.course.length || stay.procedures.length || stay.condition?.trim();
+    if (!header && !hasBody) return;
+
+    sectionHeading(b, sectionTitle(ctx, 'stay'), 'EN');
+    if (header) {
+      const line = layoutLine(en(header), 'ltr', { sizePt: T.body, strong: true });
+      b.ensure(line.heightPt);
+      b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.ink });
+      b.y += line.heightPt + 2;
+    }
+    if (stay.course.length) {
+      // Prose, not bullets: a hospital course is a narrative and chopping it
+      // into dashes loses the ordering that makes it readable.
+      for (const para of stay.course) {
+        const lines = layoutParagraph(en(para), 'ltr', b.contentWidth, { sizePt: T.body });
+        b.ensure(paragraphHeight(lines));
+        lines.forEach((line) => {
+          b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.ink });
+          b.y += line.heightPt;
+        });
+        b.y += 2;
+      }
+    }
+    if (stay.procedures.length) {
+      subHeading(b, packStringFrom(ctx.packs, 'en', 'section.procedures'));
+      bulletList(b, stay.procedures);
+    }
+    if (stay.condition?.trim()) {
+      const text = `${packStringFrom(ctx.packs, 'en', 'label.condition')}: ${stay.condition.trim()}`;
+      const lines = layoutParagraph(en(text), 'ltr', b.contentWidth, {
+        sizePt: T.body,
+        strong: true,
+      });
+      b.ensure(paragraphHeight(lines));
+      lines.forEach((line) => {
+        b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.ink });
+        b.y += line.heightPt;
+      });
+    }
+    b.y += SECTION_GAP - 4;
+  },
+
+  examination: (b, ctx) => {
+    const examLines = composeExamination(
+      ctx.rx.examination,
+      (id) => ctx.pack.examSystems.find((sys) => sys.id === id)?.label ?? id,
+    );
+    if (!examLines.length) return;
+    sectionHeading(b, sectionTitle(ctx, 'examination'), 'EN');
+    for (const text of examLines) {
+      const lines = layoutParagraph(en(text), 'ltr', b.contentWidth, { sizePt: T.body });
+      b.ensure(paragraphHeight(lines));
+      lines.forEach((line) => {
+        b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.ink });
+        b.y += line.heightPt;
+      });
+    }
+    b.y += SECTION_GAP - 4;
+  },
+
+  diagnosis: (b, ctx) => {
+    if (!ctx.rx.diagnosis.length) return;
+    sectionHeading(b, sectionTitle(ctx, 'diagnosis'), 'EN');
+    bulletList(b, ctx.rx.diagnosis, true);
+    b.y += SECTION_GAP - 6;
+  },
+
+  /**
+   * Investigations. English only, so this is the cheap block: no bidi, no
+   * plural rules, no locale template. WHERE it lands is the document kind's
+   * decision (`printOrder`), not this function's.
+   */
+  labs: (b, ctx) => {
+    if (!ctx.rx.labs.length) return;
+    sectionHeading(b, sectionTitle(ctx, 'labs'), 'EN');
+    bulletList(b, composeLabs(ctx.rx.labs), true);
+    b.y += SECTION_GAP - 6;
+  },
+
+  /**
+   * A recorded clinical-tool result (eGFR, ...). Always recorded on save once
+   * a doctor records one (domain/prescription.ts's CalcResult); whether it
+   * PRINTS is this doctor's own setting -- off by default, because a raw
+   * creatinine-clearance figure on the patient's own copy is a choice, not a
+   * given.
+   */
+  calculations: (b, ctx) => {
+    if (!ctx.profile.printCalculations || !ctx.rx.calculations?.length) return;
+    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.calculations'), 'EN');
+    bulletList(b, composeCalculations(ctx.rx.calculations), true);
+    b.y += SECTION_GAP - 6;
+  },
+
+  medications: (b, ctx) => {
+    if (!ctx.rx.medications.length) return;
+    const lang = languageFor(ctx.profile, 'medications');
+    const tag = lang.secondary
+      ? `${lang.primary.toUpperCase()} · ${lang.secondary === 'ur-PK' ? 'UR' : lang.secondary.toUpperCase()}`
+      : lang.primary.toUpperCase();
+    sectionHeading(b, sectionTitle(ctx, 'medications'), tag);
+    ctx.rx.medications.forEach((line, i) => {
+      const plan = planMedicationRow(b, line, i + 1, ctx, lang);
+      // KEEP-TOGETHER: the whole row, both languages, moves to the next page
+      // rather than splitting. A drug on one sheet and its Urdu on another is a
+      // dosing hazard, not a typographic blemish.
+      b.ensure(plan.height);
+      drawMedicationRow(b, plan);
+    });
+    b.y += SECTION_GAP - 6;
+  },
+
+  advice: (b, ctx) => {
+    if (!ctx.rx.advice.length) return;
+    const lang = languageFor(ctx.profile, 'advice');
+    const tag = lang.secondary
+      ? `${lang.primary === 'ur-PK' ? 'UR' : lang.primary.toUpperCase()} · ${lang.secondary.toUpperCase()}`
+      : lang.primary.toUpperCase();
+    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.patientInstructions'), tag);
+    drawAdvice(b, ctx.rx.advice, ctx);
+  },
+
+  /**
+   * Follow-up. On a prescription that is an interval; on a discharge summary
+   * the interval is the least useful half, because the commonest failure of a
+   * discharge is nobody knowing WHOSE clinic the patient belongs to now.
+   */
+  followUp: (b, ctx) => {
+    const { rx, packs } = { rx: ctx.rx, packs: ctx.packs };
+    const parts: string[] = [];
+    if (rx.followUp) {
+      const q = rx.followUp.in;
+      parts.push(
+        `${packStringFrom(packs, 'en', 'label.followUp')}: ${q.value} ${q.unit}${q.value === 1 ? '' : 's'}`,
+      );
+    }
+    if (rx.stay?.followUpWith?.trim()) {
+      parts.push(`${packStringFrom(packs, 'en', 'label.followUpWith')}: ${rx.stay.followUpWith.trim()}`);
+    }
+    if (rx.stay?.followUpWhere?.trim()) {
+      parts.push(`${packStringFrom(packs, 'en', 'label.followUpWhere')}: ${rx.stay.followUpWhere.trim()}`);
+    }
+    if (!parts.length) return;
+    const lines = layoutParagraph(en(parts.join('    ')), 'ltr', b.contentWidth, {
+      sizePt: T.body,
+      strong: true,
+    });
+    b.ensure(paragraphHeight(lines) + 6);
+    b.y += 4;
+    lines.forEach((line) => {
+      b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.ink });
+      b.y += line.heightPt;
+    });
+  },
+};
+
+/**
+ * A section's printed heading, in the wording this document kind uses.
+ *
+ * A discharge summary's "Presenting complaints" is "On admission" and its
+ * "Investigations advised" is "Results" -- the same stored data, read at a
+ * different moment. Calling them the same thing would be a small lie that a
+ * reader of the printed page notices first.
+ */
+function sectionTitle(ctx: RenderContext, section: SectionId): string {
+  const kind = kindOf(ctx.rx);
+  const override = kind.sectionLabel[section];
+  if (override) return override;
+  return packStringFrom(ctx.packs, 'en', `section.${section}`);
+}
+
 export function buildDocument(ctx: RenderContext): DocumentModel {
-  const { rx, profile, pack } = ctx;
+  const { rx, profile } = ctx;
+  const kind: DocumentKindMeta = kindOf(rx);
   const b = new DocBuilder(ctx);
 
   drawLetterhead(b, ctx);
@@ -812,99 +1035,18 @@ export function buildDocument(ctx: RenderContext): DocumentModel {
     b.y += height + GAP;
   }
 
-  if (rx.problems.length) {
-    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.problems'), 'EN');
-    bulletList(b, rx.problems);
-    b.y += SECTION_GAP - 6;
-  }
+  /*
+    Blocks, in the order this KIND of document asks for them.
 
-  const examLines = composeExamination(
-    rx.examination,
-    (id) => pack.examSystems.find((s) => s.id === id)?.label ?? id,
-  );
-  if (examLines.length) {
-    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.examination'), 'EN');
-    for (const text of examLines) {
-      const lines = layoutParagraph(en(text), 'ltr', b.contentWidth, { sizePt: T.body });
-      b.ensure(paragraphHeight(lines));
-      lines.forEach((line) => {
-        b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.ink });
-        b.y += line.heightPt;
-      });
-    }
-    b.y += SECTION_GAP - 4;
-  }
-
-  if (rx.diagnosis.length) {
-    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.diagnosis'), 'EN');
-    bulletList(b, rx.diagnosis, true);
-    b.y += SECTION_GAP - 6;
-  }
-
-  /**
-   * Investigations. English only, so this is the cheap section: no bidi, no
-   * plural rules, no locale template. Placement follows the doctor's setting --
-   * some print "Advised" under the diagnosis, others below the Rx.
-   */
-  const placement = profile.labsPlacement ?? ctx.defaults.labsPlacement;
-  const drawLabs = () => {
-    if (!rx.labs.length) return;
-    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.labs'), 'EN');
-    bulletList(b, composeLabs(rx.labs), true);
-    b.y += SECTION_GAP - 6;
-  };
-
-  if (placement === 'after-diagnosis') drawLabs();
-
-  /**
-   * A recorded clinical-tool result (eGFR, ...). Always recorded on save once
-   * a doctor records one (domain/prescription.ts's CalcResult); whether it
-   * PRINTS is this doctor's own setting -- off by default, because a raw
-   * creatinine-clearance figure on the patient's own copy is a choice, not a
-   * given. English-only clinical-register block, same tag style as labs.
-   */
-  if (profile.printCalculations && rx.calculations?.length) {
-    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.calculations'), 'EN');
-    bulletList(b, composeCalculations(rx.calculations), true);
-    b.y += SECTION_GAP - 6;
-  }
-
-  if (rx.medications.length) {
-    const lang = languageFor(profile, 'medications');
-    const tag = lang.secondary
-      ? `${lang.primary.toUpperCase()} · ${lang.secondary === 'ur-PK' ? 'UR' : lang.secondary.toUpperCase()}`
-      : lang.primary.toUpperCase();
-    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.medications'), tag);
-    rx.medications.forEach((line, i) => {
-      const plan = planMedicationRow(b, line, i + 1, ctx, lang);
-      // KEEP-TOGETHER: the whole row, both languages, moves to the next page
-      // rather than splitting. A drug on one sheet and its Urdu on another is a
-      // dosing hazard, not a typographic blemish.
-      b.ensure(plan.height);
-      drawMedicationRow(b, plan);
-    });
-    b.y += SECTION_GAP - 6;
-  }
-
-  if (placement === 'after-medications') drawLabs();
-
-  if (rx.advice.length) {
-    const lang = languageFor(profile, 'advice');
-    const tag = lang.secondary
-      ? `${lang.primary === 'ur-PK' ? 'UR' : lang.primary.toUpperCase()} · ${lang.secondary.toUpperCase()}`
-      : lang.primary.toUpperCase();
-    sectionHeading(b, packStringFrom(ctx.packs, 'en', 'section.patientInstructions'), tag);
-    drawAdvice(b, rx.advice, ctx);
-  }
-
-  if (rx.followUp) {
-    const q = rx.followUp.in;
-    const text = `${packStringFrom(ctx.packs, 'en', 'label.followUp')}: ${q.value} ${q.unit}${q.value === 1 ? '' : 's'}`;
-    const line = layoutLine(en(text), 'ltr', { sizePt: T.body, strong: true });
-    b.ensure(line.heightPt + 6);
-    b.y += 4;
-    b.push({ op: 'text', x: b.left, y: b.y + line.ascentPt, line, color: C.ink });
-    b.y += line.heightPt;
+    This used to be one hardcoded sequence with a single `if` in the middle for
+    the doctor's labs setting. It worked, and it was also the reason a second
+    kind of document would have been a second copy of this function -- which is
+    how a fix to the medication row lands in one of them and not the other two
+    years later. `domain/documents` now owns the order; this file owns how each
+    block is drawn, and neither knows the other's business.
+  */
+  for (const block of printOrder(kind, profile.labsPlacement ?? ctx.defaults.labsPlacement)) {
+    PAINT[block](b, ctx);
   }
 
   b.finishStrips();

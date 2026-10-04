@@ -89,7 +89,21 @@ export function parsePackFile(text: string): PackFile {
  * exam chips, or pulling in a reviewed Urdu phrase set without losing the
  * medicines you have spent months reconciling against DRAP.
  */
-export type PackSection = 'all' | 'formulary' | 'dosing' | 'phrases' | 'advice' | 'exam' | 'labs';
+export type PackSection =
+  | 'all'
+  | 'formulary'
+  | 'dosing'
+  | 'phrases'
+  | 'advice'
+  | 'exam'
+  | 'labs'
+  /**
+   * The background history, the immunisation schedule and the milestone list
+   * together: all three are the "what this specialty asks about a person"
+   * half of a pack, and all three are the ones a sister clinic would want to
+   * take without taking a formulary.
+   */
+  | 'history';
 
 export const SECTION_LABEL: Record<PackSection, string> = {
   all: 'Everything',
@@ -99,6 +113,7 @@ export const SECTION_LABEL: Record<PackSection, string> = {
   advice: 'Advice & red flags',
   exam: 'Exam chips',
   labs: 'Investigations',
+  history: 'Background history',
 };
 
 /** How many rows a section carries, for telling someone what they are replacing. */
@@ -122,6 +137,12 @@ export function sectionSize(
       return Object.values(pack.findingsPalette).reduce((n, f) => n + f.length, 0);
     case 'labs':
       return Object.values(pack.labsPalette).reduce((n, l) => n + l.length, 0);
+    case 'history':
+      return (
+        (pack.historySections ?? []).reduce((n, sec) => n + sec.fields.length, 0) +
+        (pack.immunisationSchedule?.visits.length ?? 0) +
+        (pack.milestones?.items.length ?? 0)
+      );
     default:
       return pack.formularySeed.length + pack.dosing.length;
   }
@@ -160,6 +181,9 @@ export function mergeSection(
 
     case 'dosing':
       pack.dosing = structuredClone(incoming.pack.dosing);
+      if (incoming.pack.dosingReview) {
+        pack.dosingReview = structuredClone(incoming.pack.dosingReview);
+      } else delete pack.dosingReview;
       break;
 
     case 'exam':
@@ -172,12 +196,37 @@ export function mergeSection(
       pack.labsPalette = structuredClone(incoming.pack.labsPalette);
       break;
 
+    case 'history':
+      // Deleted when the incoming pack has none, rather than left alone:
+      // importing the history section FROM a pack without one must clear it,
+      // not leave the old questionnaire half in place beside the new nothing.
+      // (`exactOptionalPropertyTypes` is why this is a delete and not an
+      // assignment of undefined -- which is the clearer intent anyway.)
+      if (incoming.pack.historySections) {
+        pack.historySections = structuredClone(incoming.pack.historySections);
+      } else delete pack.historySections;
+      if (incoming.pack.immunisationSchedule) {
+        pack.immunisationSchedule = structuredClone(incoming.pack.immunisationSchedule);
+      } else delete pack.immunisationSchedule;
+      if (incoming.pack.milestones) {
+        pack.milestones = structuredClone(incoming.pack.milestones);
+      } else delete pack.milestones;
+      break;
+
     case 'advice':
       pack.advicePacks = structuredClone(incoming.pack.advicePacks);
+      // Both sign-off maps travel with the advice section, or a sectional
+      // import silently discards somebody's review and the pack looks
+      // reviewed-by-nobody for no reason a reader could see.
       if (incoming.pack.redFlagReview) {
         pack.redFlagReview = structuredClone(incoming.pack.redFlagReview);
       } else {
         delete pack.redFlagReview;
+      }
+      if (incoming.pack.adviceReview) {
+        pack.adviceReview = structuredClone(incoming.pack.adviceReview);
+      } else {
+        delete pack.adviceReview;
       }
       for (const locale of locales) {
         const from = incoming.phrases[locale];
@@ -242,6 +291,11 @@ export function sliceForExport(
   out.advicePacks = { tier1: [], tier2: [] };
   out.sigTemplates = [];
   delete out.redFlagReview;
+  delete out.adviceReview;
+  delete out.dosingReview;
+  delete out.historySections;
+  delete out.immunisationSchedule;
+  delete out.milestones;
 
   for (const locale of locales) {
     outPhrases[locale] = {
@@ -260,6 +314,16 @@ export function sliceForExport(
       break;
     case 'dosing':
       out.dosing = structuredClone(pack.dosing);
+      /*
+        The sign-off travels with the doses.
+
+        A `dosingReview` entry is keyed to a row and fingerprints its numbers;
+        separated from the rows it signs it is noise, and worse, a dosing slice
+        arriving WITHOUT it would import rows marked `verified: true` that the
+        validator then refuses -- a colleague's pack failing to install because
+        their sign-off was left behind.
+      */
+      if (pack.dosingReview) out.dosingReview = structuredClone(pack.dosingReview);
       break;
     case 'exam':
       out.examSystems = structuredClone(pack.examSystems);
@@ -269,9 +333,17 @@ export function sliceForExport(
       out.labCategories = structuredClone(pack.labCategories);
       out.labsPalette = structuredClone(pack.labsPalette);
       break;
+    case 'history':
+      if (pack.historySections) out.historySections = structuredClone(pack.historySections);
+      if (pack.immunisationSchedule) {
+        out.immunisationSchedule = structuredClone(pack.immunisationSchedule);
+      }
+      if (pack.milestones) out.milestones = structuredClone(pack.milestones);
+      break;
     case 'advice':
       out.advicePacks = structuredClone(pack.advicePacks);
       if (pack.redFlagReview) out.redFlagReview = structuredClone(pack.redFlagReview);
+      if (pack.adviceReview) out.adviceReview = structuredClone(pack.adviceReview);
       for (const locale of locales) {
         outPhrases[locale].advice = structuredClone(phrases[locale].advice);
       }

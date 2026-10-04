@@ -17,6 +17,7 @@ import { composeSig } from '@domain/sig.ts';
 import { templateSlots } from '@domain/phrases.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
+import { Dialog } from './Dialog.tsx';
 
 interface Props {
   line: MedicationLine;
@@ -84,7 +85,7 @@ export function SigEditor({ line, pack, packs, onSave, onClose }: Props) {
   const enVocab = packs.en.vocab;
 
   return (
-    <div className="scrim" role="dialog" aria-modal="true" aria-label="Edit instructions">
+    <Dialog label="Edit instructions" onClose={onClose}>
       <div className="sheet-modal">
         <h3>{line.drug.brand || line.drug.generic || line.drug.raw || 'Medicine'}</h3>
         <p className="sub">
@@ -277,6 +278,6 @@ export function SigEditor({ line, pack, packs, onSave, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

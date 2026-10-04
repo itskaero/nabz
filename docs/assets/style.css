@@ -1,29 +1,57 @@
 /*
-    The palette is the app's own (DESIGN.md 3), not a landing-page palette.
+    The palette is the app's own (DESIGN.md 3), not a landing-page palette --
+    and since both now run on the Ease Health botanical system, these values
+    ARE the system's, taken literally: Cream Paper behind everything, the three
+    green surfaces for panels, Forest Ink as the one action colour, Charcoal as
+    body ink and Border Mist as the hairline.
 
     A prescription is read on white paper under clinic lighting, by a doctor in
     a hurry and a parent who is worried. So the page is light, quiet and high
-    contrast: teal means action and "vetted", amber means attention, red means
-    danger and appears exactly twice on the whole page. Nothing else is
-    coloured, and there are no decorative gradients.
+    contrast: forest green means action and "vetted", amber means attention,
+    red means danger and appears exactly twice on the whole page. Nothing else
+    is coloured, and there are no decorative gradients.
+
+    The system has no danger and no caution colour, so the two alarm inks here
+    are the same ones `src/render/theme.ts` derives for the app, measured
+    against all five of its surfaces. They are foreign to the palette on
+    purpose: that is what makes red mean danger.
   */
   :root{
-    --ink:#14201f;
-    --ink-soft:#55635f;
-    --ink-faint:#8a9691;
-    --teal:#0f766e;
-    --teal-ink:#0b5a54;
-    --teal-wash:#e6f2f0;
-    --bg:#f4f7f7;
+    --ink:#222222;              /* Charcoal */
+    --ink-soft:#41503f;
+    --ink-faint:#4f5d50;
+    --teal:#0f3e17;             /* Forest Ink. The name is the app's legacy
+                                   alias; the value is the system's. */
+    --teal-ink:#0f3e17;
+    --teal-wash:#cfe7d3;        /* Mint */
+    --bg:#fffefc;               /* Cream Paper -- the page */
+    --keylime:#e1f4df;          /* Keylime Wash -- tinted panels */
+    --sage:#b1dbb8;             /* Sage -- the deepest green, used sparingly */
+    --slate:#b6ced5;            /* Slate -- the one cool note */
     --surface:#ffffff;
-    --line:#dde5e4;
-    --line-soft:#eaf0ef;
-    --alert:#b4232a;
-    --alert-wash:#fbeeee;
-    --amber:#8a5a12;
-    --amber-wash:#fbf3e6;
-    --r:16px;
-    --shadow:0 1px 2px rgba(20,32,31,.04), 0 12px 30px -20px rgba(20,32,31,.28);
+    --line:#d4e6d6;
+    --line-soft:#efeeeb;        /* Border Mist */
+    --alert:#7a1d1d;
+    --alert-wash:#f6e7e4;
+    --amber:#6d4a1b;
+    --amber-wash:#f3ecdd;
+    --r:14px;
+    /*
+      The system says never add box-shadow. Kept here anyway for the framed
+      sheet and the floating nav pill, which are the two things on this site
+      that must read as physically above the page -- a sheet of paper and a bar
+      that overlaps content as you scroll. Everywhere else depth comes from
+      fill contrast, as the system asks.
+    */
+    --shadow:0 1px 2px rgba(18,38,24,.04), 0 12px 30px -20px rgba(18,38,24,.26);
+    /*
+      Faire Octave is a licensed face and is not redistributable here, so the
+      editorial display type is Fraunces -- a variable serif with a real light
+      weight and an optical-size axis, which is what display type at 40-74px
+      needs. Body copy stays IBM Plex Sans: the system's serif belongs on a
+      headline and not on a dose.
+    */
+    --font-display:'Fraunces','Faire Octave',Georgia,'Times New Roman',serif;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -35,7 +63,7 @@
   /* A single, very quiet wash behind the hero. Not a glow. */
   .tint{
     position:absolute;inset:0 0 auto;height:720px;pointer-events:none;z-index:0;
-    background:linear-gradient(180deg,#eaf2f1 0%,var(--bg) 76%);
+    background:linear-gradient(180deg,var(--keylime) 0%,var(--bg) 76%);
   }
   .wrap{max-width:1080px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
 
@@ -110,10 +138,35 @@
   /* ---------- hero ---------- */
   .hero{text-align:center;padding:70px 0 0}
   .hero h1{
-    font-size:clamp(32px,5.6vw,58px);line-height:1.08;letter-spacing:-.028em;
-    font-weight:700;margin:0 auto 22px;max-width:17ch;
+    font-family:var(--font-display);
+    /* Tracking measured off the references: Billow sets -0.05em at 92px. A
+       light serif at display size needs negative tracking or the words drift
+       apart; -.018em was a body-copy value wearing a headline's size. */
+    font-size:clamp(34px,6vw,74px);line-height:1.04;letter-spacing:-.035em;
+    /* 300, as the system specifies. A light serif at 74px is the whole look;
+       at 700 it is a different font doing an impression of one. */
+    font-weight:300;margin:0 auto 22px;max-width:17ch;
+    font-variation-settings:'SOFT' 0,'WONK' 0;
   }
-  .hero h1 em{font-style:normal;color:var(--teal)}
+  /*
+    The marker block, taken from Kira: its headline works because two words sit
+    in coloured fields rather than being merely a different colour.
+
+    Forest Ink on Mint measures 9.31:1, so this is nowhere near the text floor
+    -- tests/theme.test.ts holds that pair so a later palette pass cannot
+    quietly make the headline unreadable.
+
+    box-decoration-break is what makes it survive a line wrap: without it the
+    block is drawn once across both lines and the second line's highlight
+    starts in the wrong place on a phone.
+  */
+  .hero h1 em{
+    font-style:normal;color:var(--teal);
+    background:var(--teal-wash);
+    padding:0 .12em .06em;
+    border-radius:.08em;
+    box-decoration-break:clone;-webkit-box-decoration-break:clone;
+  }
   .hero .lead{color:var(--ink-soft);font-size:clamp(15.5px,1.9vw,18.5px);max-width:60ch;margin:0 auto 14px}
   .btnrow{display:inline-flex;align-items:center;gap:10px;margin-top:30px;flex-wrap:wrap;justify-content:center}
   .btn{
@@ -126,13 +179,29 @@
 
   .eyebrow{
     display:inline-block;background:var(--teal-wash);color:var(--teal-ink);
-    font-size:12px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+    font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
     padding:6px 15px;border-radius:999px;margin-bottom:18px;
   }
 
   /* ---------- the framed sheet ----------
      Deliberately paper, not a browser window: the artefact this product is
      judged on is a printed page, so the frame should look like one. */
+  /*
+    The band under the sheet.
+
+    Both references float their product screenshot on a saturated field --
+    Billow on blue, Kira on lilac -- and it is what stops a pale page reading
+    as unfinished. Sage is already the `sheet` token in theme.ts and already
+    means "the desk the paper lies on", so this is the palette being used for
+    the thing it was named for rather than a new colour.
+  */
+  .sheetband{
+    margin-top:54px;padding:48px 24px 0;background:var(--sage);
+    border-radius:var(--r) var(--r) 0 0;
+  }
+  .sheetband .sheet{margin-top:0}
+  @media(max-width:700px){ .sheetband{padding:28px 14px 0} }
+
   .sheet{
     margin:54px auto 0;max-width:760px;background:var(--surface);
     border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
@@ -140,7 +209,7 @@
   }
   .sheet .cap{
     display:flex;align-items:center;gap:10px;padding:11px 16px;
-    border-bottom:1px solid var(--line-soft);background:#fbfdfc;
+    border-bottom:1px solid var(--line-soft);background:var(--keylime);
   }
   .sheet .cap .tick{width:7px;height:7px;border-radius:50%;background:var(--teal);flex:0 0 auto}
   .sheet .cap span{
@@ -154,20 +223,24 @@
      first line underneath it. Offset by the nav's height plus its padding. */
   section{padding:78px 0;position:relative;z-index:1;scroll-margin-top:92px}
   .center{text-align:center}
-  h2{font-size:clamp(24px,3.6vw,36px);line-height:1.15;letter-spacing:-.022em;font-weight:700;margin:0 0 14px}
+  h2{
+    font-family:var(--font-display);font-weight:300;
+    font-size:clamp(26px,4vw,42px);line-height:1.12;letter-spacing:-.014em;margin:0 0 14px;
+    font-variation-settings:'SOFT' 0,'WONK' 0;
+  }
   .sub{color:var(--ink-soft);font-size:16.5px;max-width:58ch;margin:0 auto 40px}
   h3{font-size:18px;font-weight:600;letter-spacing:-.01em;margin:0 0 9px}
 
   .cards{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:26px;box-shadow:var(--shadow)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:28px;box-shadow:var(--shadow)}
   .card p{color:var(--ink-soft);margin:0;font-size:14.8px}
   ul.checks{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:8px}
   ul.checks li{position:relative;padding-left:25px;font-size:14.5px}
-  ul.checks li::before{content:"\2713";position:absolute;left:0;top:-1px;color:var(--teal);font-weight:700}
+  ul.checks li::before{content:"\2713";position:absolute;left:0;top:-1px;color:var(--teal);font-weight:600}
   ul.nos li::before{content:"\2715";color:var(--alert)}
 
   .panel{
-    margin-top:20px;background:#fbfdfc;border:1px solid var(--line-soft);
+    margin-top:20px;background:var(--keylime);border:1px solid var(--line-soft);
     border-radius:12px;padding:16px 18px;
   }
   .panel .en{display:block;color:var(--ink);font-size:14px}
@@ -183,7 +256,7 @@
   /* ---------- layers ---------- */
   .layers{display:grid;gap:18px;grid-template-columns:1fr 1fr}
   @media(max-width:780px){.layers{grid-template-columns:1fr}}
-  .layer{border:1px solid var(--line);border-radius:var(--r);padding:26px;background:var(--surface);box-shadow:var(--shadow)}
+  .layer{border:1px solid var(--line);border-radius:var(--r);padding:28px;background:var(--surface);box-shadow:var(--shadow)}
   .layer.clinical{border-color:var(--teal);background:linear-gradient(180deg,var(--teal-wash),var(--surface) 62%)}
   .layer .tag{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:9px}
 
@@ -206,18 +279,18 @@
     font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.88em;color:var(--teal-ink);
   }
   pre{
-    background:var(--ink);color:#c9d8d5;padding:22px;border-radius:14px;overflow-x:auto;
+    background:var(--ink);color:#b1dbb8;padding:22px;border-radius:14px;overflow-x:auto;
     font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;line-height:1.75;
   }
   pre code{background:none;padding:0;color:inherit;font-size:inherit}
-  pre .c{color:#7d938f}
+  pre .c{color:#4f5d50}
 
   .note{
-    border:1px solid #e6d3ae;background:var(--amber-wash);border-radius:14px;
+    border:1px solid #ddcba6;background:var(--amber-wash);border-radius:14px;
     padding:18px 20px;margin:22px 0;font-size:14.8px;color:var(--ink-soft);
   }
   .note strong{display:block;color:var(--amber);margin-bottom:4px;font-weight:600}
-  .note.bad{border-color:#e8c2c2;background:var(--alert-wash)}
+  .note.bad{border-color:#d9b3b0;background:var(--alert-wash)}
   .note.bad strong{color:var(--alert)}
 
   .flow{border:1px solid var(--line);border-radius:var(--r);padding:24px;background:var(--surface);overflow-x:auto;box-shadow:var(--shadow)}
@@ -231,7 +304,7 @@
 /* ---------- shared page furniture, used by setup.html and builder.html ---------- */
 
 .pagehead{padding:56px 0 10px;position:relative;z-index:1}
-.pagehead h1{font-size:clamp(30px,4.6vw,46px);line-height:1.1;letter-spacing:-.028em;font-weight:700;margin:0 0 14px;max-width:20ch}
+.pagehead h1{font-size:clamp(30px,4.6vw,46px);line-height:1.1;letter-spacing:-.028em;font-weight:600;margin:0 0 14px;max-width:20ch}
 .pagehead .lead{color:var(--ink-soft);font-size:17.5px;max-width:64ch;margin:0}
 .crumb{font-size:14px;color:var(--ink-faint);margin-bottom:18px}
 .crumb a{color:var(--ink-soft);text-decoration:none}

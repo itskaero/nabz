@@ -33,6 +33,30 @@ const WHO_SPECS = [
   { file: 'wfawho2007.txt', measure: 'weight', chart: 'weight-for-age', unit: 'kg',    xUnit: 'month', base: WHO_GR, range: '5-10y' },
   { file: 'hfawho2007.txt', measure: 'height', chart: 'height-for-age', unit: 'cm',    xUnit: 'month', base: WHO_GR, range: '5-19y' },
   { file: 'bfawho2007.txt', measure: 'bmi',    chart: 'bmi-for-age',    unit: 'kg/m2', xUnit: 'month', base: WHO_GR, range: '5-19y' },
+  // MUAC is keyed by age, so unlike weight-for-height it is an ordinary chart.
+  // The table starts at day 91, which is why MUAC-for-age is a three-months-up
+  // indicator rather than a birth-onwards one.
+  { file: 'acanthro.txt',   measure: 'muac',   chart: 'muac-for-age',   unit: 'cm',    xUnit: 'day',   base: WHO_GS, range: '3m-5y' },
+];
+
+/**
+ * Weight-for-length and weight-for-height, which are NOT age tables.
+ *
+ * They are kept apart from WHO_SPECS because their x axis is centimetres, and
+ * everything in `domain/growth` compares x against an age in days. A cm-keyed
+ * table pushed through `selectChart` would match on the wrong axis and answer
+ * confidently -- so these land under their own `wasting` key, and only the
+ * malnutrition module reads them.
+ *
+ * The two overlap between 65 and 110cm and are NOT interchangeable there:
+ * `wfl` is recumbent length (how an infant is measured) and `wfh` is standing
+ * height. WHO's rule is length under about 24 months / 87cm, height after.
+ * Scoring a child against the wrong one is wrong exactly in the range where
+ * severe wasting is decided.
+ */
+const WHO_WASTING_SPECS = [
+  { file: 'wflanthro.txt', chart: 'weight-for-length', axis: 'lengthCm', xCol: 'length', unit: 'kg', base: WHO_GS, range: '45-110cm' },
+  { file: 'wfhanthro.txt', chart: 'weight-for-height', axis: 'heightCm', xCol: 'height', unit: 'kg', base: WHO_GS, range: '65-120cm' },
 ];
 
 const CDC_SPECS = [
@@ -52,13 +76,19 @@ async function get(url) {
   return res.text();
 }
 
-/** WHO igrowup / who2007 tables: whitespace-delimited, columns sex age l m s (+ extras). */
-function parseWho(text, xUnit) {
+/**
+ * WHO igrowup / who2007 tables: whitespace-delimited, columns sex <x> l m s
+ * (+ extras). `xCol` names the x column -- 'age' for the age tables, 'length'
+ * or 'height' for the wasting ones -- and `xUnit` decides whether it is
+ * converted to days. Those two must never disagree: see the guard in `load`.
+ */
+function parseWho(text, xUnit, xCol) {
   const lines = text.trim().split(/\r?\n/);
   const head = lines[0].trim().split(/[\t,]|\s+/).map((h) => h.toLowerCase());
   const col = (n) => head.indexOf(n);
   const iSex = col('sex');
-  const iAge = col('age') !== -1 ? col('age') : col('month');
+  const named = xCol ? col(xCol) : -1;
+  const iAge = named !== -1 ? named : col('age') !== -1 ? col('age') : col('month');
   const iL = col('l'), iM = col('m'), iS = col('s');
   if ([iSex, iAge, iL, iM, iS].some((i) => i === -1)) {
     throw new Error('unexpected WHO header: ' + head.join('|'));
@@ -123,9 +153,35 @@ function merge(target, incoming) {
   }
 }
 
+/**
+ * The one guard worth having in this file.
+ *
+ * `parseWho` multiplies by DAYS_PER_MONTH when xUnit is 'month'. A cm table
+ * that picked up that conversion would produce plausible-looking numbers at
+ * roughly thirty times the right scale, and nothing downstream would notice --
+ * it would just quietly score every child against the wrong row. So assert the
+ * axis is the one we asked for, in the units we asked for, before it is
+ * written.
+ */
+function assertAxis(chart, rows, axis) {
+  for (const sex of ['M', 'F']) {
+    const xs = rows[sex].map((r) => r[0]);
+    const lo = Math.min(...xs);
+    const hi = Math.max(...xs);
+    const [min, max] = axis === 'day' ? [0, 7500] : [40, 130];
+    if (!(lo >= min && hi <= max)) {
+      throw new Error(
+        `${chart} [${sex}] spans ${lo}..${hi}, which is not a plausible ` +
+          `${axis === 'day' ? 'age in days' : 'measurement in cm'} -- unit conversion bug`,
+      );
+    }
+  }
+}
+
 async function main() {
   await mkdir(OUT, { recursive: true });
   const charts = {};
+  const wasting = [];
   const provenance = [];
 
   const load = async (kind, spec, url, rows) => {
@@ -147,14 +203,33 @@ async function main() {
 
   for (const spec of WHO_SPECS) {
     const url = spec.base + '/' + spec.file;
-    process.stdout.write('WHO  ' + spec.chart.padEnd(16) + spec.range.padEnd(7));
-    await load('WHO', spec, url, parseWho(await get(url), spec.xUnit));
+    process.stdout.write('WHO  ' + spec.chart.padEnd(19) + spec.range.padEnd(9));
+    const rows = parseWho(await get(url), spec.xUnit, 'age');
+    assertAxis(spec.chart, rows, 'day');
+    await load('WHO', spec, url, rows);
+  }
+
+  /*
+    The wasting tables, into their own bucket. Deliberately NOT merged into
+    `charts`: everything that reads `charts` treats x as an age in days.
+  */
+  for (const spec of WHO_WASTING_SPECS) {
+    const url = spec.base + '/' + spec.file;
+    process.stdout.write('WHO  ' + spec.chart.padEnd(19) + spec.range.padEnd(9));
+    const rows = parseWho(await get(url), 'cm', spec.xCol);
+    assertAxis(spec.chart, rows, 'cm');
+    wasting.push({ axis: spec.axis, chart: spec.chart, unit: spec.unit, data: rows });
+    const n = rows.M.length + rows.F.length;
+    provenance.push({ reference: 'WHO', chart: spec.chart, range: spec.range, url, rows: n });
+    console.log(n + ' rows');
   }
 
   for (const spec of CDC_SPECS) {
     const url = CDC + '/' + spec.file;
-    process.stdout.write('CDC  ' + spec.chart.padEnd(16) + spec.range.padEnd(7));
-    await load('CDC', spec, url, parseCdc(await get(url)));
+    process.stdout.write('CDC  ' + spec.chart.padEnd(19) + spec.range.padEnd(9));
+    const rows = parseCdc(await get(url));
+    assertAxis(spec.chart, rows, 'day');
+    await load('CDC', spec, url, rows);
   }
 
   const bundle = {
@@ -165,11 +240,20 @@ async function main() {
     },
     provenance,
     charts: Object.values(charts),
+    wasting,
   };
 
   await writeFile(join(OUT, 'lms.json'), JSON.stringify(bundle), 'utf8');
-  const total = bundle.charts.reduce((n, c) => n + c.data.M.length + c.data.F.length, 0);
-  console.log('\nwrote src/data/growth/tables/lms.json - ' + bundle.charts.length + ' charts, ' + total + ' LMS rows');
+  const total = [...bundle.charts, ...bundle.wasting].reduce(
+    (n, c) => n + c.data.M.length + c.data.F.length,
+    0,
+  );
+  console.log(
+    '\nwrote src/data/growth/tables/lms.json - ' +
+      bundle.charts.length + ' charts, ' +
+      bundle.wasting.length + ' wasting tables, ' +
+      total + ' LMS rows',
+  );
 }
 
 main().catch((err) => {

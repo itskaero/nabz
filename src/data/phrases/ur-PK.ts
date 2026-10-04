@@ -167,6 +167,19 @@ export const urPK: LocalePack = {
     'section.medications': 'ادویات',
     'section.advice': 'ہدایات',
     'section.patientInstructions': 'مریض کے لیے ہدایات',
+    /*
+     * Added with the discharge-summary kind. These are DOCUMENT LABELS, not
+     * patient instructions -- the printed headings draw from the 'en' pack
+     * regardless -- but they carry the same first-draft caveat the rest of
+     * this file carries (README, "Status of the shipped content"): the
+     * validators who matter are patients and pharmacists, not the person who
+     * typed them. A clinician reads these before a discharge pack ships.
+     */
+    'section.stay': 'دورانِ داخلہ',
+    'section.course': 'ہسپتال میں علاج کی روداد',
+    'section.procedures': 'کیے گئے طریقۂ علاج',
+    'doc.prescription': 'نسخہ',
+    'doc.discharge': 'رخصتی رپورٹ',
     'label.patient': 'مریض',
     'label.age': 'عمر',
     'label.sex': 'جنس',
@@ -180,6 +193,12 @@ export const urPK: LocalePack = {
     'label.redFlag': 'فوراً واپس لائیں اگر',
     'label.page': 'صفحہ {n} از {total}',
     'label.registration': 'رجسٹریشن نمبر',
+    'label.admitted': 'داخلے کی تاریخ',
+    'label.discharged': 'رخصتی کی تاریخ',
+    'label.ward': 'وارڈ',
+    'label.condition': 'رخصتی کے وقت حالت',
+    'label.followUpWith': 'دوبارہ ملاقات',
+    'label.followUpWhere': 'مقام',
     'notice.notVetted': 'ڈاکٹر کے اپنے الفاظ — جیسے لکھے گئے ویسے ہی',
     'notice.notPrescription': 'یہ نسخہ نیچے دستخط کے ساتھ ہی معتبر ہے۔',
   },

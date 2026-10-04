@@ -44,6 +44,7 @@ import {
 } from './merge.mjs';
 import { addressLines, stationAddresses } from './addresses.mjs';
 import { ensureCertificates } from './tls.mjs';
+import { setupPage } from './setupPage.mjs';
 
 /**
  * Where this file lives -- when it lives anywhere.
@@ -255,72 +256,6 @@ function readBody(req, limitBytes = 4_000_000) {
 }
 
 
-/**
- * The page the plain-HTTP port serves once TLS is on.
- *
- * A device that has not trusted the CA cannot usefully load the HTTPS site --
- * it gets a certificate warning, and clicking through does NOT restore a secure
- * context. So the http:// address becomes the place people land to install the
- * certificate, rather than a second copy of the app.
- *
- * Written for whoever is holding the phone. The iOS two-step is spelled out
- * because everybody misses the second half and then reports that it did not
- * work.
- */
-function certSetupPage(httpsUrl) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Set up this device &mdash; Nabz</title>
-<style>
-  body{font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;margin:0;
-       background:#eef1f2;color:#1d2b2a}
-  main{max-width:34rem;margin:0 auto;padding:20px 18px 60px}
-  h1{font-size:20px;margin:18px 0 4px} h2{font-size:15px;margin:22px 0 6px}
-  .card{background:#fff;border:1px solid #d8e0e0;border-radius:12px;padding:16px;margin:14px 0}
-  a.btn{display:block;text-align:center;background:#0f766e;color:#fff;
-        text-decoration:none;padding:13px;border-radius:10px;font-weight:600}
-  ol{padding-left:20px;margin:6px 0} li{margin:4px 0}
-  code{background:#eef1f2;padding:1px 5px;border-radius:4px;font-size:14px}
-  .why{color:#5b6b6a;font-size:14px}
-</style></head><body><main>
-<h1>Set up this device</h1>
-<p class="why">This clinic&rsquo;s computer issues its own certificate. Installing
-it once lets your phone use Nabz securely &mdash; which is what allows encrypted
-backups, the PIN, and working offline. Without it the browser switches all three off.</p>
-
-<div class="card">
-  <h2>Step 1 &mdash; download the certificate</h2>
-  <p><a class="btn" href="/ca.crt" download="nabz-clinic.crt">Download certificate</a></p>
-</div>
-
-<div class="card">
-  <h2>Step 2 &mdash; trust it</h2>
-  <p><strong>iPhone / iPad &mdash; this is two steps and the second is easy to miss:</strong></p>
-  <ol>
-    <li>Settings &rarr; <em>Profile Downloaded</em> &rarr; Install</li>
-    <li>Settings &rarr; General &rarr; About &rarr; <strong>Certificate Trust
-        Settings</strong> &rarr; switch on <em>Nabz Clinic Station CA</em></li>
-  </ol>
-  <p><strong>Android:</strong> Settings &rarr; Security &rarr; Encryption &amp;
-     credentials &rarr; Install a certificate &rarr; <strong>CA certificate</strong>.</p>
-  <p><strong>Windows:</strong> double-click the file &rarr; Install Certificate
-     &rarr; Local Machine &rarr; Place in <em>Trusted Root Certification Authorities</em>.</p>
-</div>
-
-<div class="card">
-  <h2>Step 3 &mdash; open Nabz</h2>
-  <p><a class="btn" href="${httpsUrl}">${httpsUrl}</a></p>
-  <p class="why">Add it to your home screen from there, so it opens like an app
-     and keeps working when this computer is off.</p>
-</div>
-
-<p class="why">Installing a certificate authority is a real decision: this one can
-vouch for any site to this device. It was generated on the clinic&rsquo;s own
-computer and its private key never leaves it. To undo this, remove
-&ldquo;Nabz Clinic Station CA&rdquo; from the same settings screen.</p>
-</main></body></html>`;
-}
-
 /** Set once TLS is ready, so the HTTP port knows where to send people. */
 let TLS = null;
 
@@ -358,7 +293,17 @@ const handler = async (req, res) => {
       return res.end(TLS.caPem);
     }
     if (url.pathname === '/' || url.pathname === '/setup') {
-      return send(res, 200, certSetupPage(TLS.url), 'text/html; charset=utf-8');
+      return send(
+        res,
+        200,
+        setupPage({
+          httpsUrl: TLS.url,
+          pairing: PAIRING,
+          fingerprint: TLS.caFingerprint,
+          addresses: TLS.addresses,
+        }),
+        'text/html; charset=utf-8',
+      );
     }
     const host = (req.headers.host ?? '').split(':')[0] || 'localhost';
     res.writeHead(308, {
@@ -509,10 +454,13 @@ tlsReady.then((tls) => {
     if (MODE === 'clinic') {
       console.log(
         tls
-          ? `certificate setup page on http://${HOST}:${PORT}`
+          ? `set up a new device at http://${HOST}:${PORT}/setup`
           : `nabz clinic mode on http://${HOST}:${PORT} (no TLS)`,
       );
       console.log(`clinic layer (patients + queue only) stored in ${DATA}`);
+      // The code is on the setup page, in a QR that also carries the address.
+      // Printed here as well because this path is the development one, where
+      // there is usually nobody holding a phone.
       console.log(`pairing code: ${PAIRING}`);
     } else {
       console.log(`nabz ${MODE} mode on http://${HOST}:${PORT}`);
@@ -540,9 +488,11 @@ function announceStation() {
     console.log('  On this computer:      ' + TLS.url);
     console.log('');
     console.log('  FIRST TIME on a phone or tablet, open this and follow it:');
-    console.log('     http://' + (TLS.addresses[0] ?? 'localhost') + ':' + PORT);
-    console.log('  It installs the clinic certificate. Without it the browser');
-    console.log('  switches off backup, the PIN and offline use.');
+    console.log('     http://' + (TLS.addresses[0] ?? 'localhost') + ':' + PORT + '/setup');
+    console.log('  That page has a QR code. Scanning it opens the app and');
+    console.log('  connects the device -- no address and no code to type.');
+    console.log('  It also installs the clinic certificate, without which the');
+    console.log('  browser switches off backup, the PIN and offline use.');
     console.log('');
     console.log('  Afterwards, open:      ' + TLS.url);
   } else {

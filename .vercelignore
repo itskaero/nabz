@@ -1,0 +1,11 @@
+# What Vercel does not need to upload.
+#
+# `tests/` is deliberately NOT here. `npm run build` runs `tsc -b --noEmit`
+# and tsconfig.json has "include": ["src", "tests", "vite.config.ts",
+# "vitest.config.ts"] -- excluding the tests breaks the type-check with
+# missing files, which looks like a TypeScript error and is really a
+# packaging one.
+docs/
+artifacts/
+dist/
+.github/

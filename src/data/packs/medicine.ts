@@ -429,13 +429,148 @@ export const medicine: ContentPack = {
   dosing: medicineDosingSeed,
   scores: medicineScores,
 
+  /*
+    THE ADULT HISTORY.
+
+    Not one line of code was added for this. The same engine that renders the
+    paediatric antenatal and birth history renders past surgical history and
+    an obstetric score, because the questions are pack data and
+    `HistoryEditor` has never heard of either. That is the thing this proves:
+    a third specialty is a third list, not a third screen.
+
+    No immunisation schedule and no milestone list, so the chart shows neither
+    section for a doctor on this pack -- it simply does not build them.
+
+    Social history names NASWAR and PAAN/GUTKA beside smoking, because those
+    are what is in front of this doctor. A "smoking: no" field that cannot
+    record naswar records the wrong thing, and the patient whose risk it was
+    meant to capture reads as having none.
+  */
+  historySections: [
+    {
+      id: 'pmh',
+      label: 'Past medical history',
+      order: 1,
+      fields: [
+        {
+          id: 'conditions',
+          label: 'Known conditions',
+          kind: 'chips',
+          options: [
+            'Diabetes',
+            'Hypertension',
+            'Ischaemic heart disease',
+            'Asthma',
+            'COPD',
+            'CKD',
+            'Chronic liver disease',
+            'Stroke',
+            'Thyroid disease',
+            'Epilepsy',
+            'Tuberculosis',
+            'Hepatitis B or C',
+          ],
+        },
+        { id: 'since', label: 'Since when', hint: 'which one, how long' },
+        { id: 'other', label: 'Anything else' },
+      ],
+    },
+    {
+      id: 'psh',
+      label: 'Past surgical history',
+      order: 2,
+      fields: [
+        { id: 'operations', label: 'Operations', hint: 'what, when, where' },
+        { id: 'anaesthetic', label: 'Trouble with anaesthesia', kind: 'choice', options: ['No', 'Yes'] },
+        { id: 'transfusion', label: 'Blood transfusion', kind: 'choice', options: ['Never', 'Yes'] },
+      ],
+    },
+    {
+      id: 'drugs',
+      label: 'Drug history',
+      order: 3,
+      note: 'What they are actually taking, not what was last prescribed.',
+      fields: [
+        { id: 'current', label: 'Current medicines', hint: 'including anything bought over the counter' },
+        {
+          id: 'adherence',
+          label: 'Taking them',
+          kind: 'choice',
+          options: ['As prescribed', 'Sometimes misses', 'Stopped'],
+        },
+        { id: 'herbal', label: 'Herbal or homeopathic', hint: 'hakeem, homeopathic, supplements' },
+      ],
+    },
+    {
+      id: 'social',
+      label: 'Social history',
+      order: 4,
+      fields: [
+        {
+          id: 'tobacco',
+          label: 'Tobacco and betel',
+          kind: 'chips',
+          // Not one "smoking" field. These are separate exposures with
+          // separate consequences, and a patient who chews naswar and has
+          // never smoked is not a patient with no tobacco history.
+          options: ['Cigarettes', 'Huqqa', 'Naswar', 'Paan', 'Gutka', 'Never'],
+        },
+        { id: 'amount', label: 'How much, how long', hint: 'pack-years, tins per week…' },
+        { id: 'alcohol', label: 'Alcohol', kind: 'choice', options: ['Never', 'Occasional', 'Regular'] },
+        { id: 'occupation', label: 'Work', hint: 'and any exposure it brings' },
+        { id: 'living', label: 'Home', hint: 'who they live with, stairs, support' },
+      ],
+    },
+    {
+      id: 'family',
+      label: 'Family history',
+      order: 5,
+      fields: [
+        {
+          id: 'conditions',
+          label: 'In the family',
+          kind: 'chips',
+          options: ['Diabetes', 'Hypertension', 'Heart disease', 'Stroke', 'Cancer', 'Tuberculosis'],
+        },
+        { id: 'detail', label: 'Who, and how young', hint: 'first-degree relatives, age at onset' },
+      ],
+    },
+    {
+      id: 'obgyn',
+      label: 'Obstetric & gynaecological',
+      order: 6,
+      note: 'Where it applies. Every field here is optional, like every other.',
+      fields: [
+        { id: 'gpal', label: 'G / P / A / L', hint: 'e.g. G3 P2 A1 L2' },
+        { id: 'lmp', label: 'Last menstrual period', kind: 'date' },
+        { id: 'cycle', label: 'Cycles', kind: 'choice', options: ['Regular', 'Irregular', 'Postmenopausal'] },
+        { id: 'contraception', label: 'Contraception' },
+        { id: 'obgyn_other', label: 'Anything else' },
+      ],
+    },
+  ],
+
   /**
    * eGFR: the module this pack's own notes called for -- "GFR is to medicine
    * what the growth chart is to paediatrics". It needs no `moduleConfig`
    * entry; unlike growth it offers no per-pack measure selection, so there is
    * nothing to configure.
    */
-  modules: ['gfr', 'bmi'],
+  // Adult dosing is mostly fixed rather than weight-based, so the calculator
+  // sits after the two that get opened daily -- but paediatric-weight dosing
+  // happens on an adult ward too (gentamicin, vancomycin), so it is offered.
+  modules: ['gfr', 'bmi', 'dosecalc'],
+  /**
+   * Adult internal medicine is where inpatient work happens, so this is the
+   * pack that offers a discharge summary. Paediatrics deliberately does not:
+   * it is an OPD pack, and a tab leading to a document that specialty never
+   * writes is a tab that costs a scroll on every patient.
+   *
+   * That difference is DATA, and no component knows about it -- which is the
+   * property `domain/documents` exists to buy, the same way `modules` buys it
+   * for the calculators.
+   */
+  documents: ['prescription', 'discharge'],
   moduleConfig: {},
 
   /**

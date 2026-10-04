@@ -16,7 +16,14 @@ export default defineConfig({
         short_name: 'Nabz',
         description:
           'Bilingual clinical prescriptions. Records stay on this device.',
-        theme_color: '#0f766e',
+        /*
+          Forest Ink and Keylime Wash -- the same values `render/theme.ts`
+          generates for the app. These were missed in the botanical swap, so an
+          installed PWA showed a teal splash and teal browser chrome around a
+          green app. The manifest is the one place the palette is written out
+          by hand rather than generated, which is exactly why it drifted.
+        */
+        theme_color: '#0f8055',
         background_color: '#eef1f2',
         display: 'standalone',
         orientation: 'portrait',

@@ -22,7 +22,17 @@ export const paediatrics: ContentPack = {
     credential: 'Paediatrics',
     updated: '2026-08-21',
   },
-  verified: true,
+  /*
+    FALSE UNTIL IT IS TRUE.
+
+    This claimed a clinician had signed the pack off -- doses reviewed,
+    formulary reconciled, Urdu read aloud -- while the author was the literal
+    string 'Pack author' and not one of the ten dosing rows was signed by
+    anyone. `validateContentPack` now refuses the claim while any dosing row is
+    unreviewed, so this flips back to true by being earned rather than by being
+    typed.
+  */
+  verified: false,
 
   /**
    * Order is tap order at OPD speed: the systems examined in almost every
@@ -259,14 +269,216 @@ export const paediatrics: ContentPack = {
   formularySeed,
   dosing: dosingSeed,
 
-  modules: ['growth'],
+  /*
+    THE BACKGROUND HISTORY.
+
+    Pure data: the engine that renders it (`domain/history.ts` and
+    `HistoryEditor.tsx`) has never heard of antenatal care or weaning, exactly
+    as `ExamSection.tsx` has never heard of chest indrawing. A different
+    specialty is a different list in a different pack, not a code change.
+
+    Every field is optional, and the common answers are taps where the answers
+    can be enumerated. The age bands matter: asking about weaning at twelve
+    years is noise, and a questionnaire that asks everything of everyone is one
+    nobody fills in. A section the child has aged out of still appears if it
+    already holds content -- see `resolveSections`.
+
+    NOTHING HERE IS A SCORE. There is no "risk" field, no total, nothing that
+    adds up. It is what the mother said, written down.
+  */
+  historySections: [
+    {
+      id: 'antenatal',
+      label: 'Antenatal',
+      order: 1,
+      note: 'The pregnancy, as the mother remembers it.',
+      // Offered up to about five. Beyond that it is a question nobody can
+      // answer any better than it was answered the first time.
+      appliesTo: { toDays: 1826 },
+      fields: [
+        {
+          id: 'booking',
+          label: 'Antenatal care',
+          kind: 'choice',
+          options: ['Booked', 'Unbooked', 'Partial'],
+        },
+        { id: 'maternal_illness', label: 'Illness in pregnancy', hint: 'diabetes, hypertension, fever…' },
+        { id: 'medications', label: 'Medicines taken', hint: 'including herbal and over-the-counter' },
+        { id: 'scans', label: 'Scans', hint: 'anomalies, growth concerns' },
+      ],
+    },
+    {
+      id: 'birth',
+      label: 'Birth',
+      order: 2,
+      fields: [
+        { id: 'place', label: 'Place', kind: 'choice', options: ['Hospital', 'Home', 'Clinic'] },
+        {
+          id: 'delivery',
+          label: 'Delivery',
+          kind: 'choice',
+          options: ['SVD', 'LSCS', 'Instrumental'],
+        },
+        { id: 'term', label: 'Term', kind: 'choice', options: ['Term', 'Preterm', 'Post-term'] },
+        { id: 'gestation', label: 'Gestation', kind: 'number', unit: 'weeks' },
+        { id: 'birth_weight', label: 'Birth weight', kind: 'number', unit: 'kg' },
+        { id: 'cried', label: 'Cried at birth', kind: 'choice', options: ['Yes', 'Delayed', 'No'] },
+        {
+          id: 'nicu',
+          label: 'Nursery or NICU stay',
+          kind: 'chips',
+          options: ['Jaundice', 'Sepsis', 'Respiratory distress', 'Feeding', 'Phototherapy', 'Ventilated'],
+        },
+        { id: 'birth_note', label: 'Anything else about the birth' },
+      ],
+    },
+    {
+      id: 'feeding',
+      label: 'Feeding',
+      order: 3,
+      // Under five. A teenager's diet belongs under Nutrition, not under the
+      // weaning history.
+      appliesTo: { toDays: 1826 },
+      fields: [
+        {
+          id: 'infant_feeding',
+          label: 'First six months',
+          kind: 'choice',
+          options: ['Exclusive breast', 'Mixed', 'Formula only'],
+        },
+        { id: 'breastfed_until', label: 'Breastfed until', hint: 'age, or “still”' },
+        { id: 'weaning_age', label: 'Weaning started', kind: 'number', unit: 'months' },
+        { id: 'current_diet', label: 'Diet now', hint: 'family food, milk, fussy eating…' },
+      ],
+    },
+    {
+      id: 'development',
+      label: 'Development & schooling',
+      order: 5,
+      fields: [
+        { id: 'concerns', label: 'Any concerns', hint: 'raised by the family or by school' },
+        { id: 'school', label: 'School', hint: 'class, how they are doing' },
+        { id: 'vision_hearing', label: 'Vision and hearing', hint: 'tested? any worry?' },
+      ],
+    },
+    {
+      id: 'past',
+      label: 'Past illnesses & admissions',
+      order: 6,
+      fields: [
+        { id: 'admissions', label: 'Admissions', hint: 'when, where, what for' },
+        { id: 'surgery', label: 'Operations' },
+        { id: 'illnesses', label: 'Significant illnesses' },
+        { id: 'tb_contact', label: 'TB contact', kind: 'choice', options: ['None known', 'Household', 'Other'] },
+      ],
+    },
+    {
+      id: 'family',
+      label: 'Family & home',
+      order: 7,
+      fields: [
+        {
+          id: 'consanguinity',
+          label: 'Parents related',
+          kind: 'choice',
+          options: ['No', 'First cousins', 'Second cousins', 'Other'],
+        },
+        { id: 'siblings', label: 'Siblings', hint: 'how many, any unwell' },
+        { id: 'deaths', label: 'Deaths in childhood in the family' },
+        { id: 'family_illness', label: 'Illness that runs in the family' },
+        { id: 'home', label: 'Home', hint: 'water, crowding, smoke exposure' },
+      ],
+    },
+  ],
+
+  /*
+    THE EPI SCHEDULE, AS DATA.
+
+    Here rather than in code so a different country's schedule is a different
+    pack, and with a reference for the same reason a dosing row needs one: a
+    schedule with no published source is a list of opinions.
+
+    `atDays` is when the visit is DUE per the schedule. Nothing in the app
+    compares it to today and concludes anything -- see `ImmunisationPanel`.
+    Recording what was given is a record; deciding what to give now is a
+    clinical judgement and this app does not make those (PRODUCT.md 3.3).
+  */
+  immunisationSchedule: {
+    reference:
+      'Expanded Programme on Immunization (EPI) Pakistan, routine childhood schedule',
+    visits: [
+      { id: 'birth', label: 'At birth', atDays: 0, doses: ['BCG', 'OPV-0', 'Hep B-0'] },
+      { id: 'w6', label: '6 weeks', atDays: 42, doses: ['Penta-1', 'OPV-1', 'PCV-1', 'Rota-1'] },
+      { id: 'w10', label: '10 weeks', atDays: 70, doses: ['Penta-2', 'OPV-2', 'PCV-2', 'Rota-2'] },
+      { id: 'w14', label: '14 weeks', atDays: 98, doses: ['Penta-3', 'OPV-3', 'PCV-3', 'IPV'] },
+      { id: 'm9', label: '9 months', atDays: 274, doses: ['Measles-1', 'Typhoid conjugate'] },
+      { id: 'm15', label: '15 months', atDays: 457, doses: ['Measles-2'] },
+    ],
+  },
+
+  /*
+    DEVELOPMENTAL MILESTONES.
+
+    `typicalByDays` is a REFERENCE AGE and is displayed the way a growth chart
+    displays a centile band: the published norm beside what was recorded.
+    Nothing turns a blank into "delayed". domain/patient.ts already names that
+    failure in this codebase's own words -- a merged weight series "reads as
+    growth faltering, which is a diagnosis the data invented".
+  */
+  milestones: {
+    reference: 'WHO Multicentre Growth Reference Study motor milestones; standard paediatric texts',
+    items: [
+      { id: 'social_smile', label: 'Social smile', domain: 'social', typicalByDays: 56 },
+      { id: 'head_control', label: 'Head control', domain: 'gross', typicalByDays: 91 },
+      { id: 'rolls_over', label: 'Rolls over', domain: 'gross', typicalByDays: 152 },
+      { id: 'reaches', label: 'Reaches for objects', domain: 'fine', typicalByDays: 152 },
+      { id: 'sits_unsupported', label: 'Sits without support', domain: 'gross', typicalByDays: 274 },
+      { id: 'babbles', label: 'Babbles', domain: 'speech', typicalByDays: 274 },
+      { id: 'pincer', label: 'Pincer grip', domain: 'fine', typicalByDays: 305 },
+      { id: 'stands_alone', label: 'Stands alone', domain: 'gross', typicalByDays: 365 },
+      { id: 'first_words', label: 'First words', domain: 'speech', typicalByDays: 365 },
+      { id: 'walks_alone', label: 'Walks alone', domain: 'gross', typicalByDays: 457 },
+      { id: 'two_words', label: 'Two-word phrases', domain: 'speech', typicalByDays: 730 },
+      { id: 'stranger_anxiety', label: 'Stranger anxiety', domain: 'social', typicalByDays: 274 },
+    ],
+  },
+
+  /*
+    `dosecalc` leads, because it is the one a paediatrician opens on nearly
+    every child: a weight, a bottle, and the millilitres to measure. Growth and
+    malnutrition are opened on a subset.
+  */
+  modules: ['dosecalc', 'growth', 'malnutrition'],
   moduleConfig: {
     growth: {
-      measures: ['weight', 'length', 'height', 'hc', 'bmi'],
+      // MUAC is offered alongside the rest: it is an ordinary age-keyed chart,
+      // and a child being followed through a feeding programme is one whose
+      // arm circumference is worth plotting over time rather than only
+      // classifying once.
+      measures: ['weight', 'length', 'height', 'hc', 'bmi', 'muac'],
       // WHO is the default: openly licensed, standard in Pakistan and global
       // health, and it covers 0-19. CDC stays available because the two
       // genuinely disagree under age 2 and some practices follow CDC.
       defaultReference: 'WHO',
+    },
+    /**
+     * Pakistan's national programme, not WHO 2023, because this pack is for a
+     * Pakistani paediatric clinic and the two differ in a way that changes who
+     * gets treated: the national protocol admits on MUAC or bilateral pitting
+     * oedema alone, while WHO 2023 also admits on weight-for-height.
+     *
+     * That is a real, deliberate divergence and not an omission. A clinic
+     * following the global guideline changes `criteria` to include `'whz'` in
+     * the pack builder; nothing in the app changes.
+     */
+    malnutrition: {
+      criteria: ['oedema', 'muac'],
+      muacSevereMm: 115,
+      muacModerateMm: 125,
+      whzSevere: -3,
+      whzModerate: -2,
+      reference:
+        'National Guideline for the Management of Acute Malnutrition, Ministry of National Health Services, Pakistan, May 2019',
     },
   },
 

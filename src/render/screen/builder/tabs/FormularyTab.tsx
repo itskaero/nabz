@@ -25,6 +25,7 @@ import type { Draft } from '../useDraft.ts';
 import { cleanGeneric } from '../useDraft.ts';
 import type { CsvImportResult } from '../csv.ts';
 import { newGenerics, parseFormularyCsv } from '../csv.ts';
+import { Dialog } from '../../components/Dialog.tsx';
 
 type Filter = 'all' | 'unreconciled' | 'no-dosing';
 
@@ -34,6 +35,12 @@ export function FormularyTab({ draft }: { draft: Draft }) {
   const [editing, setEditing] = useState<number | null>(null);
   const [preview, setPreview] = useState<CsvImportResult | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  /**
+   * Who is reconciling. Typed once and reused down the list, the way the
+   * reviewer name works on the advice tab -- asking for it per row would make
+   * an afternoon of reconciliation intolerable.
+   */
+  const [checker, setChecker] = useState('');
 
   const dosedGenerics = useMemo(
     () => new Set(draft.pack.dosing.map((d) => normaliseGeneric(d.generic))),
@@ -94,6 +101,19 @@ export function FormularyTab({ draft }: { draft: Draft }) {
           holds dose information — that lives under Doses, keyed by generic, with
           a citation on every row.
         </p>
+        <div className="field" style={{ marginTop: 8 }}>
+          <label>Who is reconciling these</label>
+          <input
+            value={checker}
+            placeholder="Dr A. Tahir"
+            aria-label="Who is reconciling these rows against DRAP"
+            onChange={(e) => setChecker(e.target.value)}
+          />
+          <p className="hint">
+            Recorded on each row you mark verified. A claim nobody signed is a
+            claim nobody can be asked about.
+          </p>
+        </div>
         <div className="opts" style={{ marginTop: 8 }}>
           <button className="opt" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
             All {draft.pack.formularySeed.length}
@@ -149,7 +169,7 @@ export function FormularyTab({ draft }: { draft: Draft }) {
       </section>
 
       {preview && (
-        <div className="scrim" role="dialog" aria-modal="true">
+        <Dialog label="Preview" onClose={() => setPreview(null)}>
           <div className="sheet-modal">
             <h3>Import {preview.rows.length} medicines?</h3>
             <div className="warn-box" style={{ margin: '10px 0' }}>
@@ -218,7 +238,7 @@ export function FormularyTab({ draft }: { draft: Draft }) {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
       <div className="rows">
@@ -229,6 +249,7 @@ export function FormularyTab({ draft }: { draft: Draft }) {
               key={index}
               row={row}
               draft={draft}
+              checker={checker}
               onChange={(patch) => write(index, patch)}
               onClose={() => setEditing(null)}
               onRemove={() => remove(index)}
@@ -263,12 +284,15 @@ export function FormularyTab({ draft }: { draft: Draft }) {
 function EditRow({
   row,
   draft,
+  checker,
   onChange,
   onClose,
   onRemove,
 }: {
   row: FormularyEntry;
   draft: Draft;
+  /** who is doing the reconciling, so the row can record whose claim it is */
+  checker: string;
   onChange: (patch: Patch<FormularyEntry>) => void;
   onClose: () => void;
   onRemove: () => void;
@@ -394,7 +418,28 @@ function EditRow({
                     ? 'Enter the registration number first'
                     : undefined
                 }
-                onClick={() => onChange({ provenance: p })}
+                onClick={() =>
+                  onChange(
+                    p === 'DRAP'
+                      ? {
+                          provenance: p,
+                          // The claim and the person making it are recorded
+                          // together; marking a row verified IS the sign-off.
+                          ...(checker.trim()
+                            ? {
+                                drapChecked: {
+                                  by: checker.trim(),
+                                  date: new Date().toISOString().slice(0, 10),
+                                },
+                              }
+                            : {}),
+                        }
+                      : // Going back to manual drops the claim AND the name on
+                        // it, rather than leaving a signature attached to a
+                        // row that no longer claims anything.
+                        { provenance: p, drapChecked: undefined },
+                  )
+                }
               >
                 {p === 'DRAP' ? 'Verified against DRAP' : 'Manual'}
               </button>
@@ -402,6 +447,33 @@ function EditRow({
           </div>
         </div>
       </div>
+
+      {/*
+        DRAP publishes no bulk download and no API -- re-checked September
+        2026; the registry is a search form. So reconciliation is one row at a
+        time by a person, and the least the builder can do is open the search
+        for them and then record that they did it.
+      */}
+      <p className="hint" style={{ marginTop: 6 }}>
+        {row.drapChecked?.by ? (
+          <>
+            Checked against DRAP by <strong>{row.drapChecked.by}</strong> on{' '}
+            {row.drapChecked.date}.
+          </>
+        ) : (
+          <>
+            Look the brand up in the{' '}
+            <a
+              href="https://eapp.dra.gov.pk/WebProductIndex.php"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              DRAP registered product index
+            </a>
+            , then record the number and mark it verified.
+          </>
+        )}
+      </p>
 
       <div className="actionbar" style={{ padding: '10px 0 0', borderTop: 'none' }}>
         <button className="btn danger" onClick={onRemove}>

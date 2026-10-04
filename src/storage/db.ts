@@ -21,10 +21,15 @@ import type { DoctorProfile } from '@config/doctorProfile.ts';
 import type { ContentPack } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import type { PatientRecord, LegacyGrowthLink } from '@domain/patient.ts';
+import type { PatientClinical } from '@domain/patientClinical.ts';
+import type { LabResult } from '@domain/labResult.ts';
+import type { Attachment, ImagingStudy } from '@domain/imaging.ts';
 import type { QueueEntry } from '@domain/clinic.ts';
+import type { Addon } from '@domain/addon.ts';
+import type { Verdict } from '@domain/addonSignature.ts';
 
 const DB_NAME = 'nabz';
-const DB_VERSION = 5;
+const DB_VERSION = 9;
 
 /**
  * Edited content: the specialty pack and the locale packs, as authored in the
@@ -68,6 +73,24 @@ export interface InstalledPack {
   edited: boolean;
   installedAt: string;
   updatedAt: string;
+}
+
+/**
+ * An addon as installed on this device.
+ *
+ * `verdict` is recorded at install time rather than recomputed on every read:
+ * a machine on a plain-http LAN address has no `crypto.subtle` at all, and
+ * re-checking there would turn a signature that verified on the doctor's
+ * phone into "unverifiable" on the clinic PC.
+ */
+export interface InstalledAddon {
+  id: string;
+  addon: Addon;
+  /** what the signature check said when it was installed */
+  verdict: Verdict;
+  /** warnings the install was allowed to proceed with, kept so the UI can show them */
+  warnings: string[];
+  installedAt: string;
 }
 
 /** A term the doctor has typed before, ranked by how often they type it. */
@@ -115,6 +138,57 @@ interface NabzDb extends DBSchema {
     indexes: { byName: string };
   };
   /**
+   * Everything clinical about a patient that outlives one visit: allergies,
+   * the problem list, blood group.
+   *
+   * A SEPARATE STORE from `patients`, and the separation is load-bearing.
+   * `clinicSync.ts` sends the whole `patients` store to the reception station
+   * and writes back whatever comes home, so a clinical field living on a
+   * patient row would both leak to the front desk and be erased by the first
+   * sync from a station that did not know about it. Keeping it here makes the
+   * boundary a thing you can see, the way `growthSeries` already does -- and
+   * `savePatientClinical` throws on a reception device, which a filter in the
+   * sync layer could never guarantee.
+   */
+  patientClinical: {
+    key: string;
+    value: PatientClinical;
+  };
+  /**
+   * Results that came back AFTER the visit that ordered them.
+   *
+   * Their own store for the reason growth points have their own: they are the
+   * other thing that legitimately spans encounters. A creatinine reported
+   * three days after a signed prescription cannot be written onto that
+   * document, and a store makes the carve-out visible rather than hiding it
+   * inside an edit to a signed record.
+   *
+   * Indexed by patient, because every read is "this patient's results".
+   */
+  labResults: {
+    key: string;
+    value: LabResult;
+    indexes: { byPatient: string; byDate: string };
+  };
+  /** The study and its report: clinical TEXT, and backed up as such. */
+  imagingStudies: {
+    key: string;
+    value: ImagingStudy;
+    indexes: { byPatient: string; byDate: string };
+  };
+  /**
+   * The photographs, and the only non-text thing this app stores.
+   *
+   * EXCLUDED FROM `collectBackup` on purpose -- see `domain/imaging.ts` for
+   * the arithmetic. They have their own export, written one image at a time
+   * rather than assembled in memory.
+   */
+  attachments: {
+    key: string;
+    value: Attachment;
+    indexes: { byPatient: string; byStudy: string };
+  };
+  /**
    * The clinic layer. Identity, a token, a status and a fee -- deliberately no
    * clinical content, so a shared queue never carries a diagnosis. See
    * domain/clinic.ts.
@@ -129,6 +203,16 @@ interface NabzDb extends DBSchema {
   content: { key: string; value: StoredContent };
   /** the pack library (Stage A) -- one InstalledPack per pack id */
   packs: { key: string; value: InstalledPack };
+  /**
+   * Installed addons, stored SEPARATELY from the pack they contribute to.
+   *
+   * That separation is the whole reason removal is safe: an addon is applied
+   * as a layer at resolve time (`data/provider.ts`), so the base pack is
+   * never rewritten and deleting the row restores exactly what was there
+   * before. Merging into the pack would have meant keeping a snapshot to undo
+   * with, and a snapshot is a thing that can be wrong.
+   */
+  addons: { key: string; value: InstalledAddon };
   meta: { key: string; value: unknown };
 }
 
@@ -170,6 +254,30 @@ export function db(): Promise<IDBPDatabase<NabzDb>> {
       }
       if (oldVersion < 5) {
         database.createObjectStore('packs', { keyPath: 'id' });
+      }
+      if (oldVersion < 6) {
+        database.createObjectStore('addons', { keyPath: 'id' });
+      }
+      if (oldVersion < 9) {
+        const studies = database.createObjectStore('imagingStudies', { keyPath: 'id' });
+        studies.createIndex('byPatient', 'patientId');
+        studies.createIndex('byDate', 'performedOn');
+        const files = database.createObjectStore('attachments', { keyPath: 'id' });
+        files.createIndex('byPatient', 'patientId');
+        files.createIndex('byStudy', 'studyId');
+      }
+      if (oldVersion < 8) {
+        const labs = database.createObjectStore('labResults', { keyPath: 'id' });
+        labs.createIndex('byPatient', 'patientId');
+        labs.createIndex('byDate', 'takenOn');
+      }
+      if (oldVersion < 7) {
+        // Additive. Nothing is migrated INTO it: the allergy strings sitting
+        // on existing prescriptions are snapshots of what was true on those
+        // days, and promoting one to a durable fact about the patient is a
+        // decision a human makes, not a schema bump (see
+        // `adoptTypedAllergies` in domain/patientClinical.ts).
+        database.createObjectStore('patientClinical', { keyPath: 'patientId' });
       }
     },
   });
@@ -255,6 +363,80 @@ export async function searchHistory(query: string, limit = 25): Promise<Prescrip
     .map(normalisePrescription);
 }
 
+/**
+ * Every encounter in a half-open date range, newest first.
+ *
+ * Uses the `byDate` index that has existed since schema v1, so the Patients
+ * view needed no migration and no new store. The upper bound is EXCLUSIVE and
+ * the caller passes the next month's first day (`domain/caseload.ts`), which
+ * is why there is no month-length arithmetic anywhere in this feature.
+ *
+ * Ranged on `rx.date` -- the day the patient was in the room -- rather than
+ * `createdAt`. A script the doctor backdated belongs in the month it says it
+ * does; `createdAt` stays the audit field.
+ */
+export async function encountersBetween(
+  from: string,
+  toExclusive: string,
+): Promise<Prescription[]> {
+  const rows = await (await db()).getAllFromIndex(
+    'prescriptions',
+    'byDate',
+    IDBKeyRange.bound(from, toExclusive, false, true),
+  );
+  return rows.sort((a, b) => b.date.localeCompare(a.date)).map(normalisePrescription);
+}
+
+/**
+ * Which months hold encounters, and how many each holds.
+ *
+ * A skip-scan: open a cursor on `byDate`, read one key, then jump straight to
+ * the first day of the next month. That is one record read per month rather
+ * than one per encounter, so the month strip costs the same at five thousand
+ * scripts as at fifty. The per-month counts need the full set, so they come
+ * from `count()` on each range -- still an index operation, never a scan of
+ * the records themselves.
+ */
+export async function monthsWithEncounters(): Promise<Array<{ key: string; encounters: number }>> {
+  const database = await db();
+  const index = database.transaction('prescriptions').store.index('byDate');
+  const months: string[] = [];
+  let cursor = await index.openKeyCursor();
+  while (cursor) {
+    const date = String(cursor.key);
+    const key = date.slice(0, 7);
+    months.push(key);
+    // The first day of the month after this one. Jumping to it skips every
+    // remaining encounter in the current month without reading any of them.
+    const year = Number(key.slice(0, 4));
+    const month = Number(key.slice(5, 7));
+    const nextKey =
+      month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    cursor = await cursor.continue(nextKey);
+  }
+
+  const out: Array<{ key: string; encounters: number }> = [];
+  for (const key of months) {
+    const year = Number(key.slice(0, 4));
+    const month = Number(key.slice(5, 7));
+    const next =
+      month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    out.push({
+      key,
+      encounters: await database.countFromIndex(
+        'prescriptions',
+        'byDate',
+        IDBKeyRange.bound(`${key}-01`, next, false, true),
+      ),
+    });
+  }
+  return out.sort((a, b) => b.key.localeCompare(a.key));
+}
+
 export async function prescriptionCount(): Promise<number> {
   return (await db()).count('prescriptions');
 }
@@ -281,7 +463,20 @@ export async function allPatients(): Promise<PatientRecord[]> {
 }
 
 export async function deletePatient(id: string): Promise<void> {
-  await (await db()).delete('patients', id);
+  const database = await db();
+  await database.delete('patients', id);
+  // The clinical record is keyed by patient id and nothing else refers to it,
+  // so leaving it behind would be an allergy list belonging to nobody.
+  await database.delete('patientClinical', id);
+  for (const row of await database.getAllFromIndex('labResults', 'byPatient', id)) {
+    await database.delete('labResults', row.id);
+  }
+  for (const row of await database.getAllFromIndex('attachments', 'byPatient', id)) {
+    await database.delete('attachments', row.id);
+  }
+  for (const row of await database.getAllFromIndex('imagingStudies', 'byPatient', id)) {
+    await database.delete('imagingStudies', row.id);
+  }
 }
 
 /**
@@ -313,7 +508,93 @@ export async function mergePatients(sourceId: string, targetId: string): Promise
     await database.delete('growthSeries', sourceId);
   }
 
+  /*
+    Fold the clinical record the same way growth is folded: union, never
+    overwrite. Two records for one child mean someone recorded an allergy
+    against one of them, and a merge that picked a winner would be a merge
+    that can delete an anaphylaxis.
+  */
+  for (const row of await database.getAllFromIndex('labResults', 'byPatient', sourceId)) {
+    await database.put('labResults', { ...row, patientId: targetId });
+  }
+  for (const row of await database.getAllFromIndex('imagingStudies', 'byPatient', sourceId)) {
+    await database.put('imagingStudies', { ...row, patientId: targetId });
+  }
+  for (const row of await database.getAllFromIndex('attachments', 'byPatient', sourceId)) {
+    await database.put('attachments', { ...row, patientId: targetId });
+  }
+
+  const fromClinical = await database.get('patientClinical', sourceId);
+  if (fromClinical) {
+    const intoClinical = await database.get('patientClinical', targetId);
+    const fold = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
+    const allergies = [...(intoClinical?.allergies ?? [])];
+    const seenAllergy = new Set(allergies.map((a) => fold(a.substance)));
+    for (const a of fromClinical.allergies) {
+      if (!seenAllergy.has(fold(a.substance))) {
+        seenAllergy.add(fold(a.substance));
+        allergies.push(a);
+      }
+    }
+    const problems = [...(intoClinical?.problems ?? [])];
+    const seenProblem = new Set(problems.map((p) => fold(p.label)));
+    for (const p of fromClinical.problems) {
+      if (!seenProblem.has(fold(p.label))) {
+        seenProblem.add(fold(p.label));
+        problems.push(p);
+      }
+    }
+    await database.put('patientClinical', {
+      patientId: targetId,
+      allergies,
+      problems,
+      ...(intoClinical?.bloodGroup ?? fromClinical.bloodGroup
+        ? { bloodGroup: intoClinical?.bloodGroup ?? fromClinical.bloodGroup }
+        : {}),
+      updatedAt: new Date().toISOString(),
+    });
+    await database.delete('patientClinical', sourceId);
+  }
+
   await database.delete('patients', sourceId);
+}
+
+// --- the patient's own clinical record -------------------------------------
+
+/**
+ * Read one patient's durable clinical facts.
+ *
+ * Returns `undefined` rather than an empty record when nothing has been
+ * written, so a caller can tell "nobody has asked about allergies" from
+ * "asked, and there are none". The banner depends on that difference.
+ */
+export async function getPatientClinical(patientId: string): Promise<PatientClinical | undefined> {
+  return (await db()).get('patientClinical', patientId);
+}
+
+/**
+ * The line that makes the carve-out real rather than documented.
+ *
+ * `savePatient` is deliberately NOT guarded -- the front desk registers
+ * patients, that is its job. This is, for the same reason `savePrescription`
+ * is: an allergy list is clinical content, and clinical content does not
+ * exist on a reception machine. A sync filter would have been the easy
+ * version and the wrong one; a filter can be dropped by a refactor without
+ * anything failing.
+ */
+export async function savePatientClinical(record: PatientClinical): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('patientClinical', { ...record, updatedAt: new Date().toISOString() });
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+export async function allPatientClinical(): Promise<PatientClinical[]> {
+  return (await db()).getAll('patientClinical');
+}
+
+export async function deletePatientClinical(patientId: string): Promise<void> {
+  await (await db()).delete('patientClinical', patientId);
 }
 
 /** Every prescription belonging to one identified patient, newest first. */
@@ -323,6 +604,99 @@ export async function patientHistory(patientId: string): Promise<Prescription[]>
     .filter((rx) => rx.patientId === patientId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(normalisePrescription);
+}
+
+// --- lab results ------------------------------------------------------------
+
+/**
+ * Every result for one patient, newest first.
+ *
+ * Index-backed rather than a scan, because a patient followed for a chronic
+ * illness accumulates more results than encounters.
+ */
+export async function labResultsFor(patientId: string): Promise<LabResult[]> {
+  const rows = await (await db()).getAllFromIndex('labResults', 'byPatient', patientId);
+  return rows.sort((a, b) => b.takenOn.localeCompare(a.takenOn));
+}
+
+/**
+ * Guarded like `savePrescription`: a result value is clinical content, and
+ * clinical content does not exist on a reception machine.
+ */
+export async function saveLabResult(result: LabResult): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('labResults', result);
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+export async function deleteLabResult(id: string): Promise<void> {
+  await (await db()).delete('labResults', id);
+}
+
+export async function allLabResults(): Promise<LabResult[]> {
+  return (await db()).getAll('labResults');
+}
+
+// --- imaging ----------------------------------------------------------------
+
+export async function imagingFor(patientId: string): Promise<ImagingStudy[]> {
+  const rows = await (await db()).getAllFromIndex('imagingStudies', 'byPatient', patientId);
+  return rows.sort((a, b) => b.performedOn.localeCompare(a.performedOn));
+}
+
+export async function saveImagingStudy(study: ImagingStudy): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('imagingStudies', study);
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+/** Removes the study AND its images: an orphan blob is storage nobody can reach. */
+export async function deleteImagingStudy(id: string): Promise<void> {
+  const database = await db();
+  for (const file of await database.getAllFromIndex('attachments', 'byStudy', id)) {
+    await database.delete('attachments', file.id);
+  }
+  await database.delete('imagingStudies', id);
+}
+
+export async function attachmentsForStudy(studyId: string): Promise<Attachment[]> {
+  const rows = await (await db()).getAllFromIndex('attachments', 'byStudy', studyId);
+  return rows.sort((a, b) => a.addedOn.localeCompare(b.addedOn));
+}
+
+export async function attachmentsForPatient(patientId: string): Promise<Attachment[]> {
+  return (await db()).getAllFromIndex('attachments', 'byPatient', patientId);
+}
+
+export async function saveAttachment(file: Attachment): Promise<void> {
+  if (isReceptionDevice()) throw new ReceptionDeviceError();
+  const database = await db();
+  await database.put('attachments', file);
+  await database.put('meta', new Date().toISOString(), 'lastWriteAt');
+}
+
+export async function deleteAttachment(id: string): Promise<void> {
+  await (await db()).delete('attachments', id);
+}
+
+/**
+ * Every stored image, as ids and sizes only.
+ *
+ * Deliberately NOT the blobs: this backs the storage summary and the image
+ * export's progress count, and reading five hundred photographs into memory to
+ * add up their sizes would be the exact mistake this split exists to avoid.
+ */
+export async function attachmentIndex(): Promise<Array<{ id: string; bytes: number }>> {
+  const keys = await (await db()).getAllKeys('attachments');
+  const database = await db();
+  const out: Array<{ id: string; bytes: number }> = [];
+  for (const key of keys) {
+    const row = await database.get('attachments', key);
+    if (row) out.push({ id: row.id, bytes: row.bytes });
+  }
+  return out;
 }
 
 // --- growth (the named carve-out) ------------------------------------------
@@ -600,6 +974,20 @@ export async function putInstalledPack(entry: InstalledPack): Promise<void> {
   await (await db()).put('packs', entry);
 }
 
+export async function listInstalledAddons(): Promise<InstalledAddon[]> {
+  const all = await (await db()).getAll('addons');
+  // Install order, so `mergeAddons` applies them the way the doctor added them.
+  return all.sort((a, b) => a.installedAt.localeCompare(b.installedAt));
+}
+
+export async function putInstalledAddon(entry: InstalledAddon): Promise<void> {
+  await (await db()).put('addons', entry);
+}
+
+export async function deleteInstalledAddon(id: string): Promise<void> {
+  await (await db()).delete('addons', id);
+}
+
 export async function deleteInstalledPack(id: string): Promise<void> {
   await (await db()).delete('packs', id);
 }
@@ -608,6 +996,26 @@ export async function deleteInstalledPack(id: string): Promise<void> {
 
 export async function lastBackupAt(): Promise<string | undefined> {
   return (await db()).get('meta', 'lastBackupAt') as Promise<string | undefined>;
+}
+
+/**
+ * A SEPARATE mark from `lastBackupAt`.
+ *
+ * The two files are written independently and either can be months out of date
+ * while the other is fresh, so one timestamp covering both would let a stale
+ * image export hide behind a recent records export -- which is exactly the
+ * state the checklist row exists to catch.
+ */
+export async function lastImageBackupAt(): Promise<string | undefined> {
+  return (await db()).get('meta', 'lastImageBackupAt') as Promise<string | undefined>;
+}
+
+export async function markImagesBackedUp(): Promise<void> {
+  await (await db()).put('meta', new Date().toISOString(), 'lastImageBackupAt');
+}
+
+export async function attachmentCount(): Promise<number> {
+  return (await db()).count('attachments');
 }
 
 export async function markBackedUp(): Promise<void> {

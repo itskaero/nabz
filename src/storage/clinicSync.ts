@@ -71,6 +71,46 @@ export function setPairedCode(code: string): void {
   }
 }
 
+/**
+ * Take a pairing code out of the URL, if the station's QR put one there.
+ *
+ * The station's setup page prints a QR for
+ * `https://<station>:8443/#pair=<code>`, so scanning it opens the app AND
+ * pairs the device. That replaces reading a six-digit code off a terminal
+ * window and typing it into a phone, which is two of the four steps that made
+ * connecting a device frightening.
+ *
+ * A FRAGMENT, not a query string, and that is not cosmetic: a fragment is
+ * never sent to any server, so the code cannot end up in an access log on the
+ * way past. And it is stripped from the address bar the moment it is read --
+ * a pairing code left there is a pairing code in the browser history, in a
+ * screenshot, and in whatever gets pasted into WhatsApp when somebody shares
+ * "the clinic link".
+ *
+ * Returns the code it adopted, or null when there was nothing to adopt.
+ */
+export function adoptPairingFromUrl(): string | null {
+  try {
+    const hash = window.location.hash;
+    // Digits only. Anything else in that parameter did not come from a
+    // station this device should be pairing with.
+    const found = /(?:^#|&)pair=(\d{4,12})(?=&|$)/.exec(hash);
+    if (!found) return null;
+    const code = found[1]!;
+    setPairedCode(code);
+
+    const rest = hash.replace(/(?:^#|&)pair=\d{4,12}/, '').replace(/^&/, '#');
+    const url =
+      window.location.pathname + window.location.search + (rest === '#' ? '' : rest);
+    window.history.replaceState(null, '', url);
+    return code;
+  } catch {
+    // No history API, a locked-down webview, or no window at all. The manual
+    // pairing screen still works, which is why this never throws.
+    return null;
+  }
+}
+
 export function forgetPairing(): void {
   try {
     localStorage.removeItem(PAIRING_KEY);

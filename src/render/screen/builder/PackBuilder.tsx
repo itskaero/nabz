@@ -17,6 +17,9 @@ import { useStore } from '../store.tsx';
 import { forkForEditing, publishContent, revertToShipped } from '@data/provider.ts';
 import { isShippedPack } from '@data/packs/index.ts';
 import { useDraft } from './useDraft.ts';
+import { diffPack } from './diff.ts';
+import type { PackDiff } from './diff.ts';
+import { PublishDiff } from './PublishDiff.tsx';
 import type { PackFile, PackSection } from './packFile.ts';
 import {
   downloadPack,
@@ -30,20 +33,46 @@ import { ExamTab } from './tabs/ExamTab.tsx';
 import { LabsTab } from './tabs/LabsTab.tsx';
 import { FormularyTab } from './tabs/FormularyTab.tsx';
 import { DosingTab } from './tabs/DosingTab.tsx';
+import { DosingReview } from './tabs/DosingReview.tsx';
 import { AdviceTab } from './tabs/AdviceTab.tsx';
 import { PhrasesTab } from './tabs/PhrasesTab.tsx';
 import { ReviewTab } from './tabs/ReviewTab.tsx';
+import { Dialog } from '../components/Dialog.tsx';
 
-type Tab = 'exam' | 'labs' | 'formulary' | 'dosing' | 'advice' | 'phrases' | 'review';
+type Tab =
+  | 'exam'
+  | 'labs'
+  | 'formulary'
+  | 'dosing'
+  /**
+   * Sign-off, deliberately a destination of its own rather than a mode inside
+   * Doses. Editing doses and vouching for doses are different sittings with
+   * different mindsets, and mixing them is how a row gets signed in the same
+   * motion that changed it.
+   */
+  | 'signoff'
+  | 'advice'
+  | 'phrases'
+  | 'review';
 
-/** Which slice of a pack each tab owns. Review owns none of them. */
+/**
+ * Which slice of a pack each tab owns. Review owns none of them.
+ *
+ * Sign-off owns the DOSING slice: a `dosingReview` entry is meaningless away
+ * from the row it signs, so the two travel together or not at all. The cast
+ * below is only safe for tabs whose id IS a section name, which is why the two
+ * that are not are named here rather than falling through it.
+ */
 function tabSection(tab: Tab): PackSection | null {
-  return tab === 'review' ? null : (tab as PackSection);
+  if (tab === 'review') return null;
+  if (tab === 'signoff') return 'dosing';
+  return tab as PackSection;
 }
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'formulary', label: 'Medicines' },
   { id: 'dosing', label: 'Doses' },
+  { id: 'signoff', label: 'Sign-off' },
   { id: 'phrases', label: 'Phrases' },
   { id: 'advice', label: 'Advice' },
   { id: 'exam', label: 'Exam' },
@@ -66,8 +95,27 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
   const [incoming, setIncoming] = useState<{ name: string; file: PackFile } | null>(null);
   /** Open while someone is choosing how much of their pack to write out. */
   const [exporting, setExporting] = useState(false);
+  /**
+   * What saving would change, held open for confirmation.
+   *
+   * The import path already says what it is about to replace before it does
+   * it. This is the same courtesy for the operation that actually reaches
+   * patients.
+   */
+  const [pendingPublish, setPendingPublish] = useState<PackDiff | null>(null);
+
+  /** Compared against what is LIVE, not against what shipped. */
+  const reviewChanges = () => {
+    setPendingPublish(
+      diffPack(
+        { pack: store.pack, phrases: store.phrases },
+        { pack: draft.pack, phrases: draft.phrases },
+      ),
+    );
+  };
 
   const save = async () => {
+    setPendingPublish(null);
     const result = await publishContent(draft.pack.id, draft.pack, draft.phrases);
     if (!result.ok) {
       setStatus(`Not saved — ${result.errors.length} problem(s) must be fixed first.`);
@@ -139,7 +187,13 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           <strong>Pack builder</strong>
           <small>
             {draft.pack.specialty} · {draft.stats.brands} medicines ·{' '}
-            {draft.stats.generics} generics · {draft.stats.dosing} cited doses
+            {draft.stats.generics} generics · {draft.stats.dosing} doses
+            {/*
+              "cited doses" was true of all of them and useful about none: every
+              row has a reference, and the number that tells you where the work
+              is is how many of them nobody has opened yet.
+            */}
+            {draft.stats.draftedDosing > 0 && `, ${draft.stats.draftedDosing} drafted`}
           </small>
         </div>
         <span className="spacer" />
@@ -188,6 +242,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
 
         {tab === 'formulary' && <FormularyTab draft={draft} />}
         {tab === 'dosing' && <DosingTab draft={draft} />}
+        {tab === 'signoff' && <DosingReview draft={draft} />}
         {tab === 'phrases' && <PhrasesTab draft={draft} />}
         {tab === 'advice' && <AdviceTab draft={draft} />}
         {tab === 'exam' && <ExamTab draft={draft} />}
@@ -203,7 +258,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           replaces 150 reconciled medicines expecting to replace six chips.
         */}
         {incoming && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Import a pack" onClose={() => setIncoming(null)}>
             <div className="sheet-modal">
               <h3>What should be taken from this file?</h3>
               <p className="hint" style={{ marginTop: 0 }}>
@@ -252,7 +307,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
         )}
 
         {/*
@@ -262,7 +317,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           on the way in, but they would still have left the building.
         */}
         {exporting && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Export this pack" onClose={() => setExporting(false)}>
             <div className="sheet-modal">
               <h3>What should this file contain?</h3>
               <p className="hint" style={{ marginTop: 0 }}>
@@ -306,11 +361,19 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
+        )}
+
+        {pendingPublish && (
+          <PublishDiff
+            diff={pendingPublish}
+            onConfirm={() => void save()}
+            onCancel={() => setPendingPublish(null)}
+          />
         )}
 
         {confirmRevert && (
-          <div className="scrim" role="dialog" aria-modal="true">
+          <Dialog label="Discard your edits" onClose={() => setConfirmRevert(false)}>
             <div className="sheet-modal">
               <h3>Discard your edits?</h3>
               <div className="warn-box" style={{ margin: '10px 0' }}>
@@ -328,7 +391,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Dialog>
         )}
       </div>
 
@@ -366,7 +429,11 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
             Reset
           </button>
         )}
-        <button className="btn" disabled={!draft.dirty || !draft.exportable} onClick={save}>
+        <button
+          className="btn"
+          disabled={!draft.dirty || !draft.exportable}
+          onClick={reviewChanges}
+        >
           Save
         </button>
       </footer>
