@@ -3647,3 +3647,292 @@ kbd {
     backdrop-filter: none;
   }
 }
+
+/* ==========================================================================
+   NAMA COMPONENT PRIMITIVES
+
+   Nabz is a member of the nama family (itskaero.github.io/nama). The palette
+   above is now the family's clinical register; this section is the family's
+   component vocabulary, which is the half that was actually making the screens
+   read as generic — bordered rectangles with sentence-case labels could belong
+   to any product.
+
+   Five things carry the family's voice, and each one is a rule rather than a
+   decoration:
+
+     EYEBROW   mono, uppercase, wide-tracked, one dot of accent. It is how
+               every nama member labels a region.
+     STATE     a glyph AND a border AND a colour, never colour alone — nama
+               attributes this rule to nabz, because a mono printer and a
+               colourblind reader have to receive the same message.
+     STAT      mono, tabular numerals. In this product that is a dose-legibility
+               property and not a style: mono means "this is a precise value".
+     PILL      a status, never an action. A button is an action and never
+               reports a state. The two are not interchangeable.
+     LIVE      a pulsing dot that means "right now", used sparingly.
+
+   Motion is the family's one curve, `--ease`, at the family's four durations.
+   ========================================================================== */
+
+/*
+ * The eyebrow. Replaces a plain bold sentence as a section label.
+ *
+ * The accent dot is the part that does the work: it is the only place the
+ * family's identity appears at rest, and it is why a nama screen is
+ * recognisable before you have read a word of it.
+ */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+
+.eyebrow.is-bare::before {
+  display: none;
+}
+
+/*
+ * THE STATE CHIP — glyph, border, colour. Never one of the three alone.
+ *
+ * This is the rule nama credits to this codebase, brought back into it. The
+ * three states are the only three this product has: vetted, unverified,
+ * danger. Anything that is not one of those is a `.pill`, which carries no
+ * colour at all.
+ */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.state::before {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.state.ok {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.state.ok::before {
+  content: '\2713';
+}
+
+.state.warn {
+  color: var(--caution-ink);
+  border-color: var(--caution);
+  background: var(--caution-wash);
+}
+
+.state.warn::before {
+  content: '\270E';
+}
+
+.state.danger {
+  color: var(--danger-ink);
+  border-color: var(--danger);
+  background: var(--danger-wash);
+}
+
+.state.danger::before {
+  content: '\0021';
+}
+
+/*
+ * THE STAT — a figure and what it is.
+ *
+ * Mono with tabular numerals so a column of them aligns on the decimal, which
+ * is the only way a list of doses can be scanned. `font-variant-numeric` is
+ * the part people forget: without it, IBM Plex Mono still shifts proportional
+ * digits in some weights.
+ */
+.stat {
+  display: grid;
+  gap: 4px;
+}
+
+.stat-num {
+  font-family: var(--font-mono);
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.stat-lab {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/*
+ * THE LIVE DOT. "Right now", and nothing else.
+ *
+ * Reserved: a queue that is actually being served, a sync that is actually
+ * running. If it appears on something static it stops meaning anything, which
+ * is the whole failure mode of a pulsing dot.
+ */
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: 0 0 auto;
+  animation: live-pulse 2.4s var(--ease) infinite;
+}
+
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-wash);
+  }
+  70% {
+    box-shadow: 0 0 0 9px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/*
+ * FILM GRAIN — the one texture the family allows.
+ *
+ * Its job is mechanical rather than aesthetic: a large flat field of a single
+ * near-black blue bands visibly on a cheap panel, and a phone in a Pakistani
+ * clinic is a cheap panel. Three and a half per cent of noise removes the
+ * banding and is invisible as texture.
+ *
+ * Only over the void. The clinical register has no large flat dark field to
+ * band, and grain over near-white reads as dirt.
+ */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0.035;
+  display: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='dark'] .grain {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .grain {
+    display: block;
+  }
+}
+
+/*
+ * THE BUTTON, with the family's lift.
+ *
+ * A one-pixel rise on hover and a glow that grows from nothing, both on
+ * `--ease` at the family's `fast` and `base`. Small enough that the two
+ * hundredth press of the day is not a delay, and present enough that the
+ * control reads as a physical thing rather than a coloured rectangle.
+ */
+.btn {
+  transition:
+    transform var(--motion-fast) var(--ease),
+    background var(--motion-base) var(--ease),
+    border-color var(--motion-base) var(--ease),
+    box-shadow var(--motion-base) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+:root:not([data-theme='contrast']) .btn:not(.ghost):not(.quiet):hover:not(:disabled) {
+  box-shadow: 0 8px 28px -8px var(--accent-wash);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/*
+ * The sign-off head: a ring, a figure, a label.
+ *
+ * `--motion-cine` on the arc because it is an arrival — the ring draws itself
+ * to where the work actually is when the screen opens, which is the one thing
+ * on this page worth 900ms. Every other transition here is `fast` or `base`.
+ */
+.signoff-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0 6px;
+}
+
+.ring {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  transform: rotate(-90deg);
+}
+
+.ring circle {
+  fill: none;
+  stroke-width: 5;
+}
+
+.ring-track {
+  stroke: var(--line);
+}
+
+.ring-done {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--motion-cine) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-done {
+    transition: none;
+  }
+}
+
+/* The denominator is context, not a figure — quieter and not tabular-locked. */
+.stat-of {
+  font-size: 0.6em;
+  font-weight: 400;
+  color: var(--ink-faint);
+  letter-spacing: 0;
+}

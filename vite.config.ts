@@ -23,8 +23,8 @@ export default defineConfig({
           green app. The manifest is the one place the palette is written out
           by hand rather than generated, which is exactly why it drifted.
         */
-        theme_color: '#0f3e17',
-        background_color: '#e1f4df',
+        theme_color: '#0f8055',
+        background_color: '#eef1f2',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

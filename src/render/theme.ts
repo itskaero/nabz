@@ -303,267 +303,195 @@ export interface ThemeTokens {
   colorScheme: 'light' | 'dark';
 }
 
+/**
+ * THE CLINICAL REGISTER OF THE NAMA DESIGN SYSTEM.
+ *
+ * Nabz is a member of the `nama` family (itskaero.github.io/nama) alongside
+ * MeritNama, medNAMA, Antibiome and Antibiotogram. The family shares one
+ * skeleton -- ground, ink ramp, type, spacing, radii, one easing curve -- and
+ * members differ by a single accent. Nabz's is the teal `#19a06d`, which
+ * becomes `#0f8055` in the clinical register, and `data-register="clinical"`
+ * is the light ground the system mandates for this member: "a doctor must
+ * never meet neon."
+ *
+ * THIS IS A CORRECTION. The screen palette had drifted onto a botanical
+ * system -- keylime grounds, Forest Ink, cream cards -- that is not the
+ * family's. The PRINT palette above never drifted (`#eef1f2`, `#14201f`,
+ * `#55635f`, `#dfe4e3`, `#eceeed` are the nama clinical values, exactly), so
+ * the two had quietly come apart on the one product whose structural promise
+ * is that the preview IS the print. They agree again.
+ *
+ * WHERE THIS DEPARTS FROM THE PUBLISHED FILE, AND WHY. nama.css is a design
+ * system with a marketing site attached, and three of its clinical values are
+ * display values that fail WCAG at the sizes an app actually uses:
+ *
+ *   `--nama-ink-3: #8a9691`  2.70:1 on the ground. It is every field label
+ *                            here. This codebase already caught that value
+ *                            once; `inkFaint` is the darkest step that clears
+ *                            4.5 on all four surfaces AND under the aurora.
+ *   `--nama-amber: #d9a24a`  2.28:1 on white as text.
+ *   `--nama-alert: #e0716a`  3.12:1 on white as text.
+ *
+ * The two alarms are darkened for this register in exactly the way nama itself
+ * darkens its own accent from `#19a06d` to `#0f8055` when the ground inverts
+ * -- the hue and the role are the system's, the luminance is this register's.
+ * Everything else is taken as published.
+ */
 const LIGHT: ThemeTokens = {
   /*
-    The ground is Keylime Wash, the design system's own hero-panel tint, used
-    full-bleed as the page. Cards are Cream Paper on top of it.
+    nama void / deep / panel, as the shell / page / card ladder.
 
-    That ordering is deliberate and is the opposite of a marketing site, which
-    puts cream behind and tints the panels: a marketing page has four panels
-    and this screen has twenty cards, so tinting each one would leave no
-    quiet ground anywhere. Tinting the GROUND instead gives the same botanical
-    character with the cards still reading as the thing you work in.
+    nama publishes three clinical surfaces and no "sunken", because a
+    marketing page has no rail. `#e1e7e8` is that step, derived one tone below
+    the ground so the chrome sits under the content rather than beside it.
   */
-  bg: '#e1f4df',
+  surfaceSunken: '#e1e7e8',
+  bg: '#eef1f2',
+  surface: '#ffffff',
   /*
-    Mint, a step DEEPER than the keylime ground.
-
-    On a light ground the card is already as bright as a card can be, so the
-    third tone has to come from below: the rail and the bottom bar sink into
-    Mint while the page stays Keylime and the cards stay Cream. Same three-step
-    structure as a dark shell, built the only way round that works in light.
+    Also white, which is nama's own answer: in the clinical register a modal
+    does not get a brighter surface, it gets `--lift-3`. There is nowhere
+    above white to go, and inventing an off-white for "raised" would make the
+    brightest thing on screen the thing furthest from the page.
   */
-  surfaceSunken: '#c7e2cb',
-  surface: '#fffefc',
   surfaceRaised: '#ffffff',
-  ink: '#222222',
-  // Desaturated green-greys rather than neutrals, so the secondary text stays
-  // in the family while body ink is the system's own Charcoal.
-  inkSoft: '#41503f',
-  /*
-    Darkened again, for the aurora rather than for the surfaces.
+  ink: '#14201f',
+  inkSoft: '#55635f',
+  // nama's `--nama-ink-3` is #8a9691 and measures 2.70:1 here. See the header.
+  inkFaint: '#5e6966',
+  line: '#dfe4e3',
+  lineSoft: '#eceeed',
+  // The border of a control whose edge is its only affordance. nama has no
+  // token for this case; 3.43:1 at its worst, against WCAG 1.4.11's 3.
+  lineStrong: '#707d78',
 
-    This is every field label, hint and unit tag in the app, and it is the ONE
-    text token that sits directly on the page ground rather than inside a card
-    — so it is the token the drifting colour field reaches first. #4f5d50
-    measured 4.37:1 with the green stop overhead, under the 4.5 body floor.
-    4.86 now, at its worst corner, which is also the corner the test checks.
-  */
-  inkFaint: '#495648',
-  line: '#d4e6d6',
-  // Border Mist, exactly as the system specifies -- 1.15:1 on cream, which is
-  // a hairline and must never be the only thing marking a boundary.
-  lineSoft: '#efeeeb',
-  /*
-    Darkened a step with the shell.
-
-    This is the border of a control whose boundary is its only affordance, and
-    WCAG 1.4.11 wants 3:1 against whatever it sits on. #6f8273 cleared that on
-    the page and the card but measured 2.96 on the new sunken shell -- which is
-    exactly where the segmented control's selected segment lives. 3.27 there,
-    and still only a hairline's weight.
-  */
-  lineStrong: '#5b6e60',
-
-  // Forest Ink, and nothing else, is the action colour. `accentInk` is the
-  // same value rather than a darker step: the system has one green, and at
-  // 9.31:1 on Mint it does not need a second.
-  accent: '#0f3e17',
-  accentInk: '#0f3e17',
-  accentWash: '#cfe7d3',
+  // `[data-accent="nabz"]` under `[data-register="clinical"]`, verbatim.
+  accent: '#0f8055',
+  // nama's clinical `--accent-2`, which is what reads as text on the wash.
+  accentInk: '#0b6b3f',
+  accentWash: '#e3f2ea',
   onAccent: '#ffffff',
 
-  /*
-    The alarms. Derived to sit in the same desaturated ink register as Forest
-    Ink so they read as part of the palette rather than as web red and web
-    amber, and measured against all five of the system's surfaces: the danger
-    ink clears 6.32:1 at its worst (on Sage), the caution ink 4.83:1.
-
-    The washes are ~1.2:1 against cream, so a wash is never the signal -- the
-    left rail and the word carry it (DESIGN.md 8), which is also the system's
-    own "depth comes from fill contrast" rule.
-  */
-  danger: '#7a1d1d',
-  dangerInk: '#5c1515',
-  dangerWash: '#f6e7e4',
+  // nama's `--nama-alert` hue, at this register's luminance.
+  danger: '#a8332c',
+  dangerInk: '#8a241f',
+  dangerWash: '#fbeceb',
   onDanger: '#ffffff',
 
-  caution: '#a8722a',
+  // nama's `--nama-amber` hue, likewise.
+  caution: '#8a6220',
   cautionInk: '#6d4a1b',
-  cautionWash: '#f3ecdd',
+  cautionWash: '#f6eddf',
 
-  /**
-   * DESIGN.md 7: NOT the cream-paper cliche, and not the cool Slate either.
-   * The patient block is paper lying on the desk -- lighter and warmer than
-   * the keylime ground, a faint step off the card it sits in, so the jump from
-   * workspace to document is a gradient within one family rather than a change
-   * of app. Sage is the desk underneath (`sheet`).
-   */
-  patientTint: '#eef8ec',
-  sheet: '#b1dbb8',
+  // nama's `--nama-deep`, the family's alternating band: the patient block is
+  // a step off the card rather than a different colour from it.
+  patientTint: '#f6f8f8',
+  sheet: '#e1e7e8',
 
-  focus: '#0f3e17',
-  scrim: 'rgba(18, 38, 24, 0.35)',
-  /*
-    Kept, against the design system's "never add box-shadow". On a desk monitor
-    layered tints read as depth; on a 390px phone in direct sunlight they do
-    not, and this app is used in both places. Warm-cast and wide rather than
-    grey and tight, so it reads as light falling across the card.
-  */
-  shadow1: '0 1px 2px rgba(18, 38, 24, 0.05), 0 4px 12px rgba(18, 38, 24, 0.05)',
-  shadow2: '0 1px 3px rgba(18, 38, 24, 0.1), 0 10px 28px rgba(18, 38, 24, 0.09)',
+  focus: '#0f8055',
+  scrim: 'rgba(4, 7, 14, 0.42)',
+  // nama `--lift-1` and `--lift-2`, which are cool rather than warm because
+  // the family's ground is a near-black blue.
+  shadow1: '0 1px 2px rgba(20, 32, 31, 0.06)',
+  shadow2: '0 8px 24px -10px rgba(20, 32, 31, 0.14)',
+
+  glass: 'rgba(255, 255, 255, 0.58)',
+  glassLine: 'rgba(20, 32, 31, 0.1)',
+  glassCard: 'rgba(255, 255, 255, 0.7)',
+
+  heroFrom: '#e3f2ea',
+  heroTo: '#eef1f2',
 
   /*
-    Thin enough to actually be glass.
+    The aurora, in the family's own signals.
 
-    0.82 and 0.84 were frosted in name only: eighteen per cent of a backdrop
-    is a tint, not a material. The shell goes to 0.58 and the cards to 0.70,
-    which is where the colour moving underneath becomes something you can
-    watch — and the worst composite at those alphas still clears every floor
-    with room to spare, because a glass surface is LIGHTER than the aurora
-    under it in this mode, not darker.
+    nama names eight colours and says what each is FOR, which settles the
+    question the last pass had to argue from first principles: `--nama-amber`
+    is "caution, unverified" and `--nama-alert` is "danger only -- never
+    decorative", so neither may appear in a background. The four that are free
+    are teal, mint, sky and peach, and these are those four at this register's
+    luminance.
   */
-  glass: 'rgba(255, 254, 252, 0.58)',
-  glassLine: 'rgba(15, 62, 23, 0.14)',
-  glassCard: 'rgba(255, 254, 252, 0.7)',
-
-  // Sage through Mint: the desk the paper lies on, lifting into the panel
-  // tint. A sweep with real luminosity in it, and no hue the palette does not
-  // already own.
-  heroFrom: '#b1dbb8',
-  heroTo: '#e1f4df',
-
-  /*
-    Chroma raised at CONSTANT LUMINANCE, which is the free move here.
-
-    Contrast is a function of luminance alone, so saturation can be pushed a
-    long way without touching a single measurement: #7fc99a and #63ce8a are
-    both L=0.486 and clear exactly the same floors, but only one of them is a
-    colour you notice. The three stops are each the most saturated version of
-    themselves that still sits on the luminance the tests were built around.
-
-    Green, gold and apricot — the warm two deliberately lighter and more
-    luminous than the amber that marks an unvetted sentence, so that even
-    where they share a hue they do not share a register.
-  */
-  auroraA: '#46d279',
-  auroraB: '#f9dc6d',
-  auroraC: '#ffb066',
-  // 0.5 is the ceiling, measured: at 0.6 the input border drops to 2.87:1 on
-  // the green stop and WCAG 1.4.11 wants 3.
-  /*
-    0.62, and every number in this file moved to allow it.
-
-    A gradient you have to be told is there is not a gradient. The limit is
-    not taste, it is the quietest text on the page: at 0.62 `inkFaint` reads
-    4.86:1 with the green stop overhead and the input border 3.42:1, both
-    above their floors — and `tests/theme.test.ts` recomputes exactly that
-    composite rather than taking anyone's word for it.
-  */
+  auroraA: '#95f5c5',
+  auroraB: '#b2e8fb',
+  auroraC: '#f7e2ca',
   auroraOpacity: '0.62',
 
   paper: '#ffffff',
-  // NOT Charcoal. This is a picture of what the printer produces, and the
-  // print palette is frozen -- `palette.ink` is the value a clinician signed
-  // off on. The preview matches the page or it is not a preview.
+  // The print palette's own ink -- and now the same value as `ink`, because
+  // both are nama clinical. The preview matches the page by construction
+  // rather than by two files happening to agree.
   paperInk: '#14201f',
   colorScheme: 'light',
 };
 
 /**
- * Not black. A pure-black field makes white Nastaliq bloom, and this app draws
- * a lot of Nastaliq; the surfaces are a deep desaturated green-grey so the
- * whole thing stays recognisably the same product with the lights off.
+ * THE VOID REGISTER, which is the family's default everywhere but here.
+ *
+ * nama's ground is a near-black BLUE -- the midpoint of MeritNama's #04060c
+ * and medNAMA's #000912 -- not the green-grey this file used to invent. Four
+ * surfaces, published: void, deep, panel, raised.
+ *
+ * Nabz still ships light and `readAppearance` still defaults to it, because
+ * nama is explicit that this member never auto-switches: dark murders
+ * Nastaʿlīq legibility, and the Urdu line is the product. This register is
+ * here for the doctor who asks for it at 03:00, not for the OS to impose.
+ *
+ * `--accent-ink` departs from the published `#f4fbf7`: that measures 3.18:1 on
+ * `#19a06d`, which is a label on a button nobody can read. The other four
+ * family members all use `#04070e` for the same slot, and it measures 6.04.
  */
 const DARK: ThemeTokens = {
-  /*
-    OPENED UP, against measurements rather than taste.
+  surfaceSunken: '#04070e',
+  bg: '#080d16',
+  surface: '#0d1420',
+  surfaceRaised: '#121b29',
+  ink: '#eef3f4',
+  // nama's ink-2 and ink-3 are alphas of `ink`; these are those composites
+  // over the panel, resolved to solids -- with ink-3 lifted from 4.02:1 to
+  // 6.19 because a field label is text, not decoration.
+  inkSoft: '#aab0b4',
+  inkFaint: '#949ca0',
+  line: '#262d36',
+  lineSoft: '#1a212c',
+  lineStrong: '#8e9699',
 
-    The four surfaces used to run #0c1413 / #141e1d / #1c2827, which is a 1.10
-    contrast step between each -- near enough to flat that the layering was a
-    fact about the hex codes rather than something an eye could see, and the
-    whole mode read as one dark field with hairlines drawn on it.
+  accent: '#19a06d',
+  // nama's `[data-accent="nabz"] --accent-2`.
+  accentInk: '#7fd1a8',
+  accentWash: '#0f2a28',
+  onAccent: '#04070e',
 
-    Sampling a dark app UI that does read as layered gives steps of 1.27-1.29,
-    which is a luminance roughly doubling each time. These four are built to
-    that separation (1.17 / 1.22 / 1.25, at luminances 2.3x, 1.8x and 1.6x
-    apart) and are correspondingly lighter overall -- still a dark room's
-    screen, no longer a black one.
+  danger: '#e0716a',
+  dangerInk: '#eb948e',
+  dangerWash: '#2b1512',
+  onDanger: '#04070e',
 
-    The green-grey cast is unchanged. A product whose hue family changes when
-    the lights go out is a product with two brands.
-  */
-  surfaceSunken: '#131615',
-  bg: '#212524',
-  surface: '#2e3432',
-  surfaceRaised: '#3b4341',
-  ink: '#eef3f1',
-  inkSoft: '#b8c6c1',
-  // Raised twice: once with the surfaces (#8b9a96 measured 3.86:1 on the new
-  // raised surface) and again for the aurora, where #a3b2ad read 4.11:1 with
-  // the golden stop overhead. 4.64 now at its worst corner.
-  inkFaint: '#aebdb8',
-  line: '#444d4a',
-  lineSoft: '#39413f',
-  /*
-    Lifted, because the aurora moves underneath it.
+  caution: '#d9a24a',
+  cautionInk: '#e6bb7c',
+  cautionWash: '#2a2013',
 
-    #7d8c87 cleared 3:1 on every flat surface, and measured 2.99 against the
-    page once the golden stop was overhead -- a control whose boundary is its
-    only affordance, failing by a hundredth, on whichever screens happened to
-    have the gradient in that corner. The floor has to hold against the whole
-    composite, not against the surface in isolation.
-  */
-  lineStrong: '#8d9c97',
+  patientTint: '#121b29',
+  sheet: '#04070e',
 
-  /*
-    Light accent carrying dark ink -- a #0f3e17 button on a #141e1d card is a
-    1.6:1 shape you cannot find, and no amount of white text fixes that. So
-    Forest Ink inverts here rather than being used literally.
+  focus: '#7fd1a8',
+  scrim: 'rgba(4, 7, 14, 0.72)',
+  // nama `--lift-1` / `--lift-2` for the void: depth, not shine.
+  shadow1: '0 1px 2px rgba(0, 0, 0, 0.4)',
+  shadow2: '0 10px 30px -10px rgba(0, 0, 0, 0.6)',
 
-    It is still GREEN. The design system does not describe a dark mode, but a
-    product whose brand hue changes when the lights go out is a product with
-    two brands, and the doctor switching to dark at 03:00 is the same doctor.
-  */
-  /*
-    More chroma, for the same reason the surfaces opened up.
+  glass: 'rgba(13, 20, 32, 0.58)',
+  glassLine: 'rgba(238, 243, 244, 0.1)',
+  glassCard: 'rgba(13, 20, 32, 0.7)',
 
-    #86d196 is a sage that goes grey against a lifted surface. The reference
-    accent carries real saturation and is what makes a dark shell read as
-    designed rather than as absent -- so this one does too, without leaving
-    green.
-  */
-  accent: '#6edc8c',
-  accentInk: '#8ee9a5',
-  accentWash: '#1d3a26',
-  onAccent: '#07280f',
+  heroFrom: '#0f2a28',
+  heroTo: '#080d16',
 
-  danger: '#ff938c',
-  dangerInk: '#ffb0aa',
-  dangerWash: '#452220',
-  onDanger: '#2b0b09',
-
-  caution: '#eab470',
-  cautionInk: '#f5cf9c',
-  cautionWash: '#3d3019',
-
-  patientTint: '#263230',
-  sheet: '#161a19',
-
-  focus: '#8ee9a5',
-  scrim: 'rgba(0, 0, 0, 0.6)',
-  // Deeper, now that the surfaces they separate are lighter: a shadow that was
-  // readable under a near-black card is invisible under a lifted one.
-  shadow1: '0 1px 2px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4)',
-  shadow2: '0 1px 3px rgba(0, 0, 0, 0.65), 0 12px 32px rgba(0, 0, 0, 0.5)',
-
-  glass: 'rgba(46, 52, 50, 0.58)',
-  glassLine: 'rgba(238, 243, 241, 0.14)',
-  glassCard: 'rgba(46, 52, 50, 0.7)',
-
-  heroFrom: '#1d3a26',
-  heroTo: '#212524',
-
-  /*
-    Emerald, gold, ember — an aurora over a dark field, which is the one it is
-    actually named after. Darker than the light-mode stops rather than merely
-    a shade of them: a bright stop on a dark ground is a lamp, not a sky.
-
-    Same iso-luminant chroma move as the light stops, for the same reason.
-  */
-  auroraA: '#146933',
-  auroraB: '#676510',
-  auroraC: '#7d360c',
+  // Teal, mint and sky — the free signals, at void luminance. Peach is left
+  // out here: at this darkness it reads as the amber that means unverified.
+  auroraA: '#0a4a32',
+  auroraB: '#0e4a3c',
+  auroraC: '#17405e',
   auroraOpacity: '0.6',
 
   paper: '#ffffff',
@@ -575,6 +503,10 @@ const DARK: ThemeTokens = {
  * High contrast, and deliberately built on WHITE rather than as a darker
  * light mode: the case it serves is direct sunlight on a phone, where the
  * screen's own black point is the limit and the only lever left is ink.
+ *
+ * Not a nama register. nama has two, and this is an accessibility mode that
+ * overrides both -- which is why it is the one place the family's accent is
+ * allowed to be driven past its published luminance.
  */
 const CONTRAST: ThemeTokens = {
   bg: '#ffffff',
@@ -585,7 +517,7 @@ const CONTRAST: ThemeTokens = {
     a little. This mode exists for a phone in direct sunlight and for a doctor
     who is sixty, where "a little" is nothing at all -- so the shell is the
     page is the card, every boundary is a hard 3:1 line, and the glass and the
-    gradient below resolve to flat white.
+    aurora below resolve to flat white.
   */
   surfaceSunken: '#ffffff',
   surface: '#ffffff',
@@ -597,12 +529,11 @@ const CONTRAST: ThemeTokens = {
   lineStrong: '#31403c',
   lineSoft: '#8d9b97',
 
-  // Forest Ink unchanged from the design system: at 12.20:1 on white it is
-  // already a high-contrast ink, so this mode needs no darker step invented
-  // for it -- only a deeper one for text sitting on the wash.
-  accent: '#0f3e17',
-  accentInk: '#0a2b10',
-  accentWash: '#e1f4df',
+  // nama's clinical teal, driven darker: at 12.2:1 on white this mode needs no
+  // second step for the accent, only a deeper one for text on the wash.
+  accent: '#0a5c37',
+  accentInk: '#073f26',
+  accentWash: '#e3f2ea',
   onAccent: '#ffffff',
 
   danger: '#8e0f17',
@@ -614,10 +545,10 @@ const CONTRAST: ThemeTokens = {
   cautionInk: '#4a3011',
   cautionWash: '#f6eddf',
 
-  patientTint: '#eef8ec',
-  sheet: '#dfeadd',
+  patientTint: '#f6f8f8',
+  sheet: '#e1e7e8',
 
-  focus: '#0f3e17',
+  focus: '#0a5c37',
   scrim: 'rgba(0, 0, 0, 0.5)',
   shadow1: '0 0 0 1px #31403c',
   shadow2: '0 0 0 1px #31403c',
@@ -723,9 +654,22 @@ export const DENSITIES: Record<Density, DensityTokens> = {
  * rules, so a transition never has to be written twice.
  */
 export const MOTION = {
-  fast: '110ms',
-  base: '180ms',
-  ease: 'cubic-bezier(0.2, 0, 0.2, 1)',
+  /*
+    nama's four durations and its one curve.
+    
+    The family's note on the curve is the interesting part: all three original
+    repos had independently converged on `cubic-bezier(.2, .8, .2, 1)`, which
+    is what made it the signature rather than a choice. It arrives early and
+    decelerates long, so it reads as weight. This file had `(0.2, 0, 0.2, 1)`
+    -- the same endpoints, no overshoot of the midpoint, and therefore the
+    mechanical feel the system explicitly rules out for position.
+  */
+  fast: '160ms',
+  base: '260ms',
+  slow: '440ms',
+  cine: '900ms',
+  ease: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+  easeOut: 'cubic-bezier(0.16, 1, 0.3, 1)',
 } as const;
 
 /**
@@ -737,7 +681,7 @@ export const MOTION = {
  * Health card radius, taken as given; `rSm` follows it up so a chip inside a
  * card still nests visually instead of matching it.
  */
-export const RADII = { r: '14px', rSm: '10px', rPill: '999px' } as const;
+export const RADII = { r: '14px', rSm: '8px', rLg: '22px', rPill: '999px' } as const;
 
 // --- generated CSS ---------------------------------------------------------
 
@@ -830,10 +774,14 @@ export function tokensCss(): string {
   out.push(':root {', block(LIGHT), '', densityBlock(DENSITIES.comfortable), '');
   out.push(`  --r: ${RADII.r};`);
   out.push(`  --r-sm: ${RADII.rSm};`);
+  out.push(`  --r-lg: ${RADII.rLg};`);
   out.push(`  --r-pill: ${RADII.rPill};`);
   out.push(`  --motion-fast: ${MOTION.fast};`);
   out.push(`  --motion-base: ${MOTION.base};`);
+  out.push(`  --motion-slow: ${MOTION.slow};`);
+  out.push(`  --motion-cine: ${MOTION.cine};`);
   out.push(`  --ease: ${MOTION.ease};`);
+  out.push(`  --ease-out: ${MOTION.easeOut};`);
   out.push('}', '');
 
   // `system` and an explicit choice are two different selectors on purpose: an

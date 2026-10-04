@@ -56,8 +56,17 @@ describe('the sign-off screen', () => {
     expect((first as HTMLButtonElement).disabled).toBe(false);
     await user.click(first);
 
-    // The count moves, and the row now carries a name and a date.
-    await waitFor(() => expect(screen.getByText(/1 of \d+ signed/)).toBeTruthy());
+    /*
+      Asserted through the progress ring's accessible name rather than through
+      the visible figure.
+
+      The figure is now "1 / 115" beside the word "signed", split across a
+      stat and its label, which is right on screen and unreadable as one
+      string. The ring carries the whole sentence for a screen reader, so
+      testing THAT tests the thing a blind reviewer actually receives — and
+      the two cannot drift, because there is only one count behind both.
+    */
+    await waitFor(() => expect(screen.getByRole('img', { name: /^1 of \d+ signed$/ })).toBeTruthy());
     expect(screen.getByText(/Dr A\. Tahir ·/)).toBeTruthy();
   });
 
@@ -70,7 +79,7 @@ describe('the sign-off screen', () => {
       const next = (await screen.findAllByRole('button', { name: 'Sign off' }))[0]!;
       await user.click(next);
     }
-    await waitFor(() => expect(screen.getByText(/3 of \d+ signed/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('img', { name: /^3 of \d+ signed$/ })).toBeTruthy());
   });
 
   /*
@@ -93,12 +102,14 @@ describe('the sign-off screen', () => {
     // The field is still there, with the whole name in it.
     const field = (await screen.findByLabelText('Your name')) as HTMLInputElement;
     expect(field.value).toBe('Dr A. Tahir');
-    expect(screen.getByText(/0 of \d+ signed/)).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^0 of \d+ signed$/ })).toBeTruthy();
 
     // And space pressed outside the list is still not a signature.
-    await user.click(screen.getByRole('heading', { name: 'Dose sign-off' }));
+    // The eyebrow label, which replaced the h2 — any non-interactive spot
+    // outside the list will do, the point is that focus leaves it.
+    await user.click(screen.getByText('Dose sign-off'));
     await user.keyboard(' ');
-    expect(screen.getByText(/0 of \d+ signed/)).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^0 of \d+ signed$/ })).toBeTruthy();
   });
 
   it('signs the focused row from the keyboard, once the list has focus', async () => {
@@ -110,11 +121,11 @@ describe('the sign-off screen', () => {
     const list = screen.getByRole('group', { name: /awaiting sign-off/ });
     list.focus();
     await user.keyboard(' ');
-    await waitFor(() => expect(screen.getByText(/1 of \d+ signed/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('img', { name: /^1 of \d+ signed$/ })).toBeTruthy());
 
     // j moves on rather than re-signing the row already done.
     await user.keyboard('j ');
-    await waitFor(() => expect(screen.getByText(/2 of \d+ signed/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('img', { name: /^2 of \d+ signed$/ })).toBeTruthy());
   });
 });
 

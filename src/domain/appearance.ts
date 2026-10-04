@@ -47,14 +47,23 @@ const DENSITIES: Density[] = ['comfortable', 'compact'];
 const AMBIENTS: Ambient[] = ['on', 'off'];
 
 /**
- * `system` is the default, not `light`.
+ * `light` is the default, not `system`. The nama system says so, and it gives
+ * the reason: Nabz "ships light by default and never auto-switches to dark,
+ * because dark murders Nastaʿlīq legibility and trust."
  *
- * A doctor who has already told their phone they want dark mode has said the
- * thing once; asking them to say it again in every app is how an app ends up
- * being the one white rectangle in a dark room at 3am.
+ * That overrules the argument this file used to make — that a doctor who has
+ * told their phone they want dark has said it once and should not have to say
+ * it again. True of most apps. Not true of this one: the Urdu line on the
+ * medication row IS the product, Nastaʿlīq is a high-contrast calligraphic
+ * face whose thin strokes bloom and break up as white-on-dark, and a doctor
+ * who gets a dark app at 03:00 without asking for it has been handed a
+ * legibility problem on the only thing a family can read.
+ *
+ * Dark is still here, one tap away in Settings, for whoever wants it. It is
+ * the OS deciding on their behalf that is wrong.
  */
 export function readAppearance(defaults: Partial<Appearance> = {}): Appearance {
-  const theme = read(THEME_KEY, THEMES) ?? defaults.theme ?? 'system';
+  const theme = read(THEME_KEY, THEMES) ?? defaults.theme ?? 'light';
   const density = read(DENSITY_KEY, DENSITIES) ?? defaults.density ?? 'comfortable';
   const ambient = read(AMBIENT_KEY, AMBIENTS) ?? defaults.ambient ?? 'on';
   return { theme, density, ambient };

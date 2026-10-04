@@ -29,6 +29,33 @@ import type { Draft } from '../useDraft.ts';
 
 const PLACEHOLDER_AUTHOR = 'Pack author';
 
+/**
+ * How far through, as a ring.
+ *
+ * A dial rather than a bar because the number beside it is already the
+ * precise answer — the ring's job is the shape of the remaining work, read
+ * without counting. One SVG, one stroke-dashoffset, no library. The
+ * transition is the family's `--motion-cine`, which is reserved for exactly
+ * this: something arriving, not something responding.
+ */
+function ProgressRing({ done, total }: { done: number; total: number }) {
+  const r = 22;
+  const c = 2 * Math.PI * r;
+  const share = total > 0 ? done / total : 0;
+  return (
+    <svg className="ring" viewBox="0 0 56 56" role="img" aria-label={`${done} of ${total} signed`}>
+      <circle className="ring-track" cx="28" cy="28" r={r} />
+      <circle
+        className="ring-done"
+        cx="28"
+        cy="28"
+        r={r}
+        style={{ strokeDasharray: c, strokeDashoffset: c * (1 - share) }}
+      />
+    </svg>
+  );
+}
+
 function hasRealAuthor(name: string): boolean {
   return name.trim().length > 0 && name.trim() !== PLACEHOLDER_AUTHOR;
 }
@@ -167,9 +194,24 @@ export function DosingReview({ draft }: { draft: Draft }) {
   return (
     <>
       <section className="card">
-        <h2>Dose sign-off</h2>
-        <p className="hint" style={{ marginTop: 0 }}>
-          <strong>{`${signedCount} of ${pack.dosing.length} signed.`}</strong>{' '}
+        <span className="eyebrow">Dose sign-off</span>
+        {/*
+          The count as a nama stat rather than a bold sentence: mono, tabular,
+          and big enough to be the thing you look at when you come back to a
+          list you left half-done. `--motion-cine` on the ring, which is the
+          one place in this screen anything is allowed to take 900ms.
+        */}
+        <div className="signoff-head">
+          <ProgressRing done={signedCount} total={pack.dosing.length} />
+          <div className="stat">
+            <span className="stat-num">
+              {signedCount}
+              <span className="stat-of"> / {pack.dosing.length}</span>
+            </span>
+            <span className="stat-lab">doses signed</span>
+          </div>
+        </div>
+        <p className="hint">
           Check each dose against its citation and sign it. Your name and the
           date are recorded against the row — and if the dose is edited later,
           the sign-off is revoked automatically.
@@ -266,12 +308,21 @@ export function DosingReview({ draft }: { draft: Draft }) {
                 because a filled green pill and a filled amber one are the same
                 pill to eight per cent of men.
               */}
+              {/*
+                nama's state chip: a glyph AND a border AND a colour.
+
+                The system attributes that rule to this codebase, so bringing
+                it back is a round trip rather than an import. It matters most
+                here: 115 rows scanned rather than read, where a filled pill
+                in amber and one in teal are the same pill to eight per cent
+                of men and both are grey on a mono printout.
+              */}
               {entry.reason === 'wording-changed' ? (
-                <span className="pill-solid bad">dose changed since sign-off</span>
+                <span className="state danger">dose changed since sign-off</span>
               ) : entry.reason ? (
-                <span className="pill-solid warn">not signed</span>
+                <span className="state warn">not signed</span>
               ) : (
-                <span className="pill-solid good">
+                <span className="state ok">
                   {pack.dosingReview?.[entry.key]?.reviewedBy} ·{' '}
                   {pack.dosingReview?.[entry.key]?.date}
                 </span>

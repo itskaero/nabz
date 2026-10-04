@@ -537,6 +537,17 @@ export function App() {
         <span />
         <span />
       </div>
+      {/*
+        Film grain, over the void only.
+
+        nama allows exactly one texture and gives a mechanical reason rather
+        than an aesthetic one: a large flat field of near-black blue bands
+        visibly on a cheap panel, and a phone in a Pakistani clinic is a cheap
+        panel. Three and a half per cent of noise removes the banding and is
+        invisible as texture. The stylesheet shows it only in the dark
+        register, because grain over near-white reads as dirt.
+      */}
+      <div className="grain" aria-hidden="true" />
       <div className="app" data-wide={view === 'clinic' || view === 'builder' || view === 'chart'}>
       {/*
         The sidebar is a sibling of everything else, not a child of the

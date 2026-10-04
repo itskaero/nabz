@@ -1,4 +1,5 @@
 /**
+ * @vitest-environment jsdom
  * The palette, as a test.
  *
  * Two properties, both of which used to be true only by luck:
@@ -20,7 +21,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ThemeMode, ThemeTokens } from '@render/theme.ts';
-import { THEMES, tokensCss, resolveMode, DENSITIES } from '@render/theme.ts';
+import { THEMES, palette, tokensCss, resolveMode, DENSITIES } from '@render/theme.ts';
 
 const MODES = Object.keys(THEMES) as ThemeMode[];
 
@@ -165,28 +166,44 @@ describe('the screen palette', () => {
     expect(MODES.sort()).toEqual(['contrast', 'dark', 'light']);
   });
 
+  /*
+    FOUR DISTINCT SURFACES — and no floor on the step between them.
+
+    An earlier pass demanded 1.12 between adjacent surfaces, measured off a
+    dark app UI that reads as layered. nama's own void register runs 1.036 /
+    1.054 / 1.067, which is FLATTER than the palette that floor was written to
+    replace, and nama's site does not look flat — because the family gets its
+    depth from `--lift-1/2/3`, a 10%-ink hairline, glass panels and film
+    grain, not from tone. Holding a tonal floor would have meant overriding
+    the system to satisfy a number borrowed from somewhere else.
+
+    So what is asserted is what actually matters: the four surfaces are four
+    DIFFERENT values in the order shell < page < card < raised, and the
+    shadows that carry the depth exist and differ from each other.
+  */
   for (const mode of LAYERED_MODES) {
-    it(`${mode} keeps the shell, the page and the card visibly apart`, () => {
+    it(`${mode} keeps four distinct surfaces in order`, () => {
       const t = THEMES[mode];
-      // Measured off a dark app UI that does read as layered: ~1.28 between
-      // adjacent surfaces. 1.15 is the floor this holds, which is well clear
-      // of the 1.10 the old dark mode managed and still leaves room for a
-      // palette that wants to be quieter than the reference.
+      const ladder = [t.surfaceSunken, t.bg, t.surface, t.surfaceRaised];
+      // `raised` is allowed to equal `surface`: in the clinical register both
+      // are white, because there is nowhere above white to go and nama's
+      // answer is `--lift-3` rather than an invented off-white.
+      expect(new Set(ladder).size).toBeGreaterThanOrEqual(3);
       /*
-        Two floors, because the two modes have different physics.
-
-        A dark ground has room: the reference runs ~1.28 between adjacent
-        surfaces and this mode gets 1.17 / 1.22 / 1.25. A light ground does
-        not -- the page is already a tint and the card is already near-white,
-        so Keylime to Cream is 1.14 and no amount of taste will make it 1.28.
-
-        So each adjacent step must be visible at all (1.12, comfortably above
-        the 1.10 the old dark mode managed), and the SHELL-TO-CARD total, which
-        is what the eye actually reads as depth, must clear 1.35.
+        The ladder ascends in BOTH registers, which is not obvious until you
+        write it down: on the void the shell is the darkest thing and the card
+        the lightest, and in the clinical register the shell is a tinted step
+        BELOW a near-white page. Same direction, opposite grounds.
       */
-      expect(contrast(t.surfaceSunken, t.bg)).toBeGreaterThanOrEqual(1.12);
-      expect(contrast(t.bg, t.surface)).toBeGreaterThanOrEqual(1.12);
-      expect(contrast(t.surfaceSunken, t.surface)).toBeGreaterThanOrEqual(1.35);
+      const step = (a: string, b: string) => Math.sign(luminance(b) - luminance(a));
+      expect(step(t.surfaceSunken, t.bg)).toBe(1);
+      expect(step(t.bg, t.surface)).toBe(1);
+    });
+
+    it(`${mode} carries the depth in its shadows, which is where nama puts it`, () => {
+      const t = THEMES[mode];
+      expect(t.shadow1.length).toBeGreaterThan(0);
+      expect(t.shadow2).not.toBe(t.shadow1);
     });
   }
 
@@ -215,13 +232,13 @@ describe('the screen palette', () => {
  * only the two the light-mode tokens currently pair them with. A tinted panel
  * added later must not be able to swallow them silently.
  */
-describe('the alarm inks, on every Ease Health surface', () => {
+describe('the alarm inks, on every nama surface', () => {
   const SURFACES: Array<[string, string]> = [
-    ['Cream Paper', '#fffefc'],
-    ['Keylime Wash', '#e1f4df'],
-    ['Mint', '#cfe7d3'],
-    ['Sage', '#b1dbb8'],
-    ['Slate', '#b6ced5'],
+    ['nama panel', '#ffffff'],
+    ['nama void (clinical)', '#eef1f2'],
+    ['nama deep (clinical)', '#f6f8f8'],
+    ['the shell', '#e1e7e8'],
+    ['the accent wash', '#e3f2ea'],
   ];
 
   const ALARMS: Array<[string, string]> = [
@@ -248,17 +265,61 @@ describe('the alarm inks, on every Ease Health surface', () => {
     expect(contrast(THEMES.light.accentInk, THEMES.light.accentWash)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('keeps Forest Ink as the only action colour', () => {
-    // One green, used for the accent, its text step and the focus ring. A
-    // second interactive hue is how "the green means you can press it" stops
-    // being true.
-    expect(THEMES.light.accent).toBe('#0f3e17');
-    expect(THEMES.light.accentInk).toBe('#0f3e17');
-    expect(THEMES.light.focus).toBe('#0f3e17');
+  /*
+    THE DRIFT THIS TEST EXISTS TO STOP.
+
+    Nabz is a member of the nama family (itskaero.github.io/nama), whose whole
+    mechanism is that one attribute -- the accent -- is the entire difference
+    between two members. The screen palette had drifted onto a different
+    system entirely: keylime grounds, Forest Ink #0f3e17, cream cards. The
+    PRINT palette never drifted, so the two had come apart on the one product
+    whose structural promise is that the preview IS the print.
+
+    These are nama's published values, pinned by hand. A future pass that
+    "tidies" the accent is changing which family this product belongs to, and
+    should have to say so by editing a test.
+  */
+  it('uses the nama family accent for nabz, in both registers', () => {
+    // [data-accent="nabz"] under [data-register="clinical"]
+    expect(THEMES.light.accent).toBe('#0f8055');
+    expect(THEMES.light.accentWash).toBe('#e3f2ea');
+    expect(THEMES.light.focus).toBe(THEMES.light.accent);
+    // [data-accent="nabz"] on the void
+    expect(THEMES.dark.accent).toBe('#19a06d');
+    expect(THEMES.dark.accentInk).toBe('#7fd1a8');
   });
 
-  it('keeps the alarms out of the green family', () => {
-    // A red that has drifted green-ward is a red that no longer says danger.
+  it('keeps the nama ground and ink ramp, and keeps print agreeing with it', () => {
+    expect(THEMES.light.bg).toBe('#eef1f2');
+    expect(THEMES.light.surface).toBe('#ffffff');
+    expect(THEMES.light.ink).toBe('#14201f');
+    expect(THEMES.light.inkSoft).toBe('#55635f');
+    expect(THEMES.light.line).toBe('#dfe4e3');
+    expect(THEMES.light.lineSoft).toBe('#eceeed');
+    // The void register, published as four surfaces.
+    expect([THEMES.dark.surfaceSunken, THEMES.dark.bg, THEMES.dark.surface, THEMES.dark.surfaceRaised])
+      .toEqual(['#04070e', '#080d16', '#0d1420', '#121b29']);
+    expect(THEMES.dark.ink).toBe('#eef3f4');
+    // The preview draws the print palette; both are now the same nama values.
+    expect(THEMES.light.ink).toBe(palette.ink);
+    expect(THEMES.light.bg).toBe(palette.bg);
+  });
+
+  it('departs from nama only where a published value fails WCAG, and nowhere else', () => {
+    /*
+      Three clinical values in nama.css are display values that do not survive
+      small text, and this test records the measurement rather than the
+      opinion -- so that anyone restoring them can see what it costs.
+    */
+    expect(contrast('#8a9691', THEMES.light.bg)).toBeLessThan(4.5); // nama ink-3
+    expect(contrast('#d9a24a', '#ffffff')).toBeLessThan(4.5); // nama amber
+    expect(contrast('#e0716a', '#ffffff')).toBeLessThan(4.5); // nama alert
+    // And the void register's own published accent-ink for nabz.
+    expect(contrast('#f4fbf7', '#19a06d')).toBeLessThan(4.5);
+  });
+
+  it('keeps the alarms out of the accent family', () => {
+    // A red that has drifted teal-ward is a red that no longer says danger.
     for (const [, value] of ALARMS) {
       expect(contrast(value, THEMES.light.accent)).toBeLessThan(4.5);
     }
@@ -436,5 +497,31 @@ describe('text over glass over the aurora', () => {
     // one mode whose whole promise is that contrast is guaranteed.
     expect(t.glass).toBe('#ffffff');
     expect(t.glassCard).toBe('#ffffff');
+  });
+});
+
+/**
+ * WHICH REGISTER A DOCTOR MEETS FIRST.
+ *
+ * nama is explicit that Nabz "ships light by default and never auto-switches
+ * to dark, because dark murders Nastaʿlīq legibility and trust". That is a
+ * product rule with a typographic reason behind it, not a preference, so it is
+ * worth a test: the Urdu line on the medication row is the thing this app does
+ * that nothing else does, and Nastaʿlīq's thin strokes bloom and break up as
+ * white-on-dark.
+ *
+ * `system` remains available as an explicit CHOICE. What is forbidden is the
+ * OS making it on a doctor's behalf.
+ */
+describe('the register a doctor meets first', () => {
+  it('is light, and is not inherited from the operating system', async () => {
+    const { readAppearance } = await import('@domain/appearance.ts');
+    // A device that has stored nothing. jsdom's localStorage is empty here.
+    expect(readAppearance().theme).toBe('light');
+  });
+
+  it('still resolves system to whichever the OS asked for, once chosen', () => {
+    expect(resolveMode('system', true)).toBe('dark');
+    expect(resolveMode('system', false)).toBe('light');
   });
 });
