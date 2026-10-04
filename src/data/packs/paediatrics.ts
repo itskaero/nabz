@@ -443,7 +443,12 @@ export const paediatrics: ContentPack = {
     ],
   },
 
-  modules: ['growth', 'malnutrition'],
+  /*
+    `dosecalc` leads, because it is the one a paediatrician opens on nearly
+    every child: a weight, a bottle, and the millilitres to measure. Growth and
+    malnutrition are opened on a subset.
+  */
+  modules: ['dosecalc', 'growth', 'malnutrition'],
   moduleConfig: {
     growth: {
       // MUAC is offered alongside the rest: it is an ordinary age-keyed chart,

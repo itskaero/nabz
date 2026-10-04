@@ -7,7 +7,7 @@
  * SWITCHING between the two: `data/provider.ts` resolves whichever one the
  * doctor's profile names, from a library seeded with the entries below.
  */
-import type { ContentPack } from '@domain/pack.ts';
+import type { ContentPack, FormularyEntry } from '@domain/pack.ts';
 import type { PackRegistry } from '@domain/phrases.ts';
 import { packs as shippedPhrases } from '../phrases/index.ts';
 import { medicinePhrases } from '../phrases/medicine.ts';
@@ -52,7 +52,28 @@ export function packIndex(pack: ContentPack) {
     const key = row.generic.toLowerCase();
     dosingByGeneric.set(key, [...(dosingByGeneric.get(key) ?? []), row]);
   }
-  return { systemLabel, findingLabel, dosingByGeneric };
+  /*
+    Every strength a generic is dispensed in, deduplicated.
+
+    This is what makes the millilitre figure switchable rather than fixed:
+    paracetamol ships as 100, 120, 200 and 250 mg per 5 ml in this catalogue,
+    and 150 mg is 7 ml of the first and 3 ml of the third. Keyed by generic
+    rather than by brand because the question a prescriber is answering is
+    "which bottle did they bring", not "which brand did I type".
+
+    `concentration` may be absent -- a tablet, a cream, a sachet -- and the
+    entry is kept anyway so the strength can still be chosen and printed. What
+    it cannot do is produce a volume, which `domain/dose.ts` refuses by itself.
+  */
+  const strengthsByGeneric = new Map<string, FormularyEntry[]>();
+  for (const row of pack.formularySeed) {
+    if (!row.strength) continue;
+    const key = row.generic.toLowerCase();
+    const list = strengthsByGeneric.get(key) ?? [];
+    if (!list.some((e) => e.strength === row.strength)) list.push(row);
+    strengthsByGeneric.set(key, list);
+  }
+  return { systemLabel, findingLabel, dosingByGeneric, strengthsByGeneric };
 }
 
 export { paediatrics, medicine };

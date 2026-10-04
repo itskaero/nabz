@@ -24,6 +24,7 @@ import * as db from '@storage/db.ts';
 import { languageFor } from '@config/doctorProfile.ts';
 import { useStore, newId } from '../store.tsx';
 import { SigEditor } from '../components/SigEditor.tsx';
+import { DoseSuggestion } from '../components/DoseSuggestion.tsx';
 
 /**
  * The dose text a citation shows. `mgPerKg` (weight-based, mostly paediatric)
@@ -35,7 +36,13 @@ import { SigEditor } from '../components/SigEditor.tsx';
  */
 function citedDoseText(cited: DosingEntry): string {
   if (cited.mgPerKg) {
-    return `${cited.mgPerKg} mg/kg per dose${cited.perDoses ? `, ${cited.perDoses}× a day` : ''}`;
+    // The band where the row has one. Printing only the bottom of 10-15 mg/kg
+    // under-doses on paper and is not what any source actually says.
+    const perKg =
+      cited.mgPerKgHigh !== undefined
+        ? `${cited.mgPerKg}–${cited.mgPerKgHigh}`
+        : `${cited.mgPerKg}`;
+    return `${perKg} mg/kg per dose${cited.perDoses ? `, ${cited.perDoses}× a day` : ''}`;
   }
   return cited.fixedDose ?? cited.maxPerDay ?? '';
 }
@@ -167,6 +174,19 @@ export function MedicationsSection() {
           index.dosingByGeneric.get((line.drug.generic ?? '').toLowerCase()) ?? [];
         const cited = dosing[0];
         const weeklyWarning = weeklyOnlyViolation(line, index.dosingByGeneric);
+        /*
+          Which bottle is in the room.
+
+          One generic is dispensed at several strengths -- paracetamol at 100,
+          120, 200 and 250 mg per 5 ml in this catalogue alone -- and 150 mg is
+          7 ml of the weakest and 3 ml of the strongest. Offering the strengths
+          here, on the row, is the single most useful thing on a paediatric
+          script: it is the difference between a number the parent can measure
+          and one they have to work out from a bottle they are holding and a
+          sheet they are not.
+        */
+        const strengths = index.strengthsByGeneric.get((line.drug.generic ?? '').toLowerCase()) ?? [];
+        const chosenStrength = strengths.find((e) => e.strength === line.drug.strength);
 
         return (
           <article className="med" key={line.id}>
@@ -216,6 +236,37 @@ export function MedicationsSection() {
               )}
             </div>
 
+            {cited?.mgPerKg !== undefined && strengths.length > 1 && (
+              <div className="strength-switch">
+                <span className="track-label">strength</span>
+                {strengths.map((e) => (
+                  <button
+                    key={e.strength}
+                    className="chip"
+                    aria-pressed={line.drug.strength === e.strength}
+                    /*
+                      No marker on the chip itself. The millilitre line says
+                      why there is no volume the moment a solid is picked,
+                      which is more use than a dot the reader has to decode --
+                      and a legend for one symbol is worse than the symbol.
+                    */
+                    title={
+                      e.concentration
+                        ? undefined
+                        : 'No millilitre figure for this strength — it is not a mass per millilitre'
+                    }
+                    onClick={() =>
+                      update(line.id, {
+                        drug: { ...line.drug, strength: e.strength ?? '' },
+                      })
+                    }
+                  >
+                    {e.strength}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="med-slots">
               <button className="slot" data-empty={!line.sig.dose.value} onClick={() => setEditing(line.id)}>
                 dose{' '}
@@ -246,16 +297,23 @@ export function MedicationsSection() {
                 <div>
                   {citedDoseText(cited)}
                   {cited.indication ? ` — ${cited.indication}` : ''}
-                  {rx.patient.weightKg && cited.mgPerKg ? (
-                    <>
-                      {' '}
-                      (
-                      <span className="mono">
-                        {(cited.mgPerKg * rx.patient.weightKg).toFixed(0)} mg
-                      </span>{' '}
-                      at {rx.patient.weightKg} kg)
-                    </>
-                  ) : null}
+                  {/*
+                    The arithmetic used to be `cited.mgPerKg * weightKg` right
+                    here, printing milligrams and stopping -- leaving the
+                    millilitres, which is the number a parent measures, to be
+                    done in somebody's head. It now comes from `domain/dose.ts`
+                    through one shared component, so the dose calculator and
+                    this row cannot word the same sum two ways.
+                  */}
+                  <DoseSuggestion
+                    entry={cited}
+                    weightKg={rx.patient.weightKg}
+                    ageDays={rx.patient.ageDays}
+                    {...(chosenStrength?.concentration
+                      ? { concentration: chosenStrength.concentration }
+                      : {})}
+                    {...(line.drug.strength ? { strengthLabel: line.drug.strength } : {})}
+                  />
                   <span className="src">
                     {cited.reference}
                     {!cited.verified && (

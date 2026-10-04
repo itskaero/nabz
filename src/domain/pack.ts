@@ -12,6 +12,7 @@
  * non-specialist is a liability with someone's name on it.
  */
 import type { DocumentKindId } from './documents/index.ts';
+import type { Concentration } from './dose.ts';
 import type { GrowthMeasureId } from './prescription.ts';
 
 // --- catalogue vs evidence, kept apart on purpose ---------------------------
@@ -26,6 +27,24 @@ export interface FormularyEntry {
   brand: string;
   generic: string;
   strength?: string;
+  /**
+   * The same strength, as a number the millilitre calculation can use.
+   *
+   * `strength` stays the display string -- it is what prints and what a
+   * pharmacist reads -- and this is the machine-readable half, because the
+   * display string cannot be parsed at run time without being wrong
+   * dangerously. `250mcg/ml` read by a regex that takes the digits before a
+   * unit is 250 mg/mL, a thousandfold overdose one character away from the
+   * ordinary case; `3.35g/5ml` is wrong by the same factor the other way.
+   *
+   * Absent on purpose for every strength that is not a mass per millilitre:
+   * percentages, combinations (`20/120mg`), per-puff and per-drop strengths,
+   * sachets and bare solids. A row without it shows milligrams and says
+   * plainly that it cannot give a volume -- never a guessed one.
+   *
+   * See `domain/dose.ts`.
+   */
+  concentration?: Concentration;
   /** form id, resolved through the locale pack */
   form?: string;
   /** DRAP registration number; the provenance that makes the row checkable */
@@ -80,7 +99,22 @@ export interface DosingEntry {
   mgPerKgHigh?: number;
   /** doses per day this mg/kg figure assumes */
   perDoses?: number;
+  /**
+   * The ceiling in the source's own words, for the prescriber to read.
+   *
+   * Prose, and left as prose: "4 doses in 24 hours", "40 mg/kg in 24 hours",
+   * "500 mg as a single dose, or 100 mg twice daily for 3 days". Reading a
+   * number out of that with a regex is the same mistake as reading one out of
+   * a strength, so nothing does. The three numeric fields below are what the
+   * arithmetic actually applies, and a row may state this text without them.
+   */
   maxPerDay?: string;
+  /** a hard ceiling on one dose, in mg, when the source gives one */
+  maxMgPerDose?: number;
+  /** a hard ceiling across 24 hours, in mg */
+  maxMgPerDay?: number;
+  /** a weight-scaled ceiling across 24 hours, in mg/kg */
+  maxMgPerKgPerDay?: number;
   /**
    * A fixed adult regimen -- "500 mg to 1 g every 4 to 6 hours" -- for the
    * common case where dosing is not weight-based at all. `mgPerKg` and
@@ -315,7 +349,7 @@ export interface ScoreDefinition {
  * code it names (`domain/modules/`); an id with no matching code is a build
  * error, and that is the property this union exists to buy (CLAUDE.md 6d).
  */
-export type ModuleId = 'growth' | 'gfr' | 'bmi' | 'malnutrition';
+export type ModuleId = 'growth' | 'gfr' | 'bmi' | 'malnutrition' | 'dosecalc';
 
 /** Re-exported so a pack author reads one file, not two. */
 export type { DocumentKindId };
@@ -725,6 +759,26 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
         });
       }
     }
+    /*
+      A ceiling that is not a positive number is not a ceiling.
+
+      Zero or a negative would clamp every dose on the row to nothing, and a
+      row that silently suggests 0 mg is worse than a row that suggests
+      nothing: the screen shows a number, so it looks computed.
+    */
+    for (const [field, value] of [
+      ['maxMgPerDose', row.maxMgPerDose],
+      ['maxMgPerDay', row.maxMgPerDay],
+      ['maxMgPerKgPerDay', row.maxMgPerKgPerDay],
+    ] as const) {
+      if (value !== undefined && !(value > 0)) {
+        issues.push({
+          severity: 'error',
+          where: `dosing[${i}] ${row.generic}`,
+          message: `${field} must be a positive number`,
+        });
+      }
+    }
     if (row.mgPerKgHigh !== undefined && row.mgPerKg === undefined) {
       issues.push({
         severity: 'error',
@@ -943,6 +997,11 @@ export function dosingFingerprint(entry: DosingEntry): string {
     String(entry.mgPerKgHigh ?? ''),
     String(entry.perDoses ?? ''),
     entry.maxPerDay ?? '',
+    // The numeric ceilings are as clinical as the dose itself -- lowering a
+    // cap changes what gets given -- so they revoke a sign-off the same way.
+    String(entry.maxMgPerDose ?? ''),
+    String(entry.maxMgPerDay ?? ''),
+    String(entry.maxMgPerKgPerDay ?? ''),
     entry.fixedDose ?? '',
     entry.route,
     entry.weeklyOnly ? 'weekly-only' : '',

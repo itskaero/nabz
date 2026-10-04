@@ -556,7 +556,10 @@ export const medicine: ContentPack = {
    * entry; unlike growth it offers no per-pack measure selection, so there is
    * nothing to configure.
    */
-  modules: ['gfr', 'bmi'],
+  // Adult dosing is mostly fixed rather than weight-based, so the calculator
+  // sits after the two that get opened daily -- but paediatric-weight dosing
+  // happens on an adult ward too (gentamicin, vancomycin), so it is offered.
+  modules: ['gfr', 'bmi', 'dosecalc'],
   /**
    * Adult internal medicine is where inpatient work happens, so this is the
    * pack that offers a discharge summary. Paediatrics deliberately does not:

@@ -36,7 +36,16 @@ export const dosingSeed: DosingEntry[] = [
     generic: 'Paracetamol',
     indication: 'Fever or pain',
     route: 'oral',
-    mgPerKg: 15,
+    /*
+      The band, not its top.
+
+      This row said `mgPerKg: 15` and carried "10-15 mg/kg per dose" in the
+      note, because a single number was all the schema could hold. The band is
+      what the source gives and what a prescriber picks inside -- 10 kg is
+      100-150 mg, which is 3 ml of 200 mg/5 ml or 7 ml of 100 mg/5 ml.
+    */
+    mgPerKg: 10,
+    mgPerKgHigh: 15,
     perDoses: 4,
     maxPerDay: '4 doses in 24 hours',
     ageBand: { fromDays: 30, label: 'over 1 month' },
@@ -48,9 +57,14 @@ export const dosingSeed: DosingEntry[] = [
     generic: 'Ibuprofen',
     indication: 'Fever or pain',
     route: 'oral',
-    mgPerKg: 10,
+    mgPerKg: 5,
+    mgPerKgHigh: 10,
     perDoses: 3,
     maxPerDay: '40 mg/kg in 24 hours',
+    // The one ceiling in this file that states a number rather than a
+    // frequency, so it is the one the arithmetic can apply. The rest stay
+    // prose for the prescriber to read -- see `maxPerDay` in domain/pack.ts.
+    maxMgPerKgPerDay: 40,
     ageBand: { fromDays: 90, label: 'over 3 months' },
     reference: `${WHO_POCKET_BOOK}, Annex 2 (drug dosages), ibuprofen`,
     verified: false,

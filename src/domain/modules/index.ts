@@ -36,6 +36,16 @@ export const MODULE_META: Record<ModuleId, ModuleMeta> = {
     label: 'Malnutrition',
     requires: ['sex', 'weightKg', 'heightCm'],
   },
+  /*
+    `weightKg` and nothing else.
+
+    Age narrows WHICH row of a pack's dosing applies and the panel says so when
+    it is known, but a weight alone is enough to turn a mg/kg row into
+    milligrams -- and a child who has been weighed but whose birthday nobody
+    recorded is the ordinary walk-in, not an edge case. Requiring the date of
+    birth would close the calculator for exactly the patient who needs it.
+  */
+  dosecalc: { id: 'dosecalc', label: 'Dose calculator', requires: ['weightKg'] },
 };
 
 /** The modules a pack enables, resolved to their metadata, in offer order. */

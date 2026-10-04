@@ -30,7 +30,19 @@
  * ========================================================================
  */
 import type { FormularyEntry } from '@domain/pack.ts';
+import { parseConcentration } from '@domain/dose.ts';
 
+/*
+  `concentration` is derived here, once, from the display strength.
+
+  Deriving it at the point the row is written -- rather than wherever a volume
+  is wanted -- is what keeps the dangerous read out of the hot path.
+  `parseConcentration` is strict: anything that is not a mass per millilitre
+  comes back undefined, and the row then shows milligrams and says it cannot
+  give a volume. Which strengths it refuses is pinned by name in
+  `tests/dose.test.ts`, so a new unreadable shape is a decision somebody makes
+  rather than a silent hole.
+*/
 const m = (
   brand: string,
   generic: string,
@@ -39,6 +51,8 @@ const m = (
 ): FormularyEntry => {
   const row: FormularyEntry = { brand, generic, provenance: 'manual' };
   if (strength) row.strength = strength;
+  const concentration = parseConcentration(strength);
+  if (concentration) row.concentration = concentration;
   if (form) row.form = form;
   return row;
 };

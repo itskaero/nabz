@@ -34,9 +34,14 @@ const MalnutritionPanel = lazy(() =>
   import('../components/MalnutritionPanel.tsx').then((m) => ({ default: m.MalnutritionPanel })),
 );
 
+const DoseCalcPanel = lazy(() =>
+  import('../components/DoseCalcPanel.tsx').then((m) => ({ default: m.DoseCalcPanel })),
+);
+
 export const MODULE_PANEL: Record<ModuleId, LazyExoticComponent<ComponentType>> = {
   growth: GrowthPanel,
   gfr: GfrPanel,
   bmi: BmiPanel,
   malnutrition: MalnutritionPanel,
+  dosecalc: DoseCalcPanel,
 };

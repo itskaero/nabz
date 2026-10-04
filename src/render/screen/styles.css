@@ -1383,6 +1383,53 @@ select {
   font-style: italic;
 }
 
+/*
+ * Which bottle is in the room.
+ *
+ * Sits between the bilingual tracks and the sig slots, because that is the
+ * order the question gets asked in: what is it, which strength did they bring,
+ * how much and how often. The chips are the same control as the exam palette
+ * rather than a select, so the whole set is readable at a glance -- the point
+ * is comparing 100 mg/5 ml against 200 mg/5 ml, which a closed dropdown hides.
+ */
+.strength-switch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.strength-switch .track-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.strength-switch .chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 3px 9px;
+}
+
+.strength-switch .chip[aria-pressed='true'] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--on-accent);
+}
+
+/*
+ * The computed line. `.mono` carries the figures a doctor reads off; the
+ * surrounding prose stays in the body face so the numbers are what the eye
+ * lands on.
+ */
+.dose-calc {
+  display: block;
+  margin-top: 2px;
+}
+
 .med-slots {
   display: flex;
   flex-wrap: wrap;
