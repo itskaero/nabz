@@ -153,6 +153,17 @@ describe('the alarm inks, on every Ease Health surface', () => {
     }
   }
 
+  it('keeps the docs hero marker legible', () => {
+    /*
+      The marker block behind the hero's key words (docs/assets/style.css,
+      `.hero h1 em`) sets Forest Ink on Mint. It is the one place in the
+      product where ink sits on a SATURATED fill rather than a near-white
+      surface, so it is the one most likely to be broken by a palette pass
+      that only checked the app's own pairs.
+    */
+    expect(contrast(THEMES.light.accentInk, THEMES.light.accentWash)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('keeps Forest Ink as the only action colour', () => {
     // One green, used for the accent, its text step and the focus ring. A
     // second interactive hue is how "the green means you can press it" stops

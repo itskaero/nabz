@@ -141,6 +141,35 @@ examinations, growth records. The server drops them even if something asks it to
 
 ### Deploying the demo
 
+**Vercel, for the app.** The app keeps every record on the device, so it needs a
+CDN and a certificate and nothing else. `vercel.json` is committed; import the
+repo, pick framework preset **Other**, deploy. There are no environment
+variables, because there is no server and no secret.
+
+Three things that config is doing, each of which fails silently if undone --
+`tests/deploy.test.ts` asserts all three:
+
+- **`buildCommand` is `npm run build:deploy`, not `npm run build`.** The fonts
+  and the WHO/CDC tables are gitignored and fetched from their publishers at
+  build time. The default build ships an app with no Noto Nastaliq -- no Urdu on
+  the printed sheet, which is the product -- and looks like it worked.
+- **There is no SPA rewrite, deliberately.** `detectSyncMode()` probes
+  `/api/mode`; a catch-all rewrite answers it with `index.html` and status 200,
+  so the app parses HTML as JSON and shows "Something other than the Nabz
+  station answered at this address". There is no client-side router here, so no
+  rewrite is needed.
+- **`sw.js` and the manifest are never cached.** Both are unhashed; cached, an
+  update never reaches anyone and the site serves yesterday's build.
+
+The certificate is not a detail: `requireWebCrypto()` gates the encrypted
+backup, the restore and the PIN, so on a plain-HTTP origin those disable
+themselves and the app looks half-broken. Every static host gives you HTTPS; a
+LAN IP does not, which is why `server/tls.mjs` exists.
+
+**Railway, for the clinic station.** Only needed to demo the shared queue --
+`server/index.mjs` is a long-running stateful process doing LAN TLS, mDNS and
+the `/api/clinic` merge, which no serverless host can run.
+
 `railway.json` and `nixpacks.toml` are committed, so a Railway deploy is:
 
 ```bash

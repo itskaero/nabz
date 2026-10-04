@@ -139,13 +139,34 @@
   .hero{text-align:center;padding:70px 0 0}
   .hero h1{
     font-family:var(--font-display);
-    font-size:clamp(34px,6vw,74px);line-height:1.04;letter-spacing:-.018em;
+    /* Tracking measured off the references: Billow sets -0.05em at 92px. A
+       light serif at display size needs negative tracking or the words drift
+       apart; -.018em was a body-copy value wearing a headline's size. */
+    font-size:clamp(34px,6vw,74px);line-height:1.04;letter-spacing:-.035em;
     /* 300, as the system specifies. A light serif at 74px is the whole look;
        at 700 it is a different font doing an impression of one. */
     font-weight:300;margin:0 auto 22px;max-width:17ch;
     font-variation-settings:'SOFT' 0,'WONK' 0;
   }
-  .hero h1 em{font-style:normal;color:var(--teal)}
+  /*
+    The marker block, taken from Kira: its headline works because two words sit
+    in coloured fields rather than being merely a different colour.
+
+    Forest Ink on Mint measures 9.31:1, so this is nowhere near the text floor
+    -- tests/theme.test.ts holds that pair so a later palette pass cannot
+    quietly make the headline unreadable.
+
+    box-decoration-break is what makes it survive a line wrap: without it the
+    block is drawn once across both lines and the second line's highlight
+    starts in the wrong place on a phone.
+  */
+  .hero h1 em{
+    font-style:normal;color:var(--teal);
+    background:var(--teal-wash);
+    padding:0 .12em .06em;
+    border-radius:.08em;
+    box-decoration-break:clone;-webkit-box-decoration-break:clone;
+  }
   .hero .lead{color:var(--ink-soft);font-size:clamp(15.5px,1.9vw,18.5px);max-width:60ch;margin:0 auto 14px}
   .btnrow{display:inline-flex;align-items:center;gap:10px;margin-top:30px;flex-wrap:wrap;justify-content:center}
   .btn{
@@ -165,6 +186,22 @@
   /* ---------- the framed sheet ----------
      Deliberately paper, not a browser window: the artefact this product is
      judged on is a printed page, so the frame should look like one. */
+  /*
+    The band under the sheet.
+
+    Both references float their product screenshot on a saturated field --
+    Billow on blue, Kira on lilac -- and it is what stops a pale page reading
+    as unfinished. Sage is already the `sheet` token in theme.ts and already
+    means "the desk the paper lies on", so this is the palette being used for
+    the thing it was named for rather than a new colour.
+  */
+  .sheetband{
+    margin-top:54px;padding:48px 24px 0;background:var(--sage);
+    border-radius:var(--r) var(--r) 0 0;
+  }
+  .sheetband .sheet{margin-top:0}
+  @media(max-width:700px){ .sheetband{padding:28px 14px 0} }
+
   .sheet{
     margin:54px auto 0;max-width:760px;background:var(--surface);
     border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
@@ -199,7 +236,7 @@
   .card p{color:var(--ink-soft);margin:0;font-size:14.8px}
   ul.checks{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:8px}
   ul.checks li{position:relative;padding-left:25px;font-size:14.5px}
-  ul.checks li::before{content:"\2713";position:absolute;left:0;top:-1px;color:var(--teal);font-weight:700}
+  ul.checks li::before{content:"\2713";position:absolute;left:0;top:-1px;color:var(--teal);font-weight:600}
   ul.nos li::before{content:"\2715";color:var(--alert)}
 
   .panel{
@@ -267,7 +304,7 @@
 /* ---------- shared page furniture, used by setup.html and builder.html ---------- */
 
 .pagehead{padding:56px 0 10px;position:relative;z-index:1}
-.pagehead h1{font-size:clamp(30px,4.6vw,46px);line-height:1.1;letter-spacing:-.028em;font-weight:700;margin:0 0 14px;max-width:20ch}
+.pagehead h1{font-size:clamp(30px,4.6vw,46px);line-height:1.1;letter-spacing:-.028em;font-weight:600;margin:0 0 14px;max-width:20ch}
 .pagehead .lead{color:var(--ink-soft);font-size:17.5px;max-width:64ch;margin:0}
 .crumb{font-size:14px;color:var(--ink-faint);margin-bottom:18px}
 .crumb a{color:var(--ink-soft);text-decoration:none}
