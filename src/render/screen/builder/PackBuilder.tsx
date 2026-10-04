@@ -33,21 +33,46 @@ import { ExamTab } from './tabs/ExamTab.tsx';
 import { LabsTab } from './tabs/LabsTab.tsx';
 import { FormularyTab } from './tabs/FormularyTab.tsx';
 import { DosingTab } from './tabs/DosingTab.tsx';
+import { DosingReview } from './tabs/DosingReview.tsx';
 import { AdviceTab } from './tabs/AdviceTab.tsx';
 import { PhrasesTab } from './tabs/PhrasesTab.tsx';
 import { ReviewTab } from './tabs/ReviewTab.tsx';
 import { Dialog } from '../components/Dialog.tsx';
 
-type Tab = 'exam' | 'labs' | 'formulary' | 'dosing' | 'advice' | 'phrases' | 'review';
+type Tab =
+  | 'exam'
+  | 'labs'
+  | 'formulary'
+  | 'dosing'
+  /**
+   * Sign-off, deliberately a destination of its own rather than a mode inside
+   * Doses. Editing doses and vouching for doses are different sittings with
+   * different mindsets, and mixing them is how a row gets signed in the same
+   * motion that changed it.
+   */
+  | 'signoff'
+  | 'advice'
+  | 'phrases'
+  | 'review';
 
-/** Which slice of a pack each tab owns. Review owns none of them. */
+/**
+ * Which slice of a pack each tab owns. Review owns none of them.
+ *
+ * Sign-off owns the DOSING slice: a `dosingReview` entry is meaningless away
+ * from the row it signs, so the two travel together or not at all. The cast
+ * below is only safe for tabs whose id IS a section name, which is why the two
+ * that are not are named here rather than falling through it.
+ */
 function tabSection(tab: Tab): PackSection | null {
-  return tab === 'review' ? null : (tab as PackSection);
+  if (tab === 'review') return null;
+  if (tab === 'signoff') return 'dosing';
+  return tab as PackSection;
 }
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'formulary', label: 'Medicines' },
   { id: 'dosing', label: 'Doses' },
+  { id: 'signoff', label: 'Sign-off' },
   { id: 'phrases', label: 'Phrases' },
   { id: 'advice', label: 'Advice' },
   { id: 'exam', label: 'Exam' },
@@ -211,6 +236,7 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
 
         {tab === 'formulary' && <FormularyTab draft={draft} />}
         {tab === 'dosing' && <DosingTab draft={draft} />}
+        {tab === 'signoff' && <DosingReview draft={draft} />}
         {tab === 'phrases' && <PhrasesTab draft={draft} />}
         {tab === 'advice' && <AdviceTab draft={draft} />}
         {tab === 'exam' && <ExamTab draft={draft} />}

@@ -1,3 +1,4 @@
+import { dosingKey } from '@domain/pack.ts';
 /**
  * What saving would actually change.
  *
@@ -123,7 +124,9 @@ export function diffPack(
     diffKeyed(
       before.pack.dosing,
       after.pack.dosing,
-      (e) => `${e.generic}|${e.indication ?? ''}|${e.ageBand?.label ?? ''}`,
+      // One definition, in domain/pack.ts, so the publish diff and the
+      // sign-off cannot drift apart over what counts as "the same row".
+      dosingKey,
       (e) => e.generic,
       eq,
     ),

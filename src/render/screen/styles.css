@@ -911,12 +911,27 @@ select {
 
 .tabs {
   display: flex;
+  /*
+    `align-items: center`, and `flex: 1` only inside the strip.
+
+    `.tabs` is used in two places: wrapped in `.tabs-strip` by the clinical
+    shell, and bare by the pack builder. `flex: 1` grows along the PARENT's
+    main axis, which is horizontal in the strip and vertical in `.app-main` --
+    so the builder's tab bar grew to fill the window, each tab stretched to
+    match it, and eight 310px-tall buttons sat on top of the panel they were
+    meant to switch between. Default `stretch` was doing the same to the tabs
+    themselves, so the fix has to be both lines, not either one.
+  */
+  align-items: center;
   gap: 4px;
   padding: 8px 10px;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs-strip > .tabs {
   flex: 1;
   min-width: 0;
-  scrollbar-width: none;
 }
 
 .tabs::-webkit-scrollbar {
@@ -2975,4 +2990,57 @@ li[data-kind='changed'] .diff-kind {
   font-size: 13.5px;
   color: var(--ink-soft);
   font-family: var(--font-mono);
+}
+
+/* ---------- dose sign-off ---------- */
+.review-rows {
+  gap: 4px;
+}
+
+.review-row {
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+/* The focused row, for j/k. A ring rather than a fill, so the row's own
+   signed/unsigned state stays the thing the eye reads first. */
+.review-row[aria-current='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.review-row .cite {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.review-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 1px 5px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+@media (max-width: 560px) {
+  .review-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .review-state {
+    flex-direction: row;
+    align-items: center;
+    margin-left: 0;
+  }
 }

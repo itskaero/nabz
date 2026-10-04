@@ -181,6 +181,9 @@ export function mergeSection(
 
     case 'dosing':
       pack.dosing = structuredClone(incoming.pack.dosing);
+      if (incoming.pack.dosingReview) {
+        pack.dosingReview = structuredClone(incoming.pack.dosingReview);
+      } else delete pack.dosingReview;
       break;
 
     case 'exam':
@@ -289,6 +292,7 @@ export function sliceForExport(
   out.sigTemplates = [];
   delete out.redFlagReview;
   delete out.adviceReview;
+  delete out.dosingReview;
   delete out.historySections;
   delete out.immunisationSchedule;
   delete out.milestones;
@@ -310,6 +314,16 @@ export function sliceForExport(
       break;
     case 'dosing':
       out.dosing = structuredClone(pack.dosing);
+      /*
+        The sign-off travels with the doses.
+
+        A `dosingReview` entry is keyed to a row and fingerprints its numbers;
+        separated from the rows it signs it is noise, and worse, a dosing slice
+        arriving WITHOUT it would import rows marked `verified: true` that the
+        validator then refuses -- a colleague's pack failing to install because
+        their sign-off was left behind.
+      */
+      if (pack.dosingReview) out.dosingReview = structuredClone(pack.dosingReview);
       break;
     case 'exam':
       out.examSystems = structuredClone(pack.examSystems);

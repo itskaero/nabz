@@ -125,8 +125,17 @@ describe('pack registry', () => {
     expect(Object.keys(contentPacks).sort()).toEqual(['medicine', 'paediatrics']);
   });
 
-  it('badges paediatrics as clinician-verified and medicine as a draft', () => {
-    expect(paediatrics.verified).toBe(true);
+  it('badges BOTH shipped packs as drafts, because neither is signed off', () => {
+    /*
+      This test used to assert `paediatrics.verified === true`, which is how
+      the false claim survived: the pack said it was clinician-verified, the
+      website repeated it, and a test locked it in -- while the author was the
+      string 'Pack author' and not one dosing row was signed by anybody.
+
+      `validateContentPack` now refuses `verified: true` while any dosing row
+      is unreviewed, so this flips back only by being earned.
+    */
+    expect(paediatrics.verified).toBe(false);
     expect(medicine.verified).toBe(false);
   });
 });

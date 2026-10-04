@@ -22,7 +22,17 @@ export const paediatrics: ContentPack = {
     credential: 'Paediatrics',
     updated: '2026-08-21',
   },
-  verified: true,
+  /*
+    FALSE UNTIL IT IS TRUE.
+
+    This claimed a clinician had signed the pack off -- doses reviewed,
+    formulary reconciled, Urdu read aloud -- while the author was the literal
+    string 'Pack author' and not one of the ten dosing rows was signed by
+    anyone. `validateContentPack` now refuses the claim while any dosing row is
+    unreviewed, so this flips back to true by being earned rather than by being
+    typed.
+  */
+  verified: false,
 
   /**
    * Order is tap order at OPD speed: the systems examined in almost every

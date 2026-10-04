@@ -64,6 +64,20 @@ export interface DosingEntry {
   ageBand?: { fromDays?: number; toDays?: number; label: string };
   weightBand?: { fromKg?: number; toKg?: number };
   mgPerKg?: number;
+  /**
+   * The top of a dose RANGE, when there is one.
+   *
+   * Most paediatric dosing is a band, not a number: paracetamol is 10-15
+   * mg/kg per dose, and a doctor picks a round, syringe-measurable value
+   * inside it. `mgPerKg` alone could not say that, so every range had to be
+   * flattened to its low end -- which under-doses on paper and is not what any
+   * source actually says.
+   *
+   * `mgPerKg` is the low end and this is the high end. A row with only
+   * `mgPerKg` keeps its exact previous meaning, and a reader that ignores this
+   * field still shows a dose that is within the band rather than above it.
+   */
+  mgPerKgHigh?: number;
   /** doses per day this mg/kg figure assumes */
   perDoses?: number;
   maxPerDay?: string;
@@ -387,6 +401,19 @@ export interface ContentPack {
    * which rule applies a matter of reading the id prefix.
    */
   adviceReview?: Record<string, RedFlagReview>;
+  /**
+   * Who signed off each dosing row, and against what numbers.
+   *
+   * Keyed by `dosingKey(entry)`, with `wording` holding
+   * `dosingFingerprint(entry)` -- so editing a dose after sign-off revokes it
+   * without anybody remembering to.
+   *
+   * This exists because the product claimed "clinician-verified" while
+   * `DosingEntry.verified` was a boolean anyone could set and nothing checked.
+   * `validateContentPack` now refuses `verified: true` without a matching
+   * entry here.
+   */
+  dosingReview?: Record<string, RedFlagReview>;
   /** module-specific configuration, e.g. which growth measures to offer */
   moduleConfig?: {
     growth?: {
@@ -504,6 +531,29 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
     }
   }
 
+  /*
+    A pack cannot call itself verified while its doses are not.
+
+    `ContentPack.verified` means "a clinician of this specialty has signed the
+    pack itself off -- doses reviewed, formulary reconciled, Urdu read aloud".
+    The paediatrics pack shipped with it set to true, an author named 'Pack
+    author', and zero signed dosing rows; the website repeated the claim. The
+    flag was documentation, and documentation drifts. This makes it a
+    consequence.
+  */
+  if (pack.verified) {
+    const unsigned = unreviewedDosing(pack);
+    if (unsigned.length > 0) {
+      issues.push({
+        severity: 'error',
+        where: 'verified',
+        message:
+          `pack claims to be clinician-verified, but ${unsigned.length} of ` +
+          `${new Set(pack.dosing.map(dosingKey)).size} dosing rows are not signed off`,
+      });
+    }
+  }
+
   const seenSection = new Set<string>();
   for (const section of pack.historySections ?? []) {
     if (seenSection.has(section.id)) {
@@ -595,8 +645,36 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
 
   // The rule with teeth: no dose without a citation.
   const genericsWithDosing = new Set<string>();
+  const seenDosingKey = new Set<string>();
   pack.dosing.forEach((row, i) => {
     genericsWithDosing.add(row.generic.toLowerCase());
+    /*
+      `dosingKey` has to be unique, and until now nothing said so.
+
+      A sign-off is stored against the key, not against the array index. Two
+      rows that collide therefore share one signature: tick the 5-10 kg row
+      and the 10-20 kg row beside it goes green without anyone reading it.
+      That is the exact failure the review flow exists to prevent, so a
+      collision is an error here rather than a surprise there.
+
+      It bites as soon as the pack grows: `generic|indication|ageBand.label`
+      does not include the weight band or the route, so an oral and an IV row
+      for the same indication in the same age band are one key. The fix is for
+      the pack to say what distinguishes them -- a different indication, or an
+      age-band label that names the route -- which is also what the reviewer
+      needs to see on screen to tell the two rows apart.
+    */
+    const key = dosingKey(row);
+    if (seenDosingKey.has(key)) {
+      issues.push({
+        severity: 'error',
+        where: `dosing[${i}] ${row.generic}`,
+        message:
+          `two dosing rows share the identity "${key}", so they would share one ` +
+          'sign-off. Give them different indications or age-band labels.',
+      });
+    }
+    seenDosingKey.add(key);
     if (!row.reference || !row.reference.trim()) {
       issues.push({
         severity: 'error',
@@ -617,6 +695,54 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
     // wearing a data hole. A row whose whole content is a refusal to suggest a
     // dose (INR-guided warfarin, titrated insulin) still says so via
     // `fixedDose`; that is a valid dose expression, not an empty one.
+    /*
+      The rule that makes `verified` mean something.
+
+      It was a free-floating boolean: anybody could set it, nothing checked
+      it, and the site advertised "clinician-verified" while not one row was
+      signed. Now it has to be backed by a `dosingReview` entry whose
+      fingerprint still matches the row's numbers -- so editing a dose after
+      sign-off revokes it rather than silently carrying the old approval
+      forward onto a new number.
+    */
+    if (row.verified) {
+      const review = pack.dosingReview?.[dosingKey(row)];
+      if (!review?.reviewedBy?.trim()) {
+        issues.push({
+          severity: 'error',
+          where: `dosing[${i}] ${row.generic}`,
+          message:
+            'row is marked verified but nobody has signed it off. Set `verified` ' +
+            'only through the review flow, which records who and when.',
+        });
+      } else if (review.wording !== dosingFingerprint(row)) {
+        issues.push({
+          severity: 'error',
+          where: `dosing[${i}] ${row.generic}`,
+          message:
+            `dose changed after ${review.reviewedBy} signed it off on ${review.date}. ` +
+            'Re-check it against the source and sign again.',
+        });
+      }
+    }
+    if (row.mgPerKgHigh !== undefined && row.mgPerKg === undefined) {
+      issues.push({
+        severity: 'error',
+        where: `dosing[${i}] ${row.generic}`,
+        message: 'has the top of a dose range but not the bottom',
+      });
+    }
+    if (
+      row.mgPerKgHigh !== undefined &&
+      row.mgPerKg !== undefined &&
+      row.mgPerKgHigh < row.mgPerKg
+    ) {
+      issues.push({
+        severity: 'error',
+        where: `dosing[${i}] ${row.generic}`,
+        message: 'dose range is inside out: the top is below the bottom',
+      });
+    }
     if (!row.mgPerKg && !row.fixedDose && !row.maxPerDay) {
       issues.push({
         severity: 'error',
@@ -783,6 +909,66 @@ export function redFlagWording(strings: string[]): string {
     hash = (Math.imul(hash, 31) + joined.charCodeAt(i)) | 0;
   }
   return (hash >>> 0).toString(36);
+}
+
+/**
+ * The stable identity of a dosing row.
+ *
+ * `DosingEntry` has no id -- a row is identified by what it is about. This
+ * composite is already the key `builder/diff.ts` uses to match rows across a
+ * publish, and exporting it here means the sign-off and the diff agree by
+ * construction rather than by two developers writing the same template string.
+ */
+export function dosingKey(entry: DosingEntry): string {
+  return `${entry.generic}|${entry.indication ?? ''}|${entry.ageBand?.label ?? ''}`;
+}
+
+/**
+ * A fingerprint of what a clinician actually signed off on.
+ *
+ * The CLINICAL fields only. `note` and `indication` are prose and can be
+ * reworded without changing the dose; `mgPerKg` cannot. Change any of these
+ * and the sign-off dies automatically -- which is the whole mechanism
+ * `RedFlagReview.wording` already provides for advice, pointed at numbers
+ * instead of sentences.
+ *
+ * Deliberately NOT a cryptographic hash. This detects honest edits, not
+ * forgery: a pack file can be edited by hand anyway, which is why a pack that
+ * matters is SIGNED (domain/addonSignature.ts). Reusing `redFlagWording` keeps
+ * one hash in the codebase rather than two.
+ */
+export function dosingFingerprint(entry: DosingEntry): string {
+  return redFlagWording([
+    String(entry.mgPerKg ?? ''),
+    String(entry.mgPerKgHigh ?? ''),
+    String(entry.perDoses ?? ''),
+    entry.maxPerDay ?? '',
+    entry.fixedDose ?? '',
+    entry.route,
+    entry.weeklyOnly ? 'weekly-only' : '',
+    String(entry.ageBand?.fromDays ?? ''),
+    String(entry.ageBand?.toDays ?? ''),
+    String(entry.weightBand?.fromKg ?? ''),
+    String(entry.weightBand?.toKg ?? ''),
+  ]);
+}
+
+/**
+ * Dosing rows nobody has signed off, or whose numbers changed after sign-off.
+ *
+ * Same shape and same helper as the advice equivalents below. A dose is the
+ * most consequential claim this app makes -- it is printed, handed to a
+ * parent, and measured into a syringe -- so it gets the same machinery the
+ * red flags get, not a weaker one.
+ */
+export function unreviewedDosing(
+  pack: ContentPack,
+): Array<{ id: string; reason: 'never-reviewed' | 'wording-changed' }> {
+  const byKey = new Map(pack.dosing.map((row) => [dosingKey(row), row]));
+  return unreviewed([...byKey.keys()], pack.dosingReview, (key) => {
+    const row = byKey.get(key);
+    return row ? dosingFingerprint(row) : '';
+  });
 }
 
 /**
