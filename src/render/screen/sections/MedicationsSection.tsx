@@ -13,7 +13,7 @@
  *    rows say so, because a citation the pack author has not checked must not
  *    wear the same authority as one they have (PRODUCT.md 11a).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MedicationLine } from '@domain/prescription.ts';
 import { composeSig, weeklyOnlyViolation } from '@domain/sig.ts';
 import type { DosingEntry } from '@domain/pack.ts';
@@ -25,6 +25,7 @@ import { languageFor } from '@config/doctorProfile.ts';
 import { useStore, newId } from '../store.tsx';
 import { SigEditor } from '../components/SigEditor.tsx';
 import { DoseSuggestion } from '../components/DoseSuggestion.tsx';
+import { StrengthSelect } from '../components/StrengthSelect.tsx';
 
 /**
  * The dose text a citation shows. `mgPerKg` (weight-based, mostly paediatric)
@@ -51,6 +52,9 @@ export function MedicationsSection() {
   const { rx, pack, phrases: packs, profile, setMedications } = useStore();
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
+  /** which card is swiped open, and the pointer that is dragging one */
+  const [swiped, setSwiped] = useState<string | null>(null);
+  const drag = useRef<{ id: string; x: number } | null>(null);
   const [repertoire, setRepertoire] = useState<RepertoireEntry[]>([]);
 
   // The doctor's own prescribing, ranked by how often they actually write it.
@@ -189,7 +193,56 @@ export function MedicationsSection() {
         const chosenStrength = strengths.find((e) => e.strength === line.drug.strength);
 
         return (
-          <article className="med" key={line.id}>
+          /*
+            SWIPE TO REVEAL REMOVE.
+
+            The × sits in the top-right corner of the card, which on a 390px
+            phone held one-handed is the furthest point from the thumb and a
+            20px target. React Bits' Swipe Row is the answer the whole mobile
+            world already settled on: drag the card aside and a full-height
+            Remove appears under it.
+
+            It reveals a BUTTON rather than removing on release. A swipe that
+            deletes is a swipe that deletes by accident, and this is a
+            prescription — two deliberate actions, or none. The × stays for the
+            mouse and the keyboard, so nothing is reachable only by gesture.
+          */
+          <article
+            className="med"
+            key={line.id}
+            data-swiped={swiped === line.id ? 'true' : undefined}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'mouse') return;
+              drag.current = { id: line.id, x: e.clientX };
+            }}
+            onPointerMove={(e) => {
+              const d = drag.current;
+              if (!d || d.id !== line.id) return;
+              const dx = e.clientX - d.x;
+              if (dx < -44) {
+                setSwiped(line.id);
+                drag.current = null;
+              } else if (dx > 20) {
+                setSwiped(null);
+                drag.current = null;
+              }
+            }}
+            onPointerUp={() => {
+              drag.current = null;
+            }}
+          >
+            <div className="med-reveal" aria-hidden={swiped !== line.id}>
+              <button
+                className="btn danger"
+                tabIndex={swiped === line.id ? 0 : -1}
+                onClick={() => {
+                  setSwiped(null);
+                  setMedications(rx.medications.filter((m) => m.id !== line.id));
+                }}
+              >
+                Remove
+              </button>
+            </div>
             <div className="med-head">
               <span className="brand-name">
                 {line.drug.brand || line.drug.generic || line.drug.raw}
@@ -236,35 +289,15 @@ export function MedicationsSection() {
               )}
             </div>
 
-            {cited?.mgPerKg !== undefined && strengths.length > 1 && (
-              <div className="strength-switch">
-                <span className="track-label">strength</span>
-                {strengths.map((e) => (
-                  <button
-                    key={e.strength}
-                    className="chip"
-                    aria-pressed={line.drug.strength === e.strength}
-                    /*
-                      No marker on the chip itself. The millilitre line says
-                      why there is no volume the moment a solid is picked,
-                      which is more use than a dot the reader has to decode --
-                      and a legend for one symbol is worse than the symbol.
-                    */
-                    title={
-                      e.concentration
-                        ? undefined
-                        : 'No millilitre figure for this strength — it is not a mass per millilitre'
-                    }
-                    onClick={() =>
-                      update(line.id, {
-                        drug: { ...line.drug, strength: e.strength ?? '' },
-                      })
-                    }
-                  >
-                    {e.strength}
-                  </button>
-                ))}
-              </div>
+            {strengths.length > 1 && (
+              <StrengthSelect
+                options={strengths}
+                value={line.drug.strength}
+                onChange={(strength) => update(line.id, { drug: { ...line.drug, strength } })}
+                entry={cited}
+                weightKg={rx.patient.weightKg}
+                ageDays={rx.patient.ageDays}
+              />
             )}
 
             <div className="med-slots">

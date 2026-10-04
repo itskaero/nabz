@@ -17,6 +17,7 @@
 import { useState } from 'react';
 import { forgetPairing, pairedCode, setPairedCode } from '@storage/clinicSync.ts';
 import { isReceptionDevice } from '@domain/deviceRole.ts';
+import { CodeSlots } from '../components/CodeSlots.tsx';
 
 export function ClinicPairing({ onPaired }: { onPaired?: () => void }) {
   const [code, setCode] = useState('');
@@ -52,18 +53,19 @@ export function ClinicPairing({ onPaired }: { onPaired?: () => void }) {
         </div>
       ) : (
         <div className="pairing-row">
-          <div className="field num" style={{ flex: 1 }}>
+          <div className="field" style={{ flex: 1 }}>
             <label>Pairing code</label>
-            <input
-              inputMode="numeric"
-              autoComplete="off"
-              aria-label="Clinic pairing code"
-              placeholder="000000"
+            {/*
+              Six boxes rather than one field with a `000000` placeholder. The
+              boxes are the instruction — six of them means six digits — and the
+              filled ones are the progress, which matters when the number is
+              being read off a screen across the room.
+            */}
+            <CodeSlots
+              label="Clinic pairing code"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') pair();
-              }}
+              onChange={setCode}
+              onComplete={pair}
             />
           </div>
           <button className="btn" disabled={code.replace(/\D/g, '').length < 4} onClick={pair}>
