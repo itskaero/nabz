@@ -3412,3 +3412,238 @@ kbd {
 .setup-hero .setup-summary {
   margin-top: 0;
 }
+
+/* ==========================================================================
+   THE AURORA, AND THE GLASS THAT NEEDS IT
+
+   Frosted glass was already on the action bar and nobody could see it, for
+   the reason frosted glass is always invisible: there was nothing behind it
+   to frost. A blur over a flat colour is that same flat colour. Glass is not
+   a material, it is a RELATIONSHIP between a surface and what is behind it,
+   so the backdrop has to exist first.
+
+   So: three soft colour fields drift behind the whole app — green, light
+   yellow, warm orange — weighted toward the bottom of the screen, and the
+   shell and the cards become translucent over them.
+
+   WHY A WARM GRADIENT IS SAFE HERE AND AN AMBER STRIPE IS NOT. Amber and red
+   are alarms in this app, and the discipline rests on the eye learning that
+   warm means stop. What separates the aurora from an alarm is not hue, it is
+   grammar: an alarm is a small saturated object INSIDE the content (a 4px
+   stripe, a filled pill, a coloured word), and the aurora is only ever a
+   large soft field BEHIND it. Nothing below ever paints a border, a fill or a
+   letter in an aurora colour.
+
+   WHY THE CONTRAST STILL HOLDS. Every surface here is translucent, so the
+   colour behind a piece of text is a composite rather than a token, and a
+   composite that nobody measured is a guess. `tests/theme.test.ts` composites
+   each glass alpha over each aurora stop over the page and checks every text
+   and boundary pair against the worst corner. The alphas and
+   `--aurora-opacity` are what they are because of those measurements: at 0.6
+   in light mode the input border drops to 2.87:1 and WCAG 1.4.11 wants 3.
+   ========================================================================== */
+
+/*
+ * The field. Fixed, behind everything, and inert to the pointer.
+ *
+ * Two layers rather than one so the blobs drift against each other — a single
+ * transform on three blobs is a pan, and a pan reads as the page sliding.
+ * Both animate `transform` and nothing else, so the work stays on the
+ * compositor and never touches layout or paint.
+ */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: var(--aurora-opacity);
+}
+
+/*
+ * `inset: -12%`, and the blob positions are computed FOR that box.
+ *
+ * This was -35%, which expands the gradient's coordinate space to 170% of the
+ * viewport — so `at 14% 92%` landed at roughly -11% of the screen and the
+ * whole field drifted off the edge. A percentage inside an oversized box is
+ * not a percentage of the screen. The overhang is now modest and every
+ * position below is mapped through it: screen p sits at (p + 12) / 124.
+ */
+.aurora span {
+  position: absolute;
+  inset: -12%;
+  display: block;
+  will-change: transform;
+}
+
+/*
+ * Weighted to the bottom, which is the "lower borders" of the ask and also
+ * where it belongs: the top of the screen is the patient bar and the tab
+ * strip, and a colour field behind those competes with the two rows a doctor
+ * reads first. Underneath the action bar it has nothing to compete with and
+ * everything to give the glass.
+ */
+/*
+ * A flat core, then a long fade.
+ *
+ * `var(--aurora-a), transparent 68%` puts full strength at a single point and
+ * is nearly invisible everywhere else. Holding the colour to 22% and fading
+ * from there gives a field with a readable body — and it is the FULL strength
+ * that the contrast tests composite, so what is measured is the worst case
+ * rather than an average nobody ever sees.
+ */
+.aurora span:nth-child(1) {
+  background:
+    radial-gradient(
+      58vmax 42vmax at 19% 86%,
+      var(--aurora-a) 0%,
+      var(--aurora-a) 22%,
+      transparent 72%
+    ),
+    radial-gradient(
+      50vmax 38vmax at 78% 74%,
+      var(--aurora-c) 0%,
+      var(--aurora-c) 20%,
+      transparent 70%
+    );
+  animation: aurora-a 54s ease-in-out infinite alternate;
+}
+
+.aurora span:nth-child(2) {
+  background:
+    radial-gradient(
+      54vmax 36vmax at 50% 97%,
+      var(--aurora-b) 0%,
+      var(--aurora-b) 24%,
+      transparent 70%
+    ),
+    /*
+      One blob aimed at the middle of the reading column rather than at an
+      edge. Without it the field was a frame — colour down the rail and along
+      the bottom, and a flat panel where the work happens, which is the half
+      of the screen the glass is supposed to be glass against.
+    */
+      radial-gradient(
+        46vmax 34vmax at 62% 46%,
+        var(--aurora-c) 0%,
+        var(--aurora-c) 14%,
+        transparent 68%
+      ),
+    radial-gradient(
+      40vmax 30vmax at 15% 22%,
+      var(--aurora-a) 0%,
+      var(--aurora-a) 18%,
+      transparent 74%
+    );
+  animation: aurora-b 71s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-a {
+  from {
+    transform: translate3d(-4%, 2%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, -3%, 0) scale(1.14);
+  }
+}
+
+@keyframes aurora-b {
+  from {
+    transform: translate3d(5%, -2%, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-5%, 3%, 0) scale(1);
+  }
+}
+
+/*
+ * Still, not absent, when motion is unwelcome.
+ *
+ * `prefers-reduced-motion` is a request about movement, not about colour. The
+ * field stays exactly where it is and stops drifting — removing it entirely
+ * would answer a question nobody asked.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .aurora span {
+    animation: none;
+  }
+}
+
+/*
+ * And off entirely when a doctor says so, or when the mode says so.
+ *
+ * `contrast` needs no rule here: all three of its stops are the page colour
+ * and its `--aurora-opacity` is 0, so the field paints nothing. The attribute
+ * is the user's own switch, in Settings beside the theme.
+ */
+:root[data-ambient='off'] .aurora {
+  display: none;
+}
+
+/*
+ * The app floats ON the field rather than covering it.
+ *
+ * `.app` carried `background: var(--bg)` and was therefore an opaque lid over
+ * anything behind it. The page colour moves to `body`, where the aurora sits
+ * above it and below the content.
+ */
+.app {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/*
+ * GLASS, on the surfaces that can afford it.
+ *
+ * Shell first — the chrome, the rail, the nav, the action bar — at the lower
+ * alpha, because none of them carries a clinical value. Then the cards at a
+ * higher one, so the aurora reads through a prescription without being able
+ * to decide whether a dose is legible.
+ *
+ * Every rule is inside `@supports`, so a browser without `backdrop-filter`
+ * keeps the opaque fill it has now rather than getting translucency with no
+ * blur, which is the one combination that genuinely hurts readability.
+ */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  :root:not([data-theme='contrast']) .topbar,
+  :root:not([data-theme='contrast']) .bottom-nav {
+    background: var(--glass);
+    border-color: var(--glass-line);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(20px) saturate(150%);
+  }
+
+  @media (min-width: 900px) {
+    :root:not([data-theme='contrast']) .side-nav {
+      background: var(--glass);
+      border-right-color: var(--glass-line);
+      -webkit-backdrop-filter: blur(20px) saturate(150%);
+      backdrop-filter: blur(20px) saturate(150%);
+    }
+  }
+
+  :root:not([data-theme='contrast']) .card,
+  :root:not([data-theme='contrast']) .med,
+  :root:not([data-theme='contrast']) .row-item {
+    background: var(--glass-card);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  /*
+   * Three exceptions, and each is the same exception.
+   *
+   * The preview sheet is a picture of what the printer produces and the
+   * printer has one palette. A modal is meant to read as ABOVE the page, and
+   * a translucent modal reads as part of it. A text input has to be the one
+   * unambiguous white rectangle on the screen. None of them gets glass.
+   */
+  :root:not([data-theme='contrast']) .paper,
+  :root:not([data-theme='contrast']) .sheet-modal,
+  :root:not([data-theme='contrast']) .card.paper {
+    background: var(--surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

@@ -17,16 +17,34 @@ import { resolveMode } from '@render/theme.ts';
 
 export type { Density, ThemeChoice, ThemeMode };
 
+/**
+ * The drifting colour field behind the app, on or off.
+ *
+ * A third axis rather than a theme, because it is orthogonal to both of the
+ * others: a doctor can want dark AND still not want anything moving on the
+ * screen while they read a dose. It is also the one setting here with a cost
+ * attached — a full-screen gradient with two animated layers is work a phone
+ * does continuously — so somebody on a long OPD list with a tired battery
+ * should be able to switch it off without giving up dark mode to do it.
+ *
+ * `prefers-reduced-motion` already stops the drift on its own; this is the
+ * stronger switch, and it removes the field entirely.
+ */
+export type Ambient = 'on' | 'off';
+
 export interface Appearance {
   theme: ThemeChoice;
   density: Density;
+  ambient: Ambient;
 }
 
 const THEME_KEY = 'nabz.theme';
 const DENSITY_KEY = 'nabz.density';
+const AMBIENT_KEY = 'nabz.ambient';
 
 const THEMES: ThemeChoice[] = ['system', 'light', 'dark', 'contrast'];
 const DENSITIES: Density[] = ['comfortable', 'compact'];
+const AMBIENTS: Ambient[] = ['on', 'off'];
 
 /**
  * `system` is the default, not `light`.
@@ -38,7 +56,8 @@ const DENSITIES: Density[] = ['comfortable', 'compact'];
 export function readAppearance(defaults: Partial<Appearance> = {}): Appearance {
   const theme = read(THEME_KEY, THEMES) ?? defaults.theme ?? 'system';
   const density = read(DENSITY_KEY, DENSITIES) ?? defaults.density ?? 'comfortable';
-  return { theme, density };
+  const ambient = read(AMBIENT_KEY, AMBIENTS) ?? defaults.ambient ?? 'on';
+  return { theme, density, ambient };
 }
 
 function read<T extends string>(key: string, allowed: T[]): T | null {
@@ -57,6 +76,7 @@ export function writeAppearance(next: Partial<Appearance>): void {
   try {
     if (next.theme) localStorage.setItem(THEME_KEY, next.theme);
     if (next.density) localStorage.setItem(DENSITY_KEY, next.density);
+    if (next.ambient) localStorage.setItem(AMBIENT_KEY, next.ambient);
   } catch {
     /* the setting simply does not survive a reload */
   }
@@ -93,6 +113,7 @@ export function applyAppearance(
   if (appearance.theme === 'system') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', appearance.theme);
   root.setAttribute('data-density', appearance.density);
+  root.setAttribute('data-ambient', appearance.ambient);
 
   const mode = resolveMode(appearance.theme, prefersDark);
   syncThemeColor(doc, mode);

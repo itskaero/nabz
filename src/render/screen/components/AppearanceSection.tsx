@@ -11,7 +11,7 @@
  * two different answers, and the reception station wants a third.
  */
 import type { AppearanceControl } from '../useAppearance.ts';
-import type { Density, ThemeChoice } from '@domain/appearance.ts';
+import type { Ambient, Density, ThemeChoice } from '@domain/appearance.ts';
 
 const THEMES: Array<{ id: ThemeChoice; title: string; note: string }> = [
   {
@@ -42,6 +42,19 @@ const DENSITIES: Array<{ id: Density; title: string; note: string }> = [
     id: 'compact',
     title: 'Compact',
     note: 'More rows on screen. For a desk with a mouse — a front desk scanning a queue.',
+  },
+];
+
+const AMBIENTS: Array<{ id: Ambient; title: string; note: string }> = [
+  {
+    id: 'on',
+    title: 'Ambient colour',
+    note: 'A slow drift of green, gold and amber light behind the app. Nothing on it is clickable.',
+  },
+  {
+    id: 'off',
+    title: 'Plain background',
+    note: 'No gradient, nothing moving. Costs a phone less on a long list.',
   },
 ];
 
@@ -86,6 +99,36 @@ export function AppearanceSection({ appearance }: { appearance: AppearanceContro
           </button>
         ))}
       </div>
+
+      {/*
+        Hidden under High contrast rather than shown disabled.
+
+        That mode turns the field off by making every one of its stops the
+        page colour, so the switch would control nothing. A greyed-out control
+        with no explanation is the thing this codebase keeps saying it does
+        not want; a control that is simply not offered because the mode it
+        belongs to is not running is honest.
+      */}
+      {appearance.theme !== 'contrast' && (
+        <>
+          <h3 style={{ marginTop: 16 }}>Background</h3>
+          <div className="mode-list">
+            {AMBIENTS.map((a) => (
+              <button
+                key={a.id}
+                className="mode"
+                aria-pressed={appearance.ambient === a.id}
+                onClick={() => appearance.setAmbient(a.id)}
+              >
+                <span>
+                  {a.title}
+                  <small>{a.note}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }

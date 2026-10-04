@@ -316,3 +316,125 @@ describe('resolveMode', () => {
     expect(resolveMode('contrast', true)).toBe('contrast');
   });
 });
+
+/**
+ * THE AURORA, AND EVERY SURFACE THAT IS NOW TRANSLUCENT OVER IT.
+ *
+ * This is the part of the palette that cannot be eyeballed. Once the shell and
+ * the cards are glass, the colour behind a piece of text is not a token any
+ * more -- it is a composite of the glass fill, the aurora stop that happens to
+ * be overhead, and the page. Three values, two alpha blends, and a drifting
+ * field that puts a different one of them behind the same label every minute.
+ *
+ * So the test composites it. For each mode, each stop, and each surface alpha,
+ * it reconstructs exactly what the browser will paint and checks every text
+ * pair against 4.5 and every boundary pair against 3 -- at FULL stop strength,
+ * which is the worst corner and also the one the eye finds first, since the
+ * gradient holds its core flat before fading.
+ *
+ * What this protects: raising `auroraOpacity` by a tenth, or thinning a glass
+ * alpha because it looked nicer, is a change to the legibility of every field
+ * label in the app. It should fail a test rather than ship.
+ */
+describe('text over glass over the aurora', () => {
+  /** `rgba(r, g, b, a)` -> `['#rrggbb', a]`. The tokens are authored as CSS. */
+  function parseRgba(value: string): [string, number] {
+    const m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?\s*\)$/.exec(
+      value.trim(),
+    );
+    if (!m) return [value, 1];
+    const hex = `#${[m[1], m[2], m[3]]
+      .map((n) => Math.round(Number(n)).toString(16).padStart(2, '0'))
+      .join('')}`;
+    return [hex, m[4] === undefined ? 1 : Number(m[4])];
+  }
+
+  /** `fg` painted at `alpha` over `bg`, as the compositor would. */
+  function over(fg: string, bg: string, alpha: number): string {
+    const f = fg.replace('#', '');
+    const b = bg.replace('#', '');
+    const ch = (i: number) =>
+      Math.round(
+        parseInt(f.slice(i * 2, i * 2 + 2), 16) * alpha +
+          parseInt(b.slice(i * 2, i * 2 + 2), 16) * (1 - alpha),
+      );
+    return `#${[0, 1, 2].map((i) => ch(i).toString(16).padStart(2, '0')).join('')}`;
+  }
+
+  const TEXT: Array<[Key, string]> = [
+    ['ink', 'body text'],
+    ['inkSoft', 'secondary text'],
+    ['inkFaint', 'a field label — the quietest text that is still text'],
+    ['cautionInk', 'an unverified dose'],
+    ['dangerInk', 'an allergy'],
+  ];
+  const NON_TEXT: Array<[Key, string]> = [
+    ['lineStrong', 'an input border, whose edge is its only affordance'],
+    ['accent', 'a filled action'],
+  ];
+
+  for (const mode of MODES) {
+    const t = THEMES[mode];
+    const opacity = Number(t.auroraOpacity);
+    // `contrast` turns the field off entirely, so there is no composite.
+    if (opacity === 0) continue;
+
+    for (const stopKey of ['auroraA', 'auroraB', 'auroraC'] as const) {
+      const ground = over(t[stopKey], t.bg, opacity);
+      const [glassHex, glassA] = parseRgba(t.glass);
+      const [cardHex, cardA] = parseRgba(t.glassCard);
+
+      const surfaces: Array<[string, string]> = [
+        [ground, 'the bare page under the aurora'],
+        [over(glassHex, ground, glassA), 'the glass shell over it'],
+        [over(cardHex, ground, cardA), 'a glass card over it'],
+      ];
+
+      for (const [bg, where] of surfaces) {
+        for (const [fg, what] of TEXT) {
+          it(`${mode}: ${fg} stays readable on ${where} (${stopKey}) — ${what}`, () => {
+            expect(contrast(t[fg] as string, bg)).toBeGreaterThanOrEqual(4.5);
+          });
+        }
+        for (const [fg, what] of NON_TEXT) {
+          it(`${mode}: ${fg} stays visible on ${where} (${stopKey}) — ${what}`, () => {
+            expect(contrast(t[fg] as string, bg)).toBeGreaterThanOrEqual(3);
+          });
+        }
+      }
+    }
+  }
+
+  /*
+    The rule that keeps a sunset from looking like a warning light.
+
+    Amber and red are alarms here, and the aurora is deliberately warm, so the
+    two could collide. What keeps them apart is grammar -- an alarm is a small
+    saturated object inside the content, the aurora is a large soft field
+    behind it -- and that is a discipline in the CSS, not something a colour
+    test can check. What CAN be checked is that nobody ever shortcuts it by
+    pointing an aurora stop straight at an alarm token.
+  */
+  it('never paints the aurora in an alarm colour', () => {
+    for (const mode of MODES) {
+      const t = THEMES[mode];
+      if (Number(t.auroraOpacity) === 0) continue;
+      const alarms = [t.danger, t.dangerInk, t.caution, t.cautionInk];
+      for (const stop of [t.auroraA, t.auroraB, t.auroraC]) {
+        expect(alarms, `${mode} aurora reuses an alarm colour`).not.toContain(stop);
+      }
+    }
+  });
+
+  it('turns the whole thing off in contrast mode rather than dimming it', () => {
+    const t = THEMES.contrast;
+    expect(Number(t.auroraOpacity)).toBe(0);
+    expect(t.auroraA).toBe(t.bg);
+    expect(t.auroraB).toBe(t.bg);
+    expect(t.auroraC).toBe(t.bg);
+    // And its glass is opaque, so a translucent surface never appears in the
+    // one mode whose whole promise is that contrast is guaranteed.
+    expect(t.glass).toBe('#ffffff');
+    expect(t.glassCard).toBe('#ffffff');
+  });
+});

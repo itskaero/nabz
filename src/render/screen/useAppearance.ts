@@ -7,7 +7,7 @@
  * a doctor on a ward round at dusk is exactly who that happens to.
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { Appearance, Density, ThemeChoice } from '@domain/appearance.ts';
+import type { Ambient, Appearance, Density, ThemeChoice } from '@domain/appearance.ts';
 import {
   applyAppearance,
   defaultDensityFor,
@@ -29,6 +29,7 @@ function prefersDark(): boolean {
 export interface AppearanceControl extends Appearance {
   setTheme: (theme: ThemeChoice) => void;
   setDensity: (density: Density) => void;
+  setAmbient: (ambient: Ambient) => void;
 }
 
 export function useAppearance(): AppearanceControl {
@@ -65,5 +66,10 @@ export function useAppearance(): AppearanceControl {
     setAppearance((a) => ({ ...a, density }));
   }, []);
 
-  return { ...appearance, setTheme, setDensity };
+  const setAmbient = useCallback((ambient: Ambient) => {
+    writeAppearance({ ambient });
+    setAppearance((a) => ({ ...a, ambient }));
+  }, []);
+
+  return { ...appearance, setTheme, setDensity, setAmbient };
 }

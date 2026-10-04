@@ -235,6 +235,17 @@ export interface ThemeTokens {
    */
   glass: string;
   glassLine: string;
+  /**
+   * The same idea at a card's alpha rather than a bar's.
+   *
+   * A card carries clinical values, so it is less transparent than the shell
+   * — enough to pick up the aurora moving behind it, not enough for what is
+   * behind to decide whether a dose is readable. Both alphas are chosen so
+   * that the WORST composite (this fill over the most saturated aurora stop
+   * over the page) still clears the body-text floor, which is what
+   * `tests/theme.test.ts` actually measures rather than assuming.
+   */
+  glassCard: string;
 
   /**
    * The one gradient, as two stops.
@@ -246,6 +257,37 @@ export interface ThemeTokens {
    */
   heroFrom: string;
   heroTo: string;
+
+  /**
+   * The aurora: three stops, drifting, behind everything.
+   *
+   * Green, light yellow and a warm orange — and the warm two are the reason
+   * this needed care rather than taste. Amber and red are ALARMS in this app
+   * (`caution` is "the doctor's own words, not vetted"; `danger` is an
+   * allergy), and the whole discipline rests on the eye learning that warm
+   * means stop. A warm gradient could undo that in an afternoon.
+   *
+   * What keeps the two apart is not hue, it is GRAMMAR. An alarm is a small
+   * saturated object inside the content — a 4px stripe, a filled pill, a word
+   * in coloured text. The aurora is only ever a large soft field BEHIND the
+   * content, never a fill, never a border, never text, and never inside a card
+   * that carries a clinical value. Those two things do not look alike even
+   * when they share a hue, in the way that a sunset and a warning light do
+   * not look alike.
+   */
+  auroraA: string;
+  auroraB: string;
+  auroraC: string;
+  /**
+   * How much of the aurora reaches the page, as a number in a string.
+   *
+   * This is the single knob that decides whether every piece of text in the
+   * app still clears its contrast floor, because the page ground becomes a mix
+   * of `bg` and whichever stop is overhead. Raising it is not a styling
+   * change; `tests/theme.test.ts` recomputes every pair against the composite
+   * and will say so.
+   */
+  auroraOpacity: string;
 
   /**
    * PAPER IS PAPER.
@@ -288,10 +330,16 @@ const LIGHT: ThemeTokens = {
   // Desaturated green-greys rather than neutrals, so the secondary text stays
   // in the family while body ink is the system's own Charcoal.
   inkSoft: '#41503f',
-  // 6.04:1 at its worst (on the keylime ground), against a 4.5 floor. This is
-  // every field label in the app; it was #8a9691 and below the floor
-  // everywhere before tokens existed.
-  inkFaint: '#4f5d50',
+  /*
+    Darkened again, for the aurora rather than for the surfaces.
+
+    This is every field label, hint and unit tag in the app, and it is the ONE
+    text token that sits directly on the page ground rather than inside a card
+    — so it is the token the drifting colour field reaches first. #4f5d50
+    measured 4.37:1 with the green stop overhead, under the 4.5 body floor.
+    4.86 now, at its worst corner, which is also the corner the test checks.
+  */
+  inkFaint: '#495648',
   line: '#d4e6d6',
   // Border Mist, exactly as the system specifies -- 1.15:1 on cream, which is
   // a hairline and must never be the only thing marking a boundary.
@@ -305,7 +353,7 @@ const LIGHT: ThemeTokens = {
     exactly where the segmented control's selected segment lives. 3.27 there,
     and still only a hairline's weight.
   */
-  lineStrong: '#687b6c',
+  lineStrong: '#5b6e60',
 
   // Forest Ink, and nothing else, is the action colour. `accentInk` is the
   // same value rather than a darker step: the system has one green, and at
@@ -355,14 +403,54 @@ const LIGHT: ThemeTokens = {
   shadow1: '0 1px 2px rgba(18, 38, 24, 0.05), 0 4px 12px rgba(18, 38, 24, 0.05)',
   shadow2: '0 1px 3px rgba(18, 38, 24, 0.1), 0 10px 28px rgba(18, 38, 24, 0.09)',
 
-  glass: 'rgba(255, 254, 252, 0.82)',
-  glassLine: 'rgba(15, 62, 23, 0.1)',
+  /*
+    Thin enough to actually be glass.
+
+    0.82 and 0.84 were frosted in name only: eighteen per cent of a backdrop
+    is a tint, not a material. The shell goes to 0.58 and the cards to 0.70,
+    which is where the colour moving underneath becomes something you can
+    watch — and the worst composite at those alphas still clears every floor
+    with room to spare, because a glass surface is LIGHTER than the aurora
+    under it in this mode, not darker.
+  */
+  glass: 'rgba(255, 254, 252, 0.58)',
+  glassLine: 'rgba(15, 62, 23, 0.14)',
+  glassCard: 'rgba(255, 254, 252, 0.7)',
 
   // Sage through Mint: the desk the paper lies on, lifting into the panel
   // tint. A sweep with real luminosity in it, and no hue the palette does not
   // already own.
   heroFrom: '#b1dbb8',
   heroTo: '#e1f4df',
+
+  /*
+    Chroma raised at CONSTANT LUMINANCE, which is the free move here.
+
+    Contrast is a function of luminance alone, so saturation can be pushed a
+    long way without touching a single measurement: #7fc99a and #63ce8a are
+    both L=0.486 and clear exactly the same floors, but only one of them is a
+    colour you notice. The three stops are each the most saturated version of
+    themselves that still sits on the luminance the tests were built around.
+
+    Green, gold and apricot — the warm two deliberately lighter and more
+    luminous than the amber that marks an unvetted sentence, so that even
+    where they share a hue they do not share a register.
+  */
+  auroraA: '#46d279',
+  auroraB: '#f9dc6d',
+  auroraC: '#ffb066',
+  // 0.5 is the ceiling, measured: at 0.6 the input border drops to 2.87:1 on
+  // the green stop and WCAG 1.4.11 wants 3.
+  /*
+    0.62, and every number in this file moved to allow it.
+
+    A gradient you have to be told is there is not a gradient. The limit is
+    not taste, it is the quietest text on the page: at 0.62 `inkFaint` reads
+    4.86:1 with the green stop overhead and the input border 3.42:1, both
+    above their floors — and `tests/theme.test.ts` recomputes exactly that
+    composite rather than taking anyone's word for it.
+  */
+  auroraOpacity: '0.62',
 
   paper: '#ffffff',
   // NOT Charcoal. This is a picture of what the printer produces, and the
@@ -401,12 +489,22 @@ const DARK: ThemeTokens = {
   surfaceRaised: '#3b4341',
   ink: '#eef3f1',
   inkSoft: '#b8c6c1',
-  // Raised with the surfaces. #8b9a96 measured 3.86:1 on the new raised
-  // surface -- under the 4.5 body floor, and this token is every field label.
-  inkFaint: '#a3b2ad',
+  // Raised twice: once with the surfaces (#8b9a96 measured 3.86:1 on the new
+  // raised surface) and again for the aurora, where #a3b2ad read 4.11:1 with
+  // the golden stop overhead. 4.64 now at its worst corner.
+  inkFaint: '#aebdb8',
   line: '#444d4a',
   lineSoft: '#39413f',
-  lineStrong: '#7d8c87',
+  /*
+    Lifted, because the aurora moves underneath it.
+
+    #7d8c87 cleared 3:1 on every flat surface, and measured 2.99 against the
+    page once the golden stop was overhead -- a control whose boundary is its
+    only affordance, failing by a hundredth, on whichever screens happened to
+    have the gradient in that corner. The floor has to hold against the whole
+    composite, not against the surface in isolation.
+  */
+  lineStrong: '#8d9c97',
 
   /*
     Light accent carrying dark ink -- a #0f3e17 button on a #141e1d card is a
@@ -449,11 +547,24 @@ const DARK: ThemeTokens = {
   shadow1: '0 1px 2px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4)',
   shadow2: '0 1px 3px rgba(0, 0, 0, 0.65), 0 12px 32px rgba(0, 0, 0, 0.5)',
 
-  glass: 'rgba(46, 52, 50, 0.78)',
-  glassLine: 'rgba(238, 243, 241, 0.1)',
+  glass: 'rgba(46, 52, 50, 0.58)',
+  glassLine: 'rgba(238, 243, 241, 0.14)',
+  glassCard: 'rgba(46, 52, 50, 0.7)',
 
   heroFrom: '#1d3a26',
   heroTo: '#212524',
+
+  /*
+    Emerald, gold, ember — an aurora over a dark field, which is the one it is
+    actually named after. Darker than the light-mode stops rather than merely
+    a shade of them: a bright stop on a dark ground is a lamp, not a sky.
+
+    Same iso-luminant chroma move as the light stops, for the same reason.
+  */
+  auroraA: '#146933',
+  auroraB: '#676510',
+  auroraC: '#7d360c',
+  auroraOpacity: '0.6',
 
   paper: '#ffffff',
   paperInk: '#14201f',
@@ -513,9 +624,17 @@ const CONTRAST: ThemeTokens = {
 
   glass: '#ffffff',
   glassLine: '#31403c',
+  glassCard: '#ffffff',
 
   heroFrom: '#ffffff',
   heroTo: '#ffffff',
+
+  // Off. Not dimmed, not subtle — off. Every stop is the page colour and the
+  // opacity is zero, so there is no composite to reason about at all.
+  auroraA: '#ffffff',
+  auroraB: '#ffffff',
+  auroraC: '#ffffff',
+  auroraOpacity: '0',
 
   paper: '#ffffff',
   paperInk: '#000000',
@@ -668,8 +787,13 @@ const KEBAB: Array<[keyof ThemeTokens, string]> = [
   ['shadow2', '--shadow-lifted'],
   ['glass', '--glass'],
   ['glassLine', '--glass-line'],
+  ['glassCard', '--glass-card'],
   ['heroFrom', '--hero-from'],
   ['heroTo', '--hero-to'],
+  ['auroraA', '--aurora-a'],
+  ['auroraB', '--aurora-b'],
+  ['auroraC', '--aurora-c'],
+  ['auroraOpacity', '--aurora-opacity'],
   ['paper', '--paper'],
   ['paperInk', '--paper-ink'],
 ];

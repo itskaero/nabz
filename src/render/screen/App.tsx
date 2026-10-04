@@ -523,7 +523,21 @@ export function App() {
       allowed the width -- the constraint was never about taste, it was about
       one-handed use that does not apply here.
     */
-    <div className="app" data-wide={view === 'clinic' || view === 'builder' || view === 'chart'}>
+    <>
+      {/*
+        The backdrop the glass needs.
+
+        A sibling of `.app` rather than a child, and fixed rather than
+        scrolling, because it has to sit behind the sidebar as well as behind
+        the page — a field that stopped at the content column would leave the
+        rail frosting nothing. `aria-hidden` and `pointer-events: none`: it is
+        light, and light is not content.
+      */}
+      <div className="aurora" aria-hidden="true">
+        <span />
+        <span />
+      </div>
+      <div className="app" data-wide={view === 'clinic' || view === 'builder' || view === 'chart'}>
       {/*
         The sidebar is a sibling of everything else, not a child of the
         header: it has to span the full height of the shell, and the working
@@ -787,8 +801,9 @@ export function App() {
         {!wide && (
           <BottomNav slots={slots} view={view} onGo={setView} disabled={navDisabled} />
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
