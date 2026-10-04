@@ -4226,3 +4226,83 @@ kbd {
     transition: none;
   }
 }
+
+/* ==========================================================================
+   INPUTS
+
+   Two changes, both about the field being usable rather than about it looking
+   different: a number you can type a decimal into and nudge with a thumb, and
+   a search whose suggestions the keyboard can actually reach.
+   ========================================================================== */
+
+/*
+ * The stepped number field.
+ *
+ * The two buttons are the field's own height, which makes them 44px targets
+ * against a text caret inside 16px of type — and they are at either end rather
+ * than stacked, so neither one is under the thumb that is holding the phone.
+ */
+.numfield {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.numfield:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.numfield-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: var(--ctl-pad-y) 4px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.numfield-input:focus {
+  outline: none;
+}
+
+.numfield-step {
+  flex: 0 0 auto;
+  width: var(--tap);
+  min-height: var(--tap);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease);
+}
+
+.numfield-step:hover {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+
+.numfield-step:active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/*
+ * The highlighted suggestion.
+ *
+ * Driven by `data-cursor`, which both the arrow keys and the pointer set — so
+ * the mouse and the keyboard land on the same row and there is never a second
+ * highlighted thing to disagree with.
+ */
+.suggestion[data-cursor='true'] {
+  background: var(--accent-wash);
+}

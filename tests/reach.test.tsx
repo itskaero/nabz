@@ -10,11 +10,13 @@
  * and that the information you need in order to choose is present before the
  * choice rather than after it.
  */
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrengthSelect } from '@render/screen/components/StrengthSelect.tsx';
 import { CodeSlots } from '@render/screen/components/CodeSlots.tsx';
+import { NumberField } from '@render/screen/components/NumberField.tsx';
 import type { DosingEntry, FormularyEntry } from '@domain/pack.ts';
 import { parseConcentration } from '@domain/dose.ts';
 
@@ -152,5 +154,95 @@ describe('typing a pairing code', () => {
       .getAllByRole('textbox')
       .filter((b) => (b as HTMLInputElement).dataset.filled === 'true');
     expect(filled).toHaveLength(3);
+  });
+});
+
+describe('typing a weight', () => {
+  /*
+    THE BUG THIS REPLACED, kept as a test because it was a tenfold dose error.
+
+    The patient bar bound the weight to `Number(e.target.value)` and rendered
+    the number back, so "3." re-rendered as "3" and the next keystroke made 34.
+    A 3.4 kg neonate became a 34 kg child, and every mg/kg dose in the app is
+    multiplied by this one field.
+  */
+  function Weight({ onValue }: { onValue: (n: number | undefined) => void }) {
+    const [v, setV] = useState<number | undefined>(undefined);
+    return (
+      <NumberField
+        label="Weight in kilograms"
+        value={v}
+        onChange={(n) => {
+          setV(n);
+          onValue(n);
+        }}
+        step={0.1}
+        min={0}
+        places={2}
+      />
+    );
+  }
+
+  it('lets a decimal be typed one character at a time', async () => {
+    const user = userEvent.setup();
+    let last: number | undefined;
+    render(<Weight onValue={(n) => (last = n)} />);
+    const field = screen.getByLabelText('Weight in kilograms');
+    await user.click(field);
+    await user.keyboard('3.4');
+    expect((field as HTMLInputElement).value).toBe('3.4');
+    expect(last).toBe(3.4);
+  });
+
+  it('holds the half-typed dot on screen instead of swallowing it', async () => {
+    const user = userEvent.setup();
+    render(<Weight onValue={() => {}} />);
+    const field = screen.getByLabelText('Weight in kilograms');
+    await user.click(field);
+    await user.keyboard('3.');
+    // The whole bug in one assertion: this used to read "3".
+    expect((field as HTMLInputElement).value).toBe('3.');
+  });
+
+  it('settles a trailing dot when the field is left', async () => {
+    const user = userEvent.setup();
+    let last: number | undefined = 99;
+    render(<Weight onValue={(n) => (last = n)} />);
+    const field = screen.getByLabelText('Weight in kilograms');
+    await user.click(field);
+    await user.keyboard('7.');
+    await user.tab();
+    expect(last).toBe(7);
+  });
+
+  it('refuses text that could never be a weight', async () => {
+    const user = userEvent.setup();
+    render(<Weight onValue={() => {}} />);
+    const field = screen.getByLabelText('Weight in kilograms');
+    await user.click(field);
+    await user.keyboard('12abc');
+    expect((field as HTMLInputElement).value).toBe('12');
+  });
+
+  it('nudges by a scale division from a thumb or an arrow key', async () => {
+    const user = userEvent.setup();
+    let last: number | undefined;
+    render(<Weight onValue={(n) => (last = n)} />);
+    const field = screen.getByLabelText('Weight in kilograms');
+    await user.click(field);
+    await user.keyboard('12.5');
+    await user.click(screen.getByLabelText('Weight in kilograms: more'));
+    expect(last).toBe(12.6);
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    // 0.1 + 0.2 arithmetic must not surface as 12.399999999999999.
+    expect(last).toBe(12.4);
+  });
+
+  it('will not go below zero, whatever the stepper is pressed', async () => {
+    const user = userEvent.setup();
+    let last: number | undefined;
+    render(<Weight onValue={(n) => (last = n)} />);
+    await user.click(screen.getByLabelText('Weight in kilograms: less'));
+    expect(last).toBe(0);
   });
 });

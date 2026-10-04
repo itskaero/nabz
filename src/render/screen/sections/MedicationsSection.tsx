@@ -54,6 +54,8 @@ export function MedicationsSection() {
   const [editing, setEditing] = useState<string | null>(null);
   /** which card is swiped open, and the pointer that is dragging one */
   const [swiped, setSwiped] = useState<string | null>(null);
+  /** which suggestion the arrows are on; -1 means "none, Enter adds as typed" */
+  const [cursor, setCursor] = useState(-1);
   const drag = useRef<{ id: string; x: number } | null>(null);
   const [repertoire, setRepertoire] = useState<RepertoireEntry[]>([]);
 
@@ -93,6 +95,28 @@ export function MedicationsSection() {
     setEditing(line.id);
   };
 
+  /**
+   * Take a suggestion, whole.
+   *
+   * One function for the click and the Enter key, because the two used to be
+   * different code and only one of them carried the strength, the form and the
+   * DRAP number across.
+   */
+  const addHit = (hit: (typeof matches)[number]) => {
+    setCursor(-1);
+    addLine(
+      hit.entry
+        ? {
+            brand: hit.entry.brand,
+            generic: hit.entry.generic,
+            ...(hit.entry.strength ? { strength: hit.entry.strength } : {}),
+            ...(hit.entry.form ? { form: hit.entry.form } : {}),
+            ...(hit.entry.drapRegNo ? { drapRegNo: hit.entry.drapRegNo } : {}),
+          }
+        : { raw: hit.label },
+    );
+  };
+
   const update = (id: string, patch: Partial<MedicationLine>) =>
     setMedications(rx.medications.map((m) => (m.id === id ? { ...m, ...patch } : m)));
 
@@ -103,14 +127,55 @@ export function MedicationsSection() {
       <div className="card">
         <h2>Add a medicine</h2>
         <div className="compose">
+          {/*
+            A COMBOBOX, which it was not.
+
+            It was a plain input with a list of buttons under it. The list was
+            unreachable from the keyboard in any useful way — Tab went to "Add
+            as typed" first and then into eight suggestions one at a time — and
+            Enter added the TYPED TEXT as a raw drug even when the right
+            catalogue row was sitting first in the list. A raw drug carries no
+            generic, and the dosing table joins on generic, so the fastest path
+            through this field produced the one record that can never get a
+            dose suggestion.
+
+            Arrow keys now walk the list, Enter takes whatever is highlighted,
+            and Enter with nothing highlighted still adds as typed — because an
+            unknown medicine must stay one keystroke away (PRODUCT.md: the
+            doctor is never blocked).
+          */}
           <input
             value={query}
+            role="combobox"
+            aria-expanded={matches.length > 0}
+            aria-controls="drug-suggestions"
+            aria-autocomplete="list"
+            {...(cursor >= 0 && matches[cursor]
+              ? { 'aria-activedescendant': `drug-opt-${cursor}` }
+              : {})}
             placeholder="Brand or generic — type anything"
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setCursor(-1);
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && query.trim()) {
+              if (e.key === 'ArrowDown' && matches.length > 0) {
                 e.preventDefault();
-                addLine({ raw: query.trim() });
+                setCursor((c) => Math.min(c + 1, matches.length - 1));
+              } else if (e.key === 'ArrowUp' && matches.length > 0) {
+                e.preventDefault();
+                setCursor((c) => Math.max(c - 1, -1));
+              } else if (e.key === 'Escape') {
+                setCursor(-1);
+              } else if (e.key === 'Enter') {
+                const hit = cursor >= 0 ? matches[cursor] : undefined;
+                if (hit) {
+                  e.preventDefault();
+                  addHit(hit);
+                } else if (query.trim()) {
+                  e.preventDefault();
+                  addLine({ raw: query.trim() });
+                }
               }
             }}
           />
@@ -122,25 +187,20 @@ export function MedicationsSection() {
             Add as typed
           </button>
           {matches.length > 0 && (
-            <div className="suggestions">
+            <div className="suggestions" id="drug-suggestions" role="listbox" aria-label="Medicines">
               <ul>
                 {matches.map((hit, i) => (
                   <li key={`${hit.label}-${hit.entry?.strength ?? ''}-${i}`}>
                     <button
+                      id={`drug-opt-${i}`}
+                      role="option"
+                      aria-selected={i === cursor}
+                      data-cursor={i === cursor ? 'true' : undefined}
                       className="suggestion"
-                      onClick={() =>
-                        addLine(
-                          hit.entry
-                            ? {
-                                brand: hit.entry.brand,
-                                generic: hit.entry.generic,
-                                ...(hit.entry.strength ? { strength: hit.entry.strength } : {}),
-                                ...(hit.entry.form ? { form: hit.entry.form } : {}),
-                                ...(hit.entry.drapRegNo ? { drapRegNo: hit.entry.drapRegNo } : {}),
-                              }
-                            : { raw: hit.label },
-                        )
-                      }
+                      // The pointer and the arrow keys drive the same highlight,
+                      // so there is never more than one highlighted row.
+                      onPointerEnter={() => setCursor(i)}
+                      onClick={() => addHit(hit)}
                     >
                       <span className="prov">
                         {hit.source === 'repertoire'
@@ -162,6 +222,12 @@ export function MedicationsSection() {
           )}
         </div>
         <p className="hint">
+          {matches.length > 0 && (
+            <>
+              <kbd>↓</kbd> to pick from the catalogue, <kbd>↵</kbd> to add what
+              you typed.{' '}
+            </>
+          )}
           Every medicine works — type anything and press Add. The list shows what
           you prescribe most first, then the checked catalogue.
         </p>

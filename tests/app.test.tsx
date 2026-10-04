@@ -182,7 +182,7 @@ describe('medications', () => {
     await user.click(screen.getByRole('tab', { name: /Medicines/ }));
     await user.type(screen.getByPlaceholderText(/Brand or generic/), 'Amoxil');
 
-    const suggestion = screen.getAllByRole('button', { name: /Amoxil/ })[0]!;
+    const suggestion = screen.getAllByRole('option', { name: /Amoxil/ })[0]!;
     expect(suggestion.textContent).toContain('Amoxicillin');
     await user.click(suggestion);
 
@@ -196,7 +196,7 @@ describe('medications', () => {
     renderApp();
     await user.click(screen.getByRole('tab', { name: /Medicines/ }));
     await user.type(screen.getByPlaceholderText(/Brand or generic/), 'Calpol');
-    await user.click(screen.getAllByRole('button', { name: /Calpol/ })[0]!);
+    await user.click(screen.getAllByRole('option', { name: /Calpol/ })[0]!);
 
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText('Dose amount'), '5');
@@ -281,7 +281,7 @@ describe('edited content reaches the app', () => {
     renderApp();
     await user.click(screen.getByRole('tab', { name: /Medicines/ }));
     await user.type(screen.getByPlaceholderText(/Brand or generic/), 'Calpol');
-    await user.click(screen.getAllByRole('button', { name: /Calpol/ })[0]!);
+    await user.click(screen.getAllByRole('option', { name: /Calpol/ })[0]!);
 
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText('Dose amount'), '5');

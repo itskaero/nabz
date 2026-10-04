@@ -36,6 +36,7 @@ import {
   missingForPrint,
   sectionLabelFor,
 } from '@domain/documents/index.ts';
+import { NumberField } from './components/NumberField.tsx';
 import { PreviewSheet } from './components/PreviewSheet.tsx';
 import { DocumentKindPicker } from './components/DocumentKindPicker.tsx';
 import { MODULE_PANEL } from './modules/registry.tsx';
@@ -881,13 +882,21 @@ function PatientBar({ onOpenChart }: { onOpenChart: (patientId: string) => void 
         </div>
         <div className="field num f-weight">
           <label>Weight kg</label>
-          <input
-            inputMode="decimal"
-            aria-label="Weight in kilograms"
-            value={p.weightKg ?? ''}
-            onChange={(e) =>
-              setPatient({ weightKg: e.target.value ? Number(e.target.value) : undefined })
-            }
+          {/*
+            The field every dose in this app is multiplied by, and until now
+            the one you could not type a decimal into: it bound straight to
+            `Number(e.target.value)`, so "3." re-rendered as "3" and the next
+            keystroke made 34. See NumberField's header. 0.1 kg steps because
+            that is the resolution of a baby scale.
+          */}
+          <NumberField
+            label="Weight in kilograms"
+            value={p.weightKg}
+            onChange={(weightKg) => setPatient({ weightKg })}
+            step={0.1}
+            min={0}
+            max={250}
+            places={2}
           />
         </div>
         <div className="field f-allergies">
