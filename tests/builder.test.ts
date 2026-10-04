@@ -99,10 +99,29 @@ describe('generic-name vocabulary', () => {
     expect(hits[0]!.name.toLowerCase().startsWith('amox')).toBe(true);
   });
 
-  it('finds brands that can never get a dose suggestion', () => {
-    const orphans = genericsWithoutDosing(paediatrics);
-    // the shipped pack has 100+ generics and only 10 dosing rows, so most are
-    expect(orphans.length).toBeGreaterThan(50);
+  /*
+    This used to assert that more than fifty generics had no dose, because the
+    pack had 102 generics and ten dosing rows. The hole is closed: every
+    generic the catalogue stocks now has a row, even where that row's content
+    is a stated reason for offering no figure.
+
+    So the test now holds the hole SHUT, and separately proves the detector
+    still works -- an empty result is only reassuring if something would have
+    filled it.
+  */
+  it('leaves no brand that can never get a dose suggestion', () => {
+    expect(genericsWithoutDosing(paediatrics)).toEqual([]);
+  });
+
+  it('still spots a generic that has brands and no dose', () => {
+    const pack = clonePack();
+    pack.formularySeed.push({
+      brand: 'Newthing',
+      generic: 'Nothingamol',
+      provenance: 'manual',
+    });
+    const orphans = genericsWithoutDosing(pack);
+    expect(orphans.map((g) => g.name)).toEqual(['Nothingamol']);
     expect(orphans.every((g) => g.brands > 0 && g.dosing === 0)).toBe(true);
   });
 

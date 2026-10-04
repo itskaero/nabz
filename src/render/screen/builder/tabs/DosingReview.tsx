@@ -80,7 +80,20 @@ export function DosingReview({ draft }: { draft: Draft }) {
       wording: dosingFingerprint(target.row),
     };
     const nextReview = { ...(pack.dosingReview ?? {}), [target.key]: review };
-    const dosing = pack.dosing.map((r, i) => (i === target.index ? { ...r, verified: true } : r));
+    const dosing = pack.dosing.map((r, i) => {
+      if (i !== target.index) return r;
+      /*
+        Signing clears `drafted`.
+
+        The mark means "these numbers were written from practice, nobody has
+        opened the reference". Signing is somebody opening the reference. If
+        the mark survived the signature it would be saying the opposite of
+        what just happened, every time it was shown.
+      */
+      const signed = { ...r, verified: true };
+      delete signed.drafted;
+      return signed;
+    });
     draft.setPack({
       ...pack,
       dosing,
@@ -237,7 +250,12 @@ export function DosingReview({ draft }: { draft: Draft }) {
                 {entry.row.ageBand ? ` · ${entry.row.ageBand.label}` : ''} · {entry.row.route}
                 {entry.row.maxPerDay ? ` · max ${entry.row.maxPerDay}` : ''}
               </div>
-              <div className="cite">{entry.row.reference}</div>
+              <div className="cite">
+              {entry.row.drafted && (
+                <strong className="unverified">Drafted, not transcribed — open this and check the number. </strong>
+              )}
+              {entry.row.reference}
+            </div>
             </div>
             <div className="review-state">
               {entry.reason === 'wording-changed' ? (

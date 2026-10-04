@@ -27,14 +27,40 @@ describe('paediatrics pack', () => {
     }
   });
 
-  it('cites only openly licensed sources in the shipped seed', () => {
-    // Consult-and-cite applies to BNFC/Nelson/Harriet Lane/Lexicomp/Micromedex:
-    // a clinician authors those entries. Nothing transcribed in bulk from them
-    // may ship in the repo.
+  /*
+    This test used to ban the NAME of a licensed source anywhere in a reference,
+    as a proxy for the thing it actually cared about: nothing transcribed in
+    bulk from BNFC, Nelson, Harriet Lane, Lexicomp or Micromedex may ship here.
+
+    The proxy stopped working the moment the pack grew rows that were WRITTEN
+    rather than transcribed. "BNF for Children, cefaclor monograph — check the
+    current edition before signing" names BNFC in order to say nobody has
+    copied anything out of it, which is the opposite of the banned act, and
+    naming no source at all would leave the reviewer with nowhere to look.
+
+    So the rule is now the real one. A row may name a licensed source when it
+    is `drafted` (written to be checked, and saying so) or `verified` (a
+    clinician opened that source and signed it). What it may never be is
+    neither: a row wearing a licensed citation with nothing behind it is
+    claiming to be a transcription, and that claim is the whole problem.
+  */
+  it('never wears a licensed citation it has not earned', () => {
     const licensed = /BNFC|BNF for Children|Nelson|Harriet Lane|Lexicomp|Micromedex/i;
     for (const row of paediatrics.dosing) {
-      expect(licensed.test(row.reference), `${row.generic} cites a licensed source`).toBe(false);
+      if (!licensed.test(row.reference)) continue;
+      expect(
+        row.drafted === true || row.verified === true,
+        `${row.generic} cites a licensed source while neither drafted nor signed off`,
+      ).toBe(true);
     }
+  });
+
+  it('keeps the transcribed WHO rows and the drafted ones apart', () => {
+    // The ten rows that came out of open WHO guidance must not quietly acquire
+    // the drafted mark, and nothing drafted may pose as one of them.
+    const fromWho = paediatrics.dosing.filter((r) => /^WHO/.test(r.reference) && !/check/i.test(r.reference));
+    expect(fromWho.length).toBeGreaterThanOrEqual(10);
+    for (const row of fromWho) expect(row.drafted).toBeUndefined();
   });
 
   it('ships every dosing row as unverified until a clinician signs it off', () => {

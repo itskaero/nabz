@@ -223,3 +223,53 @@ describe('a sign-off that survives being shared', () => {
     expect(validateContentPack(landed.pack).filter((i) => i.severity === 'error')).toEqual([]);
   });
 });
+
+describe('what the pack now claims about where its numbers came from', () => {
+  /*
+    The measurement that started this: 95 of 102 paediatric generics had no
+    dose at all, and the seven that did came from ten WHO rows. The hole is
+    closed. What matters more than the count is that closing it did not blur
+    the two kinds of claim together.
+  */
+  it('has a row for every generic, and none of them is verified', () => {
+    const generics = new Set(paediatrics.formularySeed.map((r) => r.generic.toLowerCase()));
+    const dosed = new Set(paediatrics.dosing.map((r) => r.generic.toLowerCase()));
+    for (const g of generics) expect(dosed.has(g), `${g} has no dosing row`).toBe(true);
+    expect(paediatrics.dosing.every((r) => r.verified === false)).toBe(true);
+  });
+
+  it('marks every written row as drafted, and leaves the transcribed ones unmarked', () => {
+    const drafted = paediatrics.dosing.filter((r) => r.drafted);
+    const transcribed = paediatrics.dosing.filter((r) => !r.drafted);
+
+    // The ten WHO rows the pack started with, and nothing else.
+    expect(transcribed).toHaveLength(10);
+    for (const row of transcribed) expect(row.reference).toMatch(/^WHO/);
+
+    // Every drafted row says where to check it, and none of them pretends to
+    // have been taken from there.
+    expect(drafted.length).toBeGreaterThan(100);
+    for (const row of drafted) {
+      expect(row.reference, `${row.generic} does not say where to check it`).toMatch(
+        /check (the current edition|against the current edition)/i,
+      );
+    }
+  });
+
+  it('expresses a dose on every row, even the ones that refuse to suggest one', () => {
+    // `fixedDose` is documented as holding "a plainly-worded refusal to
+    // suggest one". Several rows use it that way -- a steroid-plus-antifungal
+    // combination, a withdrawn H2 blocker, the sedating cough mixtures. A
+    // stated reason is more use to a prescriber than a silent gap, and the
+    // validator's "row must express a dose" rule is what keeps it visible.
+    for (const row of paediatrics.dosing) {
+      expect(
+        row.mgPerKg !== undefined || Boolean(row.fixedDose) || Boolean(row.maxPerDay),
+        `${row.generic} expresses no dose and no reason`,
+      ).toBe(true);
+    }
+    const refusals = paediatrics.dosing.filter((r) => /No dose offered/.test(r.fixedDose ?? ''));
+    expect(refusals.length).toBeGreaterThan(3);
+    for (const row of refusals) expect(row.note, `${row.generic} refuses without saying why`).toBeTruthy();
+  });
+});

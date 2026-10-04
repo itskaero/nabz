@@ -137,6 +137,22 @@ export interface DosingEntry {
   /** free-text caution shown with the suggestion */
   note?: string;
   /**
+   * The numbers were WRITTEN from standard practice, not transcribed from a
+   * passage somebody opened.
+   *
+   * `reference` says where a dose can be checked. It has never said whether
+   * anyone actually looked, and for the ten WHO rows this pack started with
+   * the answer was yes -- they were transcribed from open WHO guidance. The
+   * rows added since were drafted against ordinary paediatric practice so that
+   * reviewing them is a check rather than an authoring job, and a row like
+   * that must not be able to pass itself off as the first kind.
+   *
+   * So it is marked, the screen says so, and signing it off clears the mark --
+   * because the sign-off IS somebody opening the reference and confirming the
+   * number. There is no other way to clear it.
+   */
+  drafted?: boolean;
+  /**
    * True only for a drug where a daily frequency is not merely wrong but
    * dangerous -- once-weekly methotrexate taken daily is a known killer. Set
    * this ONLY when the weekly interval itself is the safety boundary, not for
@@ -722,6 +738,34 @@ export function validateContentPack(pack: ContentPack): PackIssue[] {
         severity: 'error',
         where: `dosing[${i}] ${row.generic}`,
         message: 'dosing row has no route',
+      });
+    }
+    /*
+      A citation has to be earned.
+
+      BNFC, Nelson, Harriet Lane, Lexicomp and Micromedex are consult-and-cite:
+      a clinician reads the monograph, writes the entry in their own words, and
+      stores the citation. A row naming one of them while marked neither
+      `drafted` (written to be checked, and saying so) nor `verified` (somebody
+      opened it and signed) is claiming a transcription nobody made.
+
+      A warning rather than an error, deliberately: at load time the app has to
+      run on whatever pack it is given, and refusing to open a colleague's pack
+      over a provenance label would cost a clinic its content. The builder is
+      where a human is present, and `tests/pack.test.ts` holds the repo's own
+      packs to the harder line.
+    */
+    if (
+      /BNFC|BNF for Children|Nelson|Harriet Lane|Lexicomp|Micromedex/i.test(row.reference) &&
+      !row.drafted &&
+      !row.verified
+    ) {
+      issues.push({
+        severity: 'warning',
+        where: `dosing[${i}] ${row.generic}`,
+        message:
+          'cites a consult-and-cite source but is neither marked `drafted` nor ' +
+          'signed off, so nothing says where its numbers actually came from',
       });
     }
     // A row must express SOME dose -- weight-based, fixed, or (rarely) just a

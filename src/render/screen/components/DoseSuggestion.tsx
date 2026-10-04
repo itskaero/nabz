@@ -117,6 +117,14 @@ export function DoseSuggestion({
         // they cannot tell apart from the dose they were expecting.
         <span className="src">Capped by {dose.cappedBy}.</span>
       )}
+      {entry.drafted && (
+        // Louder than "not yet verified", because it is a different claim:
+        // nobody has opened the source this row names.
+        <span className="src unverified">
+          Drafted from standard practice — nobody has checked it against{' '}
+          {entry.reference.split(/[—–-]/)[0]?.trim() || 'the reference'} yet.
+        </span>
+      )}
       {fits === false && (
         <span className="src unverified">
           This row is for {entry.ageBand?.label ?? 'a different band'} — check it

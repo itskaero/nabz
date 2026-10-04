@@ -54,6 +54,8 @@ export interface Draft {
     brands: number;
     generics: number;
     dosing: number;
+    /** of those, written to be checked rather than transcribed from a source */
+    draftedDosing: number;
     chips: number;
     unreconciled: number;
     unreviewedRedFlags: number;
@@ -249,6 +251,7 @@ export function useDraft(
       brands: pack.formularySeed.length,
       generics: vocabulary.length,
       dosing: pack.dosing.length,
+      draftedDosing: pack.dosing.filter((d) => d.drafted).length,
       chips: Object.values(pack.findingsPalette).reduce((n, list) => n + list.length, 0),
       unreconciled: unreconciledBrands(pack).length,
       unreviewedRedFlags: unreviewedRedFlags(pack, wordingOf).length,

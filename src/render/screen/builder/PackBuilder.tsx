@@ -187,7 +187,13 @@ export function PackBuilder({ onDone }: { onDone: () => void }) {
           <strong>Pack builder</strong>
           <small>
             {draft.pack.specialty} · {draft.stats.brands} medicines ·{' '}
-            {draft.stats.generics} generics · {draft.stats.dosing} cited doses
+            {draft.stats.generics} generics · {draft.stats.dosing} doses
+            {/*
+              "cited doses" was true of all of them and useful about none: every
+              row has a reference, and the number that tells you where the work
+              is is how many of them nobody has opened yet.
+            */}
+            {draft.stats.draftedDosing > 0 && `, ${draft.stats.draftedDosing} drafted`}
           </small>
         </div>
         <span className="spacer" />
