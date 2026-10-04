@@ -556,7 +556,18 @@ export function App() {
         column has to keep its own scroll.
       */}
       {wide && (
-        <SideNav groups={groups} view={view} onGo={setView} disabled={navDisabled} />
+        <SideNav
+          groups={groups}
+          view={view}
+          onGo={setView}
+          disabled={navDisabled}
+          context={{
+            mark: (pack.specialty || 'N').charAt(0).toUpperCase(),
+            name: pack.specialty || 'Nabz',
+            note: reception ? 'Front desk' : 'Consulting room',
+            onOpen: () => setView('settings'),
+          }}
+        />
       )}
       <div className="app-main">
         <header className="topbar">

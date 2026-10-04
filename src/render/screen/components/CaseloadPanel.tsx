@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import type { CaseloadMonth, CaseloadRow, Caseload } from '@domain/caseload.ts';
 import { caseload, monthLabel, monthWindow } from '@domain/caseload.ts';
 import * as db from '@storage/db.ts';
+import { PageHeader, Stat } from '../shell/PageHeader.tsx';
 
 export function CaseloadPanel({
   onOpenChart,
@@ -69,9 +70,20 @@ export function CaseloadPanel({
   if (months.length === 0) {
     return (
       <div className="body">
+        {/*
+          The empty state is a page too.
+
+          It took an early return that rendered a bare card, so the one screen
+          where a doctor most needs to know where they are — nothing here yet,
+          why? — was the one screen with no title and no trail.
+        */}
+        <PageHeader
+          trail={['Records']}
+          title="Patients"
+          lede="Everyone you have seen, by month, with a way into each chart."
+        />
         <section className="card">
-          <h2>Patients</h2>
-          <p className="empty">
+          <p className="empty" style={{ margin: 0 }}>
             Nothing saved on this device yet. Every script you save puts a
             patient in this list.
           </p>
@@ -82,12 +94,43 @@ export function CaseloadPanel({
 
   return (
     <div className="body">
+      {/*
+        A real page header, and the month strip and the figures hung under it.
+
+        This screen used to open on a card titled "Patients" — a heading inside
+        a box, which is not the same thing as the window knowing what it is
+        showing. The figures were nowhere: the number of patients in the month
+        and the number of visits were both already computed and both only
+        visible by counting rows.
+      */}
+      <PageHeader
+        trail={['Records']}
+        title="Patients"
+        lede="Who you have seen, by month. Opening a row opens that patient’s chart — nothing here is copied onto the script you are writing."
+      >
+        <div className="stat-row">
+          <Stat
+            label="Patients"
+            value={load ? load.rows.length : '—'}
+            of={month ? monthLabel(month) : ''}
+          />
+          <Stat
+            label="Visits"
+            value={load ? load.rows.reduce((n, r) => n + r.visits, 0) : '—'}
+            of="scripts written"
+          />
+          <Stat
+            label="Unlinked"
+            value={load ? load.unlinked.length : '—'}
+            of="no chart yet"
+            {...(load && load.unlinked.length > 0
+              ? { foot: 'Link them to keep a growth series', delta: 'needs a name', trend: 'down' as const }
+              : {})}
+          />
+        </div>
+      </PageHeader>
+
       <section className="card">
-        <h2>Patients</h2>
-        <p className="hint" style={{ marginTop: 0 }}>
-          Who you have seen, by month. Opening a row opens that patient’s chart
-          — nothing here is copied onto the script you are writing.
-        </p>
         {/*
           The month strip stays a tablist rather than becoming a segmented
           control: a segmented control is for a handful of fixed choices that

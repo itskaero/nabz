@@ -67,6 +67,14 @@ export interface NavItem {
    * the phone sheet has the room to say so.
    */
   hint?: string;
+  /**
+   * A count on the right of the row — waiting patients, outstanding sign-offs.
+   *
+   * Set by the caller rather than by `navGroups`, because the number is live
+   * app state and this module is deliberately a pure function of what the pack
+   * and the device offer.
+   */
+  badge?: number;
 }
 
 export interface NavGroup {

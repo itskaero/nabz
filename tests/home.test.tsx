@@ -50,7 +50,7 @@ describe('before setup is finished', () => {
     await db.saveProfile(defaultDoctorProfile);
     renderApp();
 
-    expect(await screen.findByText('Set up this device')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Set up this device' })).toBeTruthy();
     // Not merely alongside: the script is not what this device is ready for.
     expect(screen.queryByPlaceholderText(/Fever for 3 days/)).toBeNull();
   });
@@ -76,7 +76,7 @@ describe('before setup is finished', () => {
   it('sends the doctor to the place the missing thing lives', async () => {
     await db.saveProfile(defaultDoctorProfile);
     renderApp();
-    await screen.findByText('Set up this device');
+    await screen.findByRole('heading', { name: 'Set up this device' });
     await userEvent.click(screen.getAllByRole('button', { name: 'Fill in' })[0]!);
     // Settings, where the name and the registration number actually live.
     expect(await screen.findByRole('heading', { name: 'Your details' })).toBeTruthy();
@@ -89,7 +89,7 @@ describe('once it is finished', () => {
     renderApp();
 
     expect(await screen.findByPlaceholderText(/Fever for 3 days/)).toBeTruthy();
-    expect(screen.queryByText('Set up this device')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Set up this device' })).toBeNull();
   });
 
   it('stays reachable, because the backup row is not finished with anybody', async () => {
@@ -98,7 +98,7 @@ describe('once it is finished', () => {
     await screen.findByPlaceholderText(/Fever for 3 days/);
 
     await userEvent.click(screen.getByRole('button', { name: 'Setup' }));
-    expect(await screen.findByText('Set up this device')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Set up this device' })).toBeTruthy();
     expect(screen.getByText('A first backup, written')).toBeTruthy();
     // Outstanding, and saying so -- but it never held the app back.
     expect(screen.getAllByText('Still to do').length).toBeGreaterThan(0);

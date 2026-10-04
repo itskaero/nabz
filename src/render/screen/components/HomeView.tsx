@@ -19,6 +19,7 @@
 import type { SetupDestination, SetupStep } from '@domain/setup.ts';
 import { outstanding } from '@domain/setup.ts';
 import { SetupChecklist } from './SetupChecklist.tsx';
+import { PageHeader, Stat } from '../shell/PageHeader.tsx';
 
 function summary(steps: SetupStep[]): string {
   const todo = outstanding(steps);
@@ -50,21 +51,32 @@ export function HomeView({
 }) {
   return (
     <div className="body">
-      <div className="card setup-card">
-        {/*
-          The one gradient, and this is where it earns its place.
-
-          Setup is the screen a doctor sees before the product has done
-          anything for them, and the only one with room to look like something
-          rather than like a form. Every other screen is a working surface with
-          twenty cards on it, where a luminous field behind each one would read
-          as noise. `contrast` mode resolves both stops to white, so the mode
-          that exists for sunlight does not get a gradient it cannot afford.
-        */}
-        <div className="hero-band setup-hero">
-          <h2 className="setup-title">Set up this device</h2>
-          <p className="setup-summary">{summary(steps)}</p>
+      {/*
+        The page header carries the title now, and the figures say how far
+        through setup this device is — which was previously only derivable by
+        reading four checklist rows and counting the ones that said DONE.
+      */}
+      <PageHeader trail={['Clinic']} title="Set up this device" lede={summary(steps)}>
+        <div className="stat-row">
+          <Stat
+            label="Steps done"
+            value={steps.length - outstanding(steps).length}
+            of={`of ${steps.length}`}
+          />
+          <Stat
+            label="Blocking"
+            value={outstanding(steps).filter((s) => s.severity === 'blocking').length}
+            of="before the first script"
+          />
+          <Stat
+            label="Worth doing"
+            value={outstanding(steps).filter((s) => s.severity !== 'blocking').length}
+            of="when you have a minute"
+          />
         </div>
+      </PageHeader>
+
+      <div className="card setup-card">
         <SetupChecklist steps={steps} onGo={onGo} />
         <button className="btn" onClick={onStart} disabled={!canStart}>
           {canStart ? 'Write a script' : 'Finish the steps above first'}
